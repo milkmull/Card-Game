@@ -6,7 +6,7 @@ To start a local wireless game, click "single player" on the main menu
 To join a local wireless game click "find game" on the main menu
 
 Controls:
-  press "S" to start a game (when playing in wireless mode, you will only be able to start a game if at least one other person has joind the game)
+  press "S" to start a game (when playing in wireless mode, you will only be able to start a game if at least one other person has joined the game)
   press "R" to restart or start a new game
   
 Cards:
@@ -42,11 +42,11 @@ Card Types:
   Treasure cards:
     treasure cards are cards that you have to get super lucky to obtain.
     In order to get a treasure card, you must meet certain criteria outlined on some cards.
-    If you can hold on to treasures until the end of the game, the cards will take effect and you will often recieved a large ammount of points
+    If you can hold on to treasures until the end of the game, the cards will take effect and you will often receive a large amount of points
     
   Landscape cards:
     Landscape cards provide a bonus for playing any cards that correspond to them.
-    Cards played while the corresponding landscape is in your possetion will be played twice.
+    Cards played while the corresponding landscape is in your position will be played twice.
     check the bottom box on cards in your sequence to see which cards correspond to your landscape
     
   Other:
@@ -58,20 +58,20 @@ Screen:
     Cards will appear here in the draft phase of the game (discussed later) or during a game, often triggered by a card you played
     
   Sequence pane:
-    Crads that appear here are cards that are "in your sequence" The order they appear is the order you draft them in.
+    Cards that appear here are cards that are "in your sequence" The order they appear is the order you draft them in.
     Cards here cannot be directly interacted with.
     The top card is the card that will be played next
     
   Active card:
-    Your active card is the card that is curently in control of your actions.
+    Your active card is the card that is currently in control of your actions.
     If cards suddenly appear in your selection pane, make sure to look at your active card to check what prompted the selection and what will happen next.
     
   Items pane:
     Pane that holds any items or spells that are currently in your hand.
     Items can be selected and used by clicking on them.
     If you click and nothing happens, that item or spell cannot be used at the moment.
-    If an item card that you use promps a selection and you decide you don't want to use the item any more, press 'X' to cancel the selection
-    Sometimes when you use an item, depending on the item it will be added to your "equippied" pane.
+    If an item card that you use prompts a selection and you decide you don't want to use the item any more, press 'X' to cancel the selection
+    Sometimes when you use an item, depending on the item it will be added to your "equipped" pane.
   
   Equipped pane:
     Equipped items are items that cannot be used at the immediate moment but will take the next available opportunity to activate. 
@@ -83,24 +83,24 @@ Screen:
   
   Treasure pane:
     This pane shows you any treasures you have collected.
-    Treasures cannot be interacted with, with the exception of goldcoins which can be clicked on to draw a new item.
+    Treasures cannot be interacted with, with the exception of gold coins which can be clicked on to draw a new item.
     
   Score:
     The leader board and scores will appear in the top left corner of the screen.
     
   Other players:
-    Your opponents will appear accross the middle of your screen
+    Your opponents will appear across the middle of your screen
     The main pane that appears is their sequence
     When they play a new card, it will become visible to you under their name.
-    Hovering your mouse over an opponents sequenc will display more info about the cards they have.
+    Hovering your mouse over an opponent’s sequence will display more info about the cards they have.
     On the far left you will be able to see the landscape card they currently have
     On the close left, you will be able to see any spells that are currently casted on them
     On the close right you will be able to see any items that they previously used
 
 Rules:
 Phase 1:
-  when the game starts you wil recieve items and spells that get added to the respective panes
-  You will also recieve a landscape card which can be viewed as discussed in "other players" above
+  when the game starts you will receive items and spells that get added to the respective panes
+  You will also receive a landscape card which can be viewed as discussed in "other players" above
   
   Cards will appear in the selection pane on the right
   Each player will select one card which will be added to their sequence
