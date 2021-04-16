@@ -1,5 +1,4 @@
 import random
-import time
 
 class Textbox:
     def __init__(self, name):
