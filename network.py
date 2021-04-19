@@ -17,15 +17,9 @@ class Network:
         return self.pid
         
     def connect(self):
-        try:
-        
-            self.client.connect(self.addr) #connects to server, sends address
-            
-            return self.client.recv(4096).decode() #loads byte data
-            
-        except:
-            
-            pass
+        self.client.connect(self.addr) #connects to server, sends address
+
+        return self.client.recv(4096).decode() #loads byte data
             
     def send(self, data):
         try:
