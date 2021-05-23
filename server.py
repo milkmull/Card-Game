@@ -17,7 +17,7 @@ try:
 
 except socket.error as e:
     
-    print(e)
+    print(e, 's3')
     
 s.settimeout(3) #sets server to close if nobody connects within 10 seconds
     
@@ -60,65 +60,123 @@ def threaded_client(conn, id):
                 
             else:
 
-                if data == 'info':
+                if data.startswith('info'):
                     
-                    reply = game.info(id) #get info for each player (points, visible cards)
+                    data = data.split('-')
+                    
+                    reply = game.get_info(id, int(data[1]), data[2].split(',')) #get info for each player (points, visible cards)
+                    
+                elif data.startswith('name'):
+                    
+                    reply = game.get_player(id).set_name(data.split(',')[-1])
+                    
+                elif data == 'players':
+                            
+                    reply = game.check_order()
                 
                 elif data == 'start':
                     
-                    reply = game.start(id) #signals the start of game
+                    reply = game.start(id)
                     
-                elif data == 'reset': 
+                elif data == 'reset':
                     
-                    reply = game.reset() #resets the game
+                    reply = game.reset()
                     
                 elif data == 'settings':
                     
-                    reply = game.get_settings() #gets the games current settings
+                    reply = game.get_settings()
                     
-                elif '-' == data[0]: #signals settings are being updated
+                elif '~' == data[0]:
                     
                     if game.wait:
                     
-                        reply = game.update_settings(data) #only update settings if game is not active
+                        reply = game.update_settings(data)
                         
                     else:
                         
                         reply = False
                         
-                elif data == 'disconnect': #end thread if player disconnected
+                elif data == 'disconnect':
                     
-                    break
+                    game.running = False
+                    
+                elif data == 'status':
+                            
+                    reply = game.check_status()
                     
                 elif game.wait: #won't go past here if client is waiting to start game
                     
-                    reply = 1
+                    reply = 'w'
+                
+                elif data == 'status':
+                            
+                    reply = game.check_status()
+                    
+                elif data == 'continue':
+                    
+                    text = game.check_status()
+                    
+                    if text == 'next round':
+                        
+                        game.new_round()
+                        
+                    elif text == 'new game':
+                        
+                        game.new_game()
+                        
+                    reply = True
+                    
+                elif data == 'winner':
+                    
+                    reply = game.get_winner()
+                    
+                elif data == 'update':
+                    
+                    game.update_player(id)
+                    
+                    game.main()
 
-                elif check_int(data): #when player clicks on a card, the card id is sent to the game to check if the card can be interacted with
+                elif check_int(data):
 
                     reply = game.select(id, int(data))
                     
-                elif data == 'click': #if player clicks anywhere, the game checks if player is selecting a card from the selection area
+                elif data == 'event':
+                    
+                    reply = game.event_info()
+                    
+                elif data == 'shop':
+                    
+                    reply = game.get_shop()
+                    
+                elif data == 'click':
                     
                     reply = game.select(id)
                     
-                elif data == 'play': #when player is playing a card
+                elif data == 'play':
                     
                     reply = game.play(id)
                     
-                elif data == 'cancel': #when player cancels an input
+                elif data == 'flip':
+                    
+                    reply = game.flip(id)
+                    
+                elif data == 'roll':
+                    
+                    reply = game.roll(id)
+                    
+                elif data == 'cancel':
                     
                     reply = game.cancel(id)
- 
+
                 if reply == 'close':
                     
-                    break
+                    game.running = False
 
                 conn.sendall(pickle.dumps(reply))
 
         except Exception as e:
             
-            print(e)
+            print(e, 's1')
             
             break
             
@@ -149,8 +207,16 @@ while True: #looking for connections
         if pid == 0:
         
             break
+            
+    except Exception as e:
         
+        print(e, 's4')
         
+        if pid == 0:
+            
+            break
+        
+
         
         
         

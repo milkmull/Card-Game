@@ -46,7 +46,7 @@ cards = {
             
             Shark: 1, #good
             
-            Fish: 25, #good check points
+            Fish: 15, #good check points
             
             Pelican: 2, #good
             
@@ -66,7 +66,7 @@ cards = {
             
             PoisonIvy: 2, #good
             
-            Rose: 3, #good
+            Rose: 2, #good
 
             Uphalump: 1, #good
             
@@ -179,11 +179,11 @@ treasure =  {
                 
                 Pearl: 4, #good
                 
-                GoldCoins: 15, #good
+                GoldCoins: 10, #good
                 
                 Bronze: 8, #good
                 
-                FoolsGold: 5, #good
+                FoolsGold: 3, #good
                 
                 GoldenEgg: 1, #good
                 

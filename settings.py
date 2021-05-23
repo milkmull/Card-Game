@@ -21,6 +21,6 @@ settings = {
                 
                 'score wrap': False,
                 
-                'cpus': 2
+                'cpus': 1
                 
             }

@@ -1,6 +1,7 @@
 import sys
 import random
 import time
+import copy
 from settings import settings
 from cards import *
 from player import Player
@@ -18,6 +19,33 @@ def check_int(string): #checks to see if string can be represented as an integer
     
 def count_cards(card, deck): #returns number of specific card in given deck
     return len([c for c in deck if type(c) == card])
+    
+def pack_log(logs):
+    new_log = []
+    
+    for log in logs:
+
+        new_entry = {}
+        
+        for key in log:
+            
+            val = log[key]
+            
+            if isinstance(val, Player):
+                
+                new_entry[key] = val.pid
+                
+            elif hasattr(val, 'uid'):
+                
+                new_entry[key] = (val.name, val.uid)
+                
+            else:
+                
+                new_entry[key] = val
+                
+        new_log.append(new_entry)
+                
+    return new_log
         
 class Game:
     def __init__(self, mode='online'):
@@ -38,10 +66,14 @@ class Game:
         self.treasure = []
         self.event_cards = []
         self.landscapes = []
+        self.shop = []
 
         self.discard = []
         
+        self.logs = {}
+        
         self.turn = 0 #turn of game
+        self.current_turn = 0
 
         self.event = None #impliment multiple
         
@@ -57,12 +89,51 @@ class Game:
         if self.mode == 'single':
             
             self.new_player(0)
+            
+#copy stuff---------------------------------------------------------------------------------------------------
+
+    def copy(self):
+        g = Game('turbo')
+        
+        g.settings = self.settings.copy()
+        
+        g.done = self.done
+        g.wait = self.wait
+        
+        g.turn = self.turn
+        g.round = self.round
+        g.current_turn = 0
+
+        g.current_player = self.current_player
+
+        g.phase = self.phase
+        
+        g.players = [Player(g, p.pid, p.score, True) for p in self.players]
+        g.main_p = g.players[g.current_player]
+            
+        for i in range(len(self.players)):
+            
+            g.players[i].start_copy(g, self.players[i])
+        
+        g.deck = [c.light_sim_copy(g) for c in self.deck[:8]]
+        g.items = [c.light_sim_copy(g) for c in self.items[:10]]
+        g.spells = [c.light_sim_copy(g) for c in self.spells[:5]]
+        g.treasure = [c.light_sim_copy(g) for c in self.treasure[:10]]
+        g.shop = [c.light_sim_copy(g) for c in self.shop]
+        g.landscapes = [c.light_sim_copy(g) for c in self.landscapes]
+
+        g.discard = [c.light_sim_copy(g) for c in self.discard[:3]]
+        
+        g.event = self.event.light_sim_copy(g) if self.event is not None else None
+            
+        return g
         
 #new game stuff-----------------------------------------------------------------------------------------------
 
     def new_game(self):
-        self.players.sort(key=lambda p: p.pid)
-    
+        self.players = [self.get_player(0)]
+        self.players[0].reset()
+        
         if self.mode == 'single':
             
             self.add_cpus()
@@ -73,6 +144,7 @@ class Game:
         
         self.current_player = 0 #index of player who is currently taking their turn
         self.main_p = self.players[0] #main player
+        random.shuffle(self.players)
         
         self.deck = self.fill_deck(cards)
         self.items = self.fill_deck(items)
@@ -80,8 +152,10 @@ class Game:
         self.treasure = self.fill_deck(treasure)
         self.event_cards = self.fill_deck(events)
         self.landscapes = self.fill_deck(landscapes)
+        
+        self.shop.clear()
 
-        self.discard = []
+        self.discard.clear()
         
         for p in self.players:
         
@@ -89,11 +163,18 @@ class Game:
         
         self.turn = 0 #turn of game
         self.round = 1
+        self.current_turn = 0
 
         self.deal('items', 'items', self.get_setting('items'))
         self.deal('spells', 'spells', self.get_setting('spells'))
 
         self.deal('deck', 'selection', self.get_setting('cards'))
+        
+        for p in self.players:
+            
+            p.treasure.append(GoldCoins(self, self.uid))
+            
+            self.uid += 1
         
         if self.get_setting('event'):
 
@@ -101,12 +182,10 @@ class Game:
             
     def add_cpus(self):
         self.pid = 1
-        
-        self.players = [self.get_player(0)]
-            
+
         for _ in range(self.get_setting('cpus')):
 
-            self.players.append(Player(self, self.pid, self.settings['ss'], auto=True))
+            self.players.append(Player(self, self.pid, self.get_setting('ss'), auto=True))
         
             self.pid += 1
             
@@ -125,9 +204,12 @@ class Game:
         return True
 
     def new_round(self):
+        self.round += 1
+        
         self.phase = 'draft'
         self.done = False
         self.turn = 0
+        self.current_turn = 0
         
         for p in self.players:
             
@@ -135,6 +217,8 @@ class Game:
 
         self.current_player = 0
         self.main_p = self.players[0]
+        
+        self.shop.clear()
 
         self.deal('deck', 'selection', self.get_setting('cards'))
         
@@ -167,7 +251,29 @@ class Game:
             dest = getattr(p, destination)
             
             dest += self.draw_cards(deck, num)
+            
+    def fill_shop(self, num=3):
+        for _ in range(num):
         
+            card = random.choice(self.deck + self.items + self.spells)#, self.landscapes])
+            
+            deck = next((deck for deck in [self.deck, self.items, self.spells] if card in deck))
+
+            deck.remove(card)
+            
+            self.shop.append(card)
+            
+    def buy(self, player, uid):
+        for c in self.shop.copy():
+            
+            if c.uid == uid:
+                
+                self.shop.remove(c)
+                
+                self.fill_shop(1)
+                
+                return c
+
 #server communication functions-----------------------------------------------------------------------------
 
     def new_player(self, pid): #add player to game
@@ -178,7 +284,9 @@ class Game:
             self.players.append(p)
                 
             self.pid += 1
-
+            
+            self.logs[pid] = {p.pid: [] for p in self.players}
+            
             return True
             
         else:
@@ -188,7 +296,24 @@ class Game:
     def remove_player(self, pid): #remove player from game
         p = next(p for p in self.players if p.pid == pid)
         
+        for key in self.logs:
+            
+            del self.logs[key][p.pid]
+            
+        del self.logs[p.pid]
+        
         self.players.remove(p)
+
+    def check_order(self):
+        pids = []
+        names = []
+        
+        for p in self.players:
+            
+            pids.append(p.pid)
+            names.append(p.name)
+            
+        return [pids, names]
         
     def start(self, pid):
         if (pid == 0 and len(self.players) > 1) or self.mode == 'single':
@@ -203,28 +328,52 @@ class Game:
             
             return False
             
-    def get_info(self, player):
+    def get_info(self, player, other, attrs):
         if not self.get_player(0):
             
             return 'close'
-
-        info = {}
-        
-        for p in self.players:
             
-            if p == player:
+        p = self.get_player(other)
+        
+        info = [p.get_info(attr) for attr in attrs]
+        
+        if 'log' in attrs:
+            
+            info[attrs.index('log')] = self.get_log(player, other)
+
+        return info
+        
+    def update_logs(self, pid, new_entry):
+        for key in self.logs:
+            
+            sublog = self.logs[key]
+            
+            log = sublog.get(pid)
+            
+            if log is None:
                 
-                info[p.pid] = p.get_info()
+                sublog[pid] = new_entry
                 
             else:
                 
-                info[p.pid] = p.get_light_info()
-                
-        if self.event is not None:
-                
-            info['e'] = (self.event.name, self.event.uid)
-                
-        return info
+                sublog[pid] += new_entry
+
+    def get_log(self, id, oid):
+        logs = self.logs.get(id)
+        
+        log = logs.get(oid)
+        
+        if log is None:
+            
+            logs[oid] = []
+            
+            log = logs[oid]
+            
+        pack = pack_log(log)
+        
+        log.clear()
+        
+        return pack
         
     def select(self, pid, uid):
         p = self.get_player(pid)
@@ -261,8 +410,26 @@ class Game:
         
         return True
         
-    def info(self, pid):
-        return self.get_info(self.get_player(pid))
+    def flip(self, pid):
+        p = self.get_player(pid)
+        
+        cmd = 'flip'
+        
+        p.update(cmd)
+        
+        return True
+        
+    def roll(self, pid):
+        p = self.get_player(pid)
+        
+        cmd = 'roll'
+        
+        p.update(cmd)
+        
+        return True
+        
+    def event_info(self):
+        return self.event.name if hasattr(self, 'event') else False
         
     def get_settings(self):
         return self.settings.copy()
@@ -280,12 +447,64 @@ class Game:
             
         return True
         
+    def update_player(self, pid):
+        p = self.get_player(pid)
+        
+        if p:
+            
+            p.update()
+            
+            return True
+            
+    def check_status(self):
+        if self.wait:
+            
+            return 'waiting'
+    
+        if self.done:
+        
+            if self.round <= self.get_setting('rounds') - 1:
+                
+                return 'next round'
+                
+            else:
+                
+                return 'new game'
+                
+        else:
+            
+            return 'playing'
+            
+    def get_shop(self):
+        return [(c.name, c.uid) for c in self.shop]
+        
+    def get_winner(self):
+        if self.done and self.check_status() == 'new game' and not self.wait:
+
+            reply = max(self.players, key=lambda p: p.score).pid
+            
+            return reply
+            
+        else:
+            
+            return False
+        
     def send(self, data):
         reply = ''
         
-        if data == 'info':
+        if data.startswith('info'):
                     
-            reply = self.info(0)
+            data = data.split('-')
+            
+            reply = self.get_info(0, int(data[1]), data[2].split(',')) #get info for each player (points, visible cards)
+            
+        elif data.startswith('name'):
+            
+            reply = self.get_player(0).set_name(data.split(',')[-1])
+            
+        elif data == 'players':
+                    
+            reply = self.check_order()
         
         elif data == 'start':
             
@@ -299,7 +518,7 @@ class Game:
             
             reply = self.get_settings()
             
-        elif '-' == data[0]:
+        elif '~' == data[0]:
             
             if self.wait:
             
@@ -313,13 +532,53 @@ class Game:
             
             self.running = False
             
+        elif data == 'wait':
+                    
+            reply = self.wait
+            
         elif self.wait: #won't go past here if client is waiting to start game
             
-            reply = 1
+            reply = 'w'
+        
+        elif data == 'status':
+                    
+            reply = self.check_status()
+            
+        elif data == 'continue':
+            
+            text = self.check_status()
+            
+            if text == 'next round':
+                
+                self.new_round()
+                
+            elif text == 'new game':
+                
+                self.new_game()
+                
+            reply = True
+            
+        elif data == 'winner':
+            
+            return self.get_winner()
+            
+        elif data == 'update':
+            
+            self.update_player(0)
+            
+            self.main()
 
         elif check_int(data):
 
             reply = self.select(0, int(data))
+            
+        elif data == 'event':
+            
+            reply = self.event_info()
+            
+        elif data == 'shop':
+            
+            reply = self.get_shop()
             
         elif data == 'click':
             
@@ -329,6 +588,14 @@ class Game:
             
             reply = self.play(0)
             
+        elif data == 'flip':
+            
+            reply = self.flip(0)
+            
+        elif data == 'roll':
+            
+            reply = self.roll(0)
+            
         elif data == 'cancel':
             
             reply = self.cancel(0)
@@ -336,9 +603,7 @@ class Game:
         if reply == 'close':
             
             self.running = False
-            
-        self.main()
-            
+
         return reply
         
     def get_pid(self):
@@ -372,6 +637,7 @@ class Game:
                 selections = selections[1:] + [selections[0]]
                 
             else:
+            
                 selections = [selections[-1]] + selections[:-1]
                 
             for p, s in zip(self.players, selections):
@@ -382,68 +648,161 @@ class Game:
         self.phase = 'play'
         
         self.event.start(self)
+        self.fill_shop()
 
         self.advance_turn()
   
+    def end_round(self):
+        for p in self.players:
+            
+            if not p.round_over:
+            
+                p.end_round()
+        
+    def end_game(self):
+        for p in self.players:
+            
+            if not p.round_over:
+            
+                p.end_round()
+                
+            if not p.game_over:
+            
+                p.end_game()
+
     def check_advance(self):
-        if self.main_p.finished:
+        if not self.done and self.main_p.finished:
             
             self.advance_turn()
             
     def finished_game(self):
         return self.round + 1 > self.get_setting('rounds')
-
+        
     def advance_turn(self):
-        self.main_p.end_turn()
-        
-        if len(self.players) == 1:
+        if all(p.check_end_game() for p in self.players) or (all(p.check_end_round() for p in self.players) and self.mode == 'turbo'):
+            
+            self.done = True
+            
+        elif all(p.check_end_round() for p in self.players):
+            
+            self.new_round()
             
             return
-        
-        players = [p for p in self.players if p.unplayed]
-        
-        if all(p.game_over for p in self.players):
             
-            self.round += 1
-            
-            if self.round <= self.get_setting('rounds'):
-            
-                self.new_round()
-            
+        if len(self.players) == 1 or self.done:
+
             return
+            
+        if all(not (p.unplayed or p.requests) for p in self.players):
 
-        elif not players:
-        
-            return
-
-        if any(len(p.played) == self.turn for p in players):
-
-            for p in players:
+            for p in self.players:
                 
-                if len(p.played) == self.turn:
-        
-                    self.current_player = self.players.index(p)
+                p.end_round()
+                
+                if self.round == self.get_setting('rounds'):
+                
+                    p.end_game()
+                
+            self.current_turn += 1
+                
+            return
+            
+        if not self.main_p.requests and any(p.unplayed for p in self.players):
+            
+            self.main_p.end_turn()
+            
+            while True:
 
-                    break
-   
-        else:
+                for p in self.players:
+                    
+                    if len(p.played) <= self.turn and p.unplayed:
             
-            self.turn += 1
-            
-            self.current_player = 0
-            
-            self.advance_turn()
-            
-        self.main_p = self.players[self.current_player]
+                        self.current_player = self.players.index(p)
 
-        self.main_p.start_turn()
+                        break
+           
+                else:
+                    
+                    self.turn += 1
+                    
+                    self.current_player = 0
+                    
+                    continue
+                    
+                break
+                
+            self.main_p = self.players[self.current_player]
+
+            self.main_p.start_turn()
+            
+            self.current_turn += 1
+
+    #def advance_turn(self):
+    #    if all(p.check_end_game() for p in self.players):
+    #        
+    #        self.done = True
+    #        
+    #    if len(self.players) == 1 or self.done:
+    #
+    #        return
+    #        
+    #    if all(not (p.unplayed or p.requests) for p in self.players):
+    #        
+    #        if self.round == self.get_setting('rounds'):
+    #            
+    #            self.end_game()
+    #            
+    #        else:
+    #            
+    #            self.end_round()
+    #            
+    #        self.current_turn += 1
+    #            
+    #        return
+    #        
+    #    self.main_p.end_turn()
+    #    
+    #    for p in self.players:
+    #        
+    #        print(self.turn, p.pid, p.played, p.unplayed, p.requests)
+    #
+    #    if any(len(p.played) == self.turn and p.unplayed for p in self.players):
+    #
+    #        for p in self.players:
+    #            
+    #            if len(p.played) == self.turn and p.unplayed:
+    #    
+    #                self.current_player = self.players.index(p)
+    #
+    #                break
+    #
+    #    else:
+    #        
+    #        if self.turn > 10:
+    #            
+    #            for p in self.players:
+    #                
+    #                print(p.pid, p.played, p.unplayed)
+    #                print(self.players[5])
+    #        
+    #        self.turn += 1
+    #        
+    #        self.current_player = 0
+    #        
+    #        self.advance_turn()
+    #        
+    #    self.main_p = self.players[self.current_player]
+    #
+    #    self.main_p.start_turn()
+    #    
+    #    self.current_turn += 1
         
     def main(self):
-        auto = [p for p in self.players if p.auto]
-
-        for p in auto:
-            
-            p.auto_update()
+        for p in self.players:
+        
+            if p.auto:
+                
+                p.auto_update()
         
 #player stuff-----------------------------------------------------------------------------------------------
         
@@ -451,18 +810,20 @@ class Game:
         cards = []
         
         deck = getattr(self, deck)
-        
-        while deck:
-        
-            for _ in range(num):
-                
+
+        for _ in range(num):
+            
+            if deck:
+            
                 card = random.choice(deck)
                 
                 cards.append(card)
                 
                 deck.remove(card)
                 
-            break
+            else:
+            
+                break
 
         return cards
         
@@ -476,7 +837,22 @@ class Game:
         return [c.copy() for c in self.discard if c.type in ('item', 'equipment')]
         
     def restore(self, c):
-        self.discard.remove(c)
+        if c in self.discard:
+        
+            self.discard.remove(c)
+            
+    def get_last_item(self):
+        i = self.get_discarded_items()
+        
+        if not i:
+            
+            i = self.draw_cards('items')[0]
+            
+        else:
+            
+            i = i[0]
+            
+        return i.copy()
         
 #card stuff---------------------------------------------------------------------------------------
 
@@ -485,6 +861,9 @@ class Game:
 
     def get_player(self, pid):
         return next((p for p in self.players if p.pid == pid), None)
+        
+    def get_current_turn(self):
+        return self.main_p
         
     def get_setting(self, setting):
         return self.settings[setting]
@@ -519,8 +898,10 @@ class Game:
     def swap(self, c1, c2):
         i1 = self.find_card_deep(c1.uid)
         i2 = self.find_card_deep(c2.uid)
+        
+        if i1 and i2:
             
-        getattr(i1[0], i1[1])[i1[2]], getattr(i2[0], i2[1])[i2[2]] = getattr(i2[0], i2[1])[i2[2]], getattr(i1[0], i1[1])[i1[2]]
+            getattr(i1[0], i1[1])[i1[2]], getattr(i2[0], i2[1])[i2[2]] = getattr(i2[0], i2[1])[i2[2]], getattr(i1[0], i1[1])[i1[2]]
                  
     def find_card(self, uid, pid=None):
         if pid is None:
@@ -544,6 +925,12 @@ class Game:
                 for c in p.played:
                     if c.get_id() == uid:
                         return c
+                        
+            for c in self.shop:
+                
+                if c.uid == uid:
+                    
+                    return c
 
     def find_owner(self, c):
         return next((p for p in self.players if c in p.played), None)
