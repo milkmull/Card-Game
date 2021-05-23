@@ -13,6 +13,8 @@ Table top card game with local wireless play.
 * python3
 * pygame
 ```python3 -m pip install -U pygame```
+* requests
+```python3 -m pip install -U requests```
 
 ### Installation
 1. Clone the repo
