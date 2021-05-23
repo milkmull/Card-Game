@@ -862,11 +862,11 @@ class Player:
         
         if self.game.phase != 'draft':
         
-            self.max_sims = 2
+            self.max_sims = 75
             
         else:
             
-            self.max_sims = 2
+            self.max_sims = 75
  
 #auto stuff-----------------------------------------------------------------------------------------
 
