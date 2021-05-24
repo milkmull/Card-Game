@@ -35,17 +35,29 @@ win = pg.display.set_mode((width, height)) #initiate window
 spritesheet = Spritesheet() #load spritesheet info
 
 def get_ips(): #returns dictionary of any saved ip addresses (used for connecting via port forwarding)
-    with open('ips.txt', 'r') as f:
+    ips = {}
     
-        ips = {name: ip for name, ip in [tup.strip().split(' ') for tup in f]}
+    with open('ips.txt', 'r') as f:
+        
+        for tup in f:
+            
+            name, ip = tup.strip().split(' ')
+    
+            ips[name] = ip
         
     return ips
     
 def update_ips(name, ip):
+    ips = {}
+    
     with open('ips.txt', 'r+') as f:
         
-        ips = {name: ip for name, ip in [tup.strip().split(' ') for tup in f]}
-        
+        for tup in f:
+            
+            name, ip = tup.strip().split(' ')
+            
+            ips[name] = ip
+
         if name not in ips.keys() and ip not in ips.values():
     
             f.write('{} {}\n'.format(name, ip))
@@ -168,7 +180,7 @@ def main():
                 
         elif mode == 'host':
             
-            subprocess.Popen('server.exe')
+            subprocess.Popen([sys.executable, 'server.py'])
             
             start_game()
             

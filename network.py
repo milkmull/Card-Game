@@ -45,7 +45,7 @@ class Network:
             
             print(e, 'n')
             
-            self.close()
+            return
             
     def close(self):
         self.send('disconnect')
