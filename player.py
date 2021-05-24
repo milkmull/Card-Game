@@ -35,7 +35,7 @@ class Player:
         self.thinking = False
         self.sims = 0
         self.seed = 0
-        self.max_sims = 50
+        self.max_sims = 100
         self.info = []
         self.decision = {}
         
@@ -396,32 +396,18 @@ class Player:
     def og(self, cond):
         self.ongoing.sort(key=self.sort_cards)
 
-        i = 0
+        og = self.ongoing.copy()
         
-        while i in range(len(self.ongoing)):
-
-            c = self.ongoing[i]
+        for c in og:
 
             if c.tag == cond:
-                    
-                try:
-                
-                    done = c.ongoing(self)
-                            
-                    if done:
-                        
-                        self.ongoing.pop(i)
 
-                        continue
+                done = c.ongoing(self)
                         
-                except ValueError as e:
+                if done and c in self.ongoing:
+                    
+                    self.ongoing.remove(c)
 
-                    self.ongoing.pop(i)
-                    
-                    continue
-                    
-            i += 1
-            
     def sort_cards(self, c):  
         if c.type in ('animal', 'plant', 'huamn', 'monster', 'treasure'):
             
@@ -582,8 +568,10 @@ class Player:
                     
             for c in self.equipped:
                 
-                if c == card and c.wait is None:
+                if c == card and c.wait is None:   
                     
+                    print(self.pid, c, card, self.equipped)
+
                     self.unequip(c)
                         
                     return
@@ -798,7 +786,7 @@ class Player:
     def simulate(self, attr):
         info = [0, []]
         
-        turns = 99
+        turns = 999
         
         def stop(g):
             return g.done or g.current_turn > turns
@@ -810,9 +798,9 @@ class Player:
         while not stop(g):
             
             g.main()
-            
+
         p = g.get_player(self.pid)
-        
+
         lead = sum(p.score - o.score for o in g.players) / (len(g.players) - 1)
             
         info = [p.score + lead, next((log for log in getattr(p, attr) if log.get('type') in types), None)]
@@ -862,16 +850,31 @@ class Player:
         
         if self.game.phase != 'draft':
         
-            self.max_sims = 2
+            self.max_sims = 100
             
         else:
             
-            self.max_sims = 2
+            self.max_sims = 100
  
 #auto stuff-----------------------------------------------------------------------------------------
 
     def can_play(self):
         return self.game.phase != 'draft' and self.is_turn and not self.gone and not self.requests
+        
+    def can_select(self, c):
+        if self.game.phase == 'draft':
+            
+            return c in self.selection
+            
+        else:
+            
+            cards = self.get_selection()
+            
+            if self.game.get_setting('fp'):
+                
+                cards += self.unplayed
+                
+            return c in cards
         
     def get_selection(self):
         return [c for c in self.items if c.can_use(self) and c not in self.equipped] + self.spells + [c for c in self.game.shop if self.can_buy()]
@@ -891,6 +894,8 @@ class Player:
             elif self.sims >= self.max_sims:
 
                 d = self.get_decision()
+                
+                print(d)
 
                 type = d.get('type')
 

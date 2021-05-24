@@ -63,7 +63,7 @@ class Card:
         return self.name
         
     def __eq__(self, other):
-        return self.uid == other.get_id()
+        return self.uid == other.get_id()# and self.name == other.name
         
     def copy(self): 
         return type(self)(self.game, self.uid)
@@ -979,7 +979,7 @@ class Sword(Card):
 
         self.tag = 'cont'
         
-        self.option1 = Textbox('recover last item')
+        self.option1 = Textbox('recover your last item')
         self.option2 = Textbox('equip')
         
     def can_use(self, player):
@@ -1011,11 +1011,24 @@ class Sword(Card):
                 player.equip(self)
                 
     def o1(self, player):
-        c = player.get_m_logs('ui')[-1]['card']
+        logs = player.get_m_logs('ui')
+        di = self.game.get_discarded_items()
         
-        player.items.append(c)
+        c = None
         
-        player.use_item(self)
+        for log in logs:
+            
+            c = log['card']
+            
+            if c in di:
+                
+                break
+                
+        if c is not None:
+        
+            self.game.restore(c)
+            player.items.append(c)
+            player.use_item(self)
 
     def ongoing(self, player):
         logs = player.get_logs('sp')
@@ -1685,11 +1698,11 @@ class Boomerang(Card):
                 
                 if self.game.get_event() != 'negative zone':
                 
-                    log['gp'] = player.gain(self, log['lp'] * 2, d=True) // 2
-                    
-                    log['type'] = 'gp'
+                    player.gain(self, log['lp'] * 2, d=True)
                 
             player.use_item(self)
+            
+            return True
         
 class BathTub(Card):
     def __init__(self, game, uid):
@@ -2108,8 +2121,6 @@ class Knife(Card):
         
         self.tag = 'cont'
 
-        self.info = [] #[pid, treasure]
-
         self.option1 = Textbox('equip')
         self.option2 = Textbox('draw items')
         
@@ -2188,7 +2199,7 @@ class Knife(Card):
                 
             self.counter -= 1
             
-            if self.counter:
+            if self.counter > 0:
                 
                 self.start_request(player)
                 
@@ -2207,12 +2218,8 @@ class Knife(Card):
 
                     player.take_treasure(c, p)
                     
-                player.use_item(self)
-                
-            else:
-            
-                player.equip(self)
-                           
+            player.use_item(self)
+                                 
 class Garden(Card):
     def __init__(self, game, uid):
         self.game = game
