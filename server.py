@@ -98,7 +98,7 @@ def threaded_client(conn, id):
                         
                 elif data == 'disconnect':
                     
-                    game.running = False
+                    connected = False
                     
                 elif data == 'status':
                             
@@ -168,10 +168,6 @@ def threaded_client(conn, id):
                     
                     reply = game.cancel(id)
 
-                if reply == 'close':
-                    
-                    game.running = False
-
                 conn.sendall(pickle.dumps(reply))
 
         except Exception as e:
@@ -183,10 +179,8 @@ def threaded_client(conn, id):
     print('lost connection')
         
     pid -= 1
-    
-    if connected:
 
-        game.remove_player(id)
+    game.remove_player(id)
             
     conn.close()
                 

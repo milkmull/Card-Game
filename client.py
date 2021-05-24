@@ -1793,6 +1793,7 @@ class Client:
         self.mouse = pg.Rect(0, 0, 1, 1)
         
         self.n = connection #if no game is sent, we need network to connect to game, otherwise use game as network
+        self.playing = True
         
         self.pid = int(self.n.get_pid())
         self.name = 'player {}'.format(self.pid)
@@ -2047,13 +2048,11 @@ class Client:
     def exit(self):
         self.n.close()
         
-        self.playing = False
+        self.playing = False       
      
 #main loop-----------------------------------------------------------------------------
             
     def run(self):
-        self.playing = True
-        
         self.set_name()
         
         while self.playing:
@@ -2502,15 +2501,17 @@ class Client:
         return panes
         
     def send(self, data):
-        reply = self.n.send(data)
+        if self.playing:
         
-        if reply is None:
+            reply = self.n.send(data)
             
-            self.quit()
-            
-        else:
-            
-            return reply
+            if reply is None:
+                
+                self.playing = False
+                
+            else:
+                
+                return reply
             
     def add_particles(self, rect, num, color=(255, 255, 0)):
         for _ in range(num):

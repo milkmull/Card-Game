@@ -131,12 +131,16 @@ class Game:
 #new game stuff-----------------------------------------------------------------------------------------------
 
     def new_game(self):
-        self.players = [self.get_player(0)]
-        self.players[0].reset()
-        
         if self.mode == 'single':
             
+            self.players = [self.get_player(0)]
+            self.players[0].reset()
+            
             self.add_cpus()
+            
+        for p in self.players:
+            
+            p.reset()
 
         self.done = False
         self.phase = 'draft'
@@ -154,7 +158,6 @@ class Game:
         self.landscapes = self.fill_deck(landscapes)
         
         self.shop.clear()
-
         self.discard.clear()
         
         for p in self.players:
@@ -294,15 +297,17 @@ class Game:
             return False
             
     def remove_player(self, pid): #remove player from game
-        p = next(p for p in self.players if p.pid == pid)
+        p = self.get_player(pid)
         
-        for key in self.logs:
-            
-            del self.logs[key][p.pid]
-            
-        del self.logs[p.pid]
+        if p:
         
-        self.players.remove(p)
+            for key in self.logs:
+                
+                del self.logs[key][p.pid]
+                
+            del self.logs[p.pid]
+            
+            self.players.remove(p)
 
     def check_order(self):
         pids = []
