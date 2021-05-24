@@ -16,6 +16,11 @@ Table top card game with local wireless play.
 * requests
 ```python3 -m pip install -U requests```
 
+### Disable Windows Defender to Allow Server to Run
+
+windows defender > Manage Settings > Add or Remove Exclusions > Add Exclusion > File
+Add the file Card Game file
+
 ### Installation
 1. Clone the repo
 ``git clone https://github.com/milkmull/Card-Game``
