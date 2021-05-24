@@ -3643,6 +3643,8 @@ class LuckyCoin(Card):
         player.new_selection(self, self.game.players.copy())
         
     def start(self, player):
+        self.mode = 0
+        
         self.start_request(player)
         
     def select(self, player, num):
@@ -3882,6 +3884,8 @@ class UnluckyCoin(Card):
         player.new_selection(self, self.game.players.copy())
         
     def start(self, player):
+        self.mode = 0
+        
         self.start_request(player)
         
     def select(self, player, num):
@@ -3894,13 +3898,15 @@ class UnluckyCoin(Card):
             p.add_og(self)
 
     def ongoing(self, player):
-        if player.tf != 0:
+        if player.flipping:
         
             player.coin = 0
             
-            if player.get_logs('cf'):
-                
-                return True
+            self.mode = 1
+            
+        if self.mode == 1 and player.get_logs('cf'):
+
+            return True
             
 class Torpedo(Card):
     def __init__(self, game, uid):
