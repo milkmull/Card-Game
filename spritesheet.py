@@ -165,10 +165,12 @@ class Spritesheet:
                       ('vines', 'zombie', 'jumble', 'demon water glass', 'succosecc', 'sunflower', 'lemon lord', 'wizard', 'haunted oak'),
                       ('spell reverse', 'sunny day', 'garden', 'desert', 'fools gold', 'graveyard', 'city', 'farm', 'forest'),
                       ('water', 'sky', 'office fern', 'parade', 'camel', 'rattle snake', 'tumble weed', 'wind gust', 'sunglasses'),
-                      ('metal detector', 'sand storm', 'mummy', 'mummys curse', 'pig', 'corn', 'ticking time bomb', 'harvest', 'golden egg'),
+                      ('metal detector', 'sand storm', 'mummy', 'mummys curse', 'pig', 'corn', '', 'harvest', 'golden egg'),
                       ('bear', 'big rock', 'unlucky coin', 'hunting season', 'stardust', 'water lilly', 'torpedo', 'bat', 'sky flower'),
-                      ('kite', 'balloon', 'north wind', 'garden snake', 'flower pot', 'watering can', 'magic bean', '', '')
+                      ('kite', 'balloon', 'north wind', 'garden snake', '', 'watering can', 'magic bean', '', '')
                        )
+                       
+        self.ids = self.make_ids()
                              
         self.sheet, self.images = self.load_cards() #spritesheet and dictionary of names with coordinates for each image
         
@@ -177,6 +179,9 @@ class Spritesheet:
         
     def check_name(self, name):
         return any(name in row for row in self.names)
+        
+    def get_by_id(self, id):
+        return self.ids.get(id)
         
     def get_image(self, name, mini=True): #get the image of given card by name. Used when card needs to be displayed on screen
         if not self.check_name(name):
@@ -232,6 +237,22 @@ class Spritesheet:
             
         return (sheet, images)
         
+    def make_ids(self):
+        ids = {}
+        
+        i = 0
+        
+        for row in self.names:
+            
+            for name in row:
+                
+                if name:
+                    
+                    ids[i] = name
+                    
+                    i += 1
+                    
+        return ids
         
         
         

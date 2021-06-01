@@ -1,0 +1,93 @@
+
+Player----------------------------------------------------------------------
+
+play card:      {'t': 'play', 'c': card}
+
+steal:          {'t': 'sp', 'target': pid, 'robber': pid, 'sp': num}
+get robbed:     {'t': 'rp', 'c': card, 'robber': pid, 'rp': num}
+give:           {'t': 'give', 'c': card, 'target': pid, 'gp': num}
+gain:           {'t': 'gp', 'c': card, 'gp': num}
+lose:           {'t': 'lp', 'c': card, 'lp': num}
+
+new lead:       {'t': 'nl', 'c': card}
+new deck:       {'t': 'nd', 'deck': deck, 'cards': [card1, card2, ...]}
+clear deck:     {'t': 'cd', 'd': deck}
+
+equip:          {'t': 'eq', 'c': card}
+unequip:        {'t': 'ueq', 'c': card}
+
+steal treasure: {'t': 'st', 'target': pid, 'c': card}
+give treasure:  {'t': 'gt', 'target': pid, 'c': card}
+use treasure:   {'t': 'ut', 'c': card}
+draw treasure:  {'t': 'dt', 'c': card}
+add treasure:   {'t': 'at', 'c': card}
+
+steal item:     {'t': 'si', 'target': pid, 'c': card}
+give item:      {'t': 'gi', 'target': pid, 'c': card}
+add item:       {'t': 'ai', 'c': card}
+use item:       {'t': 'ui', 'c': card}
+draw item:      {'t': 'di', 'c': card}
+
+steal spell:    {'t': 'ss', 'target': pid, 'c': card}
+give spell:     {'t': 'gs', 'target': pid, 'c': card}
+add spell:      {'t': 'as', 'c': card}
+cast:           {'t': 'cast', 'c': card, 'target': pid}
+draw spell:     {'t': 'ds', 'c': card}
+remove spell:   {'t': 'rs', 'c': card}
+
+discard:        {'t': 'disc', 'c': card}
+buy:            {'t': 'buy', 'c': card}
+remove coins:   {'t': 'rc', 'c': card}
+
+add unplayed:   {'t': 'au', 'c': card}
+draft:          {'t': 'd', 'c': card}
+
+change name:    {'t': 'cn', 'id': pid, 'name': name}
+
+new ac:         {'t': 'aac', 'c': card}
+remove ac:      {'t': 'rac'}
+
+request flip:   {'t': 'cfr'}
+start flip:     {'t': 'cfs'}
+end flip:       {'t': 'cfe', 'coin': coin, 'tf': timer}
+
+request roll:   {'t': 'drr'}
+start roll:     {'t': 'drs'}
+end roll:       {'t': 'dre', 'dice': dice}
+
+start select:   {'t': 'sels', 'cards': '[card1, card2, ...]'}
+end select:     {'t': 'sele'}
+select:         {'t': 'select', 'c': card}
+
+set landscape:  {'t': 'sl', 'c': card}
+
+score:          {'t': 'score', 's': score}
+
+game-------------------------------------------------------------------------
+
+fill shop:      {'t': 'fill', 'c': card}
+
+swap card:      {'t': 'sw', 'c1': card1, 'c2': card2}
+
+add player:     {'t': 'add', 'pid': pid}
+remove player:  {'t': 'del', 'pid': pid}
+
+reorder:        {'t': 'ord', 'ord': '[pid1, pid2, ...]'}
+shift down:     {'t': 'sd', 'pid': pid}
+shift up:       {'t': 'su': 'pid': pid}
+
+finish game:    {'t': 'fin', 'w': [pid]}
+reset:          {'t': 'res'}
+new turn:       {'t': 'nt', 'pid': pid}
+new round:      {'t': 'nr'}
+
+new status:     {'t': 'ns', 'stat': status}
+
+set event:      {'t': 'se', 'c': card}
+
+
+
+
+
+
+

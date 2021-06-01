@@ -1,13 +1,18 @@
 import random
 import copy
 
-types = ('play', 'select', 'wait')
+types = ('play', 'select')
 
-class RequestError(Exception):
-    pass
-
-def parse_log(type, log):
-    return [L for L in log if L.get('type') == type]
+def unpack_decision(d):
+    if d['t'] == 'select':
+            
+        d = (d['t'], d['s'])
+        
+    elif d['t'] == 'play':
+        
+        d = (d['t'], d['c'])
+        
+    return d
 
 class Player:
     def __init__(self, game, pid, ss, auto=False):
@@ -35,15 +40,16 @@ class Player:
         self.thinking = False
         self.sims = 0
         self.seed = 0
-        self.max_sims = 100
+        self.max_sims = 200
         self.info = []
         self.decision = {}
+        self.tree = []
         
         self.invincible = False
 
         self.active_card = None
 
-        self.max = 30 #if not self.auto else 2
+        self.max = 80 #if not self.auto else 2
         self.tf = 0
         self.tr = 0
         self.coin = None
@@ -218,6 +224,8 @@ class Player:
         self.landscape = self.game.draw_cards(deck='landscapes')[0]
         self.add_og(self.landscape)
         
+        self.log.append({'t': 'sl', 'c': self.landscape.copy()})
+        
     def set_score(self):
         self.score = self.game.get_setting('ss')
         
@@ -272,7 +280,7 @@ class Player:
 
         self.active_card = None
 
-        self.max = 30
+        self.max = 60
         self.tf = 0
         self.tr = 0
         self.coin = None
@@ -305,8 +313,8 @@ class Player:
 
     def new_draft(self, cards):
         self.selecting = True
-        
-        self.selection = cards
+
+        self.new_deck('selection', cards)
         
     def draft(self, card):
         if self.selecting and card:
@@ -318,6 +326,8 @@ class Player:
                     self.unplayed.append(c)
                     
                     self.selection.remove(c)
+                    
+                    self.log.append({'t': 'd', 'c': c})
                     
                     self.selecting = False
                     
@@ -382,7 +392,7 @@ class Player:
             
             c = self.unplayed.pop(self.unplayed.index(c))
 
-        self.log.append({'type': 'play', 'card': c.copy(), 'd': False})
+        self.log.append({'t': 'play', 'c': c.copy(), 'd': False})
         
         c.start(self)
         
@@ -405,11 +415,17 @@ class Player:
                 done = c.ongoing(self)
                         
                 if done and c in self.ongoing:
-                    
-                    self.ongoing.remove(c)
+
+                    if c.type == 'equipment':
+                        
+                        self.discard_item(c)
+                        
+                    else:
+                        
+                        self.ongoing.remove(c)
 
     def sort_cards(self, c):  
-        if c.type in ('animal', 'plant', 'huamn', 'monster', 'treasure'):
+        if c.type in ('animal', 'plant', 'human', 'monster', 'treasure'):
             
             return 0
             
@@ -444,7 +460,9 @@ class Player:
                 
             else:
                 
-                self.cast(c)
+                self.start_cast(c)
+                
+            self.log.append({'t': 'aac', 'c': self.active_card})
 
         if c.wait == 'coin' and self.tf == 1:
 
@@ -476,15 +494,10 @@ class Player:
                 
                 c.wait = None
 
-                p = self.selected.pop(0)
+                target = self.selected.pop(0)
                 
-                p.ongoing.append(c)
-                self.spells.remove(c)
-                
-                self.cancel_select() 
-                
-                self.log.append({'type': 'cast', 'card': c.copy(), 'target': p, 'd': False})
-            
+                self.cast(target, c)
+
         if c.wait is None:
             
             self.requests.pop(0)
@@ -507,14 +520,11 @@ class Player:
                 if self.safety_pin[0] > 20:
                     
                     print('ex', self.pid, self.requests, self.active_card, self.selection, self.selected, self.spells, self.tf, self.tr)
-                    
-                    for p in self.game.players:
-                
-                        print(p.pid, p.master_log + p.log)
+                    print('')
+                    print(self.master_log + self.log)
                     
                     self.ongoing[99]
-                
-                
+          
     def select(self, card):
         if self.selection:
         
@@ -552,7 +562,7 @@ class Player:
                 
                 if c == card and c not in self.requests:
 
-                    self.cast(c)
+                    self.start_cast(c)
                     
                     return
                     
@@ -569,8 +579,6 @@ class Player:
             for c in self.equipped:
                 
                 if c == card and c.wait is None:   
-                    
-                    print(self.pid, c, card, self.equipped)
 
                     self.unequip(c)
                         
@@ -596,31 +604,7 @@ class Player:
                 self.active_card = None
                 
                 self.cancel_select()
-                
-    def flip(self):
-        if self.flipping and self.tf > 0:
-                
-            self.coin_flip()
-            
-        self.tf = max(self.tf - 1, 0)
-        
-        if self.tf == 0:
-            
-            self.flipping = False
-            self.coin = None
-            
-    def roll(self):
-        if self.rolling and self.tr > 0:
-                
-            self.dice_roll()
-            
-        self.tr = max(self.tr - 1, 0)
-        
-        if self.tr == 0:
-            
-            self.rolling = False
-            self.dice = None
-         
+ 
     def update(self, cmd='', card=None):
         if cmd == 'select' and card is not None and not self.check_end_game() and not ((self.flipping and self.coin != -1) or (self.rolling and self.dice != -1)):
         
@@ -634,13 +618,15 @@ class Player:
 
             self.turn()
             
-        elif cmd == 'flip':
+        elif cmd == 'flip' and self.coin == -1:
             
             self.coin = 0
+            self.log.append({'t': 'cfs'})
             
-        elif cmd == 'roll':
+        elif cmd == 'roll' and self.dice == -1:
             
             self.dice = 0
+            self.log.append({'t': 'drs'})
 
         if self.gone and not self.ogp:
             
@@ -676,7 +662,7 @@ class Player:
 
         self.master_log += self.log
         self.temp_log += self.log
-        self.game.update_logs(self.pid, self.log.copy())
+        self.game.update_player_logs(self.pid)
         
         self.log.clear()
 
@@ -705,7 +691,7 @@ class Player:
                 
             self.remove_coins()
             
-            self.log.append({'type': 'buy', 'card': c, 'd': False})
+            self.log.append({'t': 'buy', 'c': c, 'ctype': c.type})
                 
         return c
         
@@ -718,6 +704,8 @@ class Player:
             if c.name == 'gold coins' and c in self.treasure:
                 
                 self.treasure.remove(c)
+                
+                self.log.append({'t': 'rc', 'c': c})
                 
                 return
 
@@ -783,70 +771,75 @@ class Player:
         self.log = [L.copy() for L in ref.log]
         self.temp_log = []
         
-    def simulate(self, attr):
-        info = [0, []]
-        
-        turns = 999
-        
-        def stop(g):
-            return g.done or g.current_turn > turns
-
-        g = self.game.copy()
-        
+    def unpack_log(self, g):
         p = g.get_player(self.pid)
 
-        while not stop(g):
-            
-            g.main()
-
-        p = g.get_player(self.pid)
-
+        gain = p.score - self.score
         lead = sum(p.score - o.score for o in g.players) / (len(g.players) - 1)
-            
-        info = [p.score + lead, next((log for log in getattr(p, attr) if log.get('type') in types), None)]
-            
-        return info
-        
-    def think(self):
-        info = self.simulate('temp_log')
-        
-        if info[1]:
-            
-            score, d = info
-            
-            keys, vals = [i[0] for i in self.info], [i[1] for i in self.info]
-            
-            if d in vals:
+        score = gain + lead
 
-                key = keys[vals.index(d)]
-                count, ave = key
+        d = [unpack_decision(log) for log in p.temp_log if log.get('t') in types and not log.get('d')]
+        
+        if d:
+            
+            d = d[0]
+        
+            keys = [d[0] for d in self.tree]
+            vals = [d[1] for d in self.tree]
+            
+            if d in keys:   
                 
-                key[0] += 1
-                key[1] = ave + ((score - ave) // count + 1)
+                i = keys.index(d)
+            
+                info = vals[i]
+                count, ave = info
+                
+                info[0] += 1
+                info[1] = ave + ((score - ave) // count + 1)
                 
             else:
-                
-                self.info.append([[1, score], d])
 
+                self.tree.append([d, [1, score]])
+        
+    def simulate(self):
+        sims = 2
+        
+        for _ in range(sims):
+        
+            turns = 999
+            
+            def stop(g):
+                return g.done or g.current_turn > turns
+
+            g = self.game.copy()
+            
+            p = g.get_player(self.pid)
+
+            while not stop(g):
+                
+                g.main()
+
+            self.unpack_log(g)
+            
             self.sims += 1
         
     def get_decision(self):
-        info = [i[1] for i in sorted(self.info, key=lambda info: info[0][1], reverse=True)]
-        
-        if self.game.phase == 'draft' and self.selecting:
-            
-            d = next(i for i in info if i.get('card') in self.selection)
-            
-        else:
-            
-            d = info[0]
+        self.tree.sort(key=lambda info: info[1][1], reverse=True)
 
-        return d
+        cards = self.get_selection() + self.selection
+        
+        for d in self.tree:
+            
+            t, c = d[0]
+            
+            if (t == 'play' and c in self.unplayed) or (t == 'select' and c in cards):
+            
+                return d[0]
 
     def reset_brain(self):
-        self.sims = 0
-        self.info.clear()   
+        self.sims = 0 
         self.decision = None
+        self.tree.clear()
         
         if self.game.phase != 'draft':
         
@@ -877,7 +870,17 @@ class Player:
             return c in cards
         
     def get_selection(self):
-        return [c for c in self.items if c.can_use(self) and c not in self.equipped] + self.spells + [c for c in self.game.shop if self.can_buy()]
+        cards = [c for c in self.items if c.can_use(self)] + self.spells
+        
+        if self.can_buy():
+        
+            cards += self.game.shop
+        
+        if self.game.get_setting('fp') and self.is_turn and not self.gone:
+                
+            cards += self.unplayed
+            
+        return cards
 
     def set_cmd(self):
         if self.game.done:
@@ -888,34 +891,38 @@ class Player:
         
             if self.sims < self.max_sims:
             
-                self.think()
+                self.simulate()
                 self.decision = None
             
             elif self.sims >= self.max_sims:
 
                 d = self.get_decision()
-                
-                print(d)
 
-                type = d.get('type')
+                if d:
 
-                if type == 'play':
-                    
-                    self.reset_brain()
-                    self.decision = d
+                    type = d[0]
 
-                    return 'play'
-                    
-                elif type == 'select':
-                    
-                    self.reset_brain()
-                    self.decision = d
-                    
-                    return 'select'
-                    
+                    if type == 'play':
+
+                        self.decision = d
+
+                        return 'play'
+                        
+                    elif type == 'select':
+                        
+                        if (self.selection or self.game.phase == 'draft' or len(self.selection) == 1) or random.choice((0, 1)):
+
+                            self.decision = d
+                        
+                            return 'select'
+                            
+                        else:
+                            
+                            self.sims = len(self.tree) // 2
+                        
                 else:
                 
-                    self.think()
+                    self.simulate()
                     
         else:
             
@@ -931,11 +938,7 @@ class Player:
                 
             cards = self.get_selection()
             
-            if self.game.get_setting('fp') and self.is_turn and not self.gone:
-                
-                cards += self.unplayed
-            
-            if cards and (not self.requests and random.randrange(len(cards)) != 0):
+            if cards and (not self.requests and random.choice(range(len(cards))) != 0):
                 
                 return 'select'
             
@@ -956,7 +959,7 @@ class Player:
             
             if self.decision:
                 
-                s = self.decision.get('card')
+                s = self.decision[1]
                 
         else:
     
@@ -967,22 +970,20 @@ class Player:
             elif not self.requests:
                 
                 cards = self.get_selection()
-                
-                if self.game.get_setting('fp') and self.is_turn and not self.gone:
                     
-                    cards += self.unplayed
+                #print(cards)
                     
                 if cards:
-                
+
                     s = random.choice(cards)
                     
                 else:
                     
                     return
           
-        if s:
+        if s is not None:
           
-            self.log.append({'type': 'select', 'card': s}) #move to select function
+            self.log.append({'t': 'select', 's': s}) #move to select function
                 
         return s
         
@@ -992,8 +993,10 @@ class Player:
         if cmd == 'select':
             
             card = self.auto_select()
-            
+
             if card is not None:
+                
+                self.reset_brain()
             
                 if self.game.phase == 'draft':
                 
@@ -1008,6 +1011,7 @@ class Player:
         elif cmd == 'play':
                 
             self.turn()
+            self.reset_brain()
 
         if self.gone and not self.ogp:
 
@@ -1046,7 +1050,7 @@ class Player:
         
         if not self.turbo:
         
-            self.game.update_logs(self.pid, self.log.copy())
+            self.game.update_player_logs(self.pid)
         
         self.log.clear()
 
@@ -1058,14 +1062,28 @@ class Player:
         
     def set_name(self, name):
         self.name = name
+        self.log.append({'t': 'cn', 'pid': self.pid, 'name': name})
         return True
         
-    def cast(self, c):
-        self.new_selection(c, [p for p in self.game.players if p.can_cast(c.name)])
+    def start_cast(self, c):
+        self.new_selection(c, [p for p in self.game.players if p.can_cast(c)])
         
         if c.wait == 'select':
         
             c.wait = 'cast'
+        
+    def cast(self, target, c):
+        target.ongoing.append(c)
+        self.spells.remove(c)
+        
+        self.cancel_select() 
+        
+        self.log.append({'t': 'cast', 'c': c.copy(), 'target': target, 'd': False})
+        
+    def dry_cast(self, target, c):
+        target.ongoing.append(c)
+        
+        self.log.append({'t': 'cast', 'c': c.copy(), 'target': target, 'd': False})
         
     def new_flip(self, c, r=False):
         self.coin = -1
@@ -1075,6 +1093,8 @@ class Player:
         
         c.wait = 'coin'
         
+        self.log.append({'t': 'cfr', 'c': c})
+        
         if c is not self.active_card:
         
             self.requests.append(c)
@@ -1083,17 +1103,35 @@ class Player:
             
         self.cancel_select()
         
+    def flip(self):
+        if self.auto and not self.turbo:
+            
+            if self.tf == self.max - 1:
+                
+                self.log.append({'t': 'cfs'})
+    
+        if self.flipping and self.tf > 0:
+                
+            self.coin_flip()
+            
+        self.tf = max(self.tf - 1, 0)
+        
+        if self.tf == 0:
+            
+            self.flipping = False
+            self.coin = None
+        
     def coin_flip(self):
         if self.tf <= self.max / 2:
             
-            if self.tf <= 1:
+            if self.tf == self.max / 2:
             
-                self.log.append({'type': 'cf', 'coin': self.coin, 'd': False})
+                self.log.append({'t': 'cfe', 'coin': self.coin, 'tf': self.tf - 2, 'd': False})
             
         else:
             
             self.coin = random.choice((1, 0))
-        
+
     def new_roll(self, c):
         self.dice = -1
         self.rolling = True
@@ -1102,6 +1140,8 @@ class Player:
 
         c.wait = 'dice'
         
+        self.log.append({'t': 'drr', 'c': c})
+        
         if c is not self.active_card:
             
             self.requests.append(c)
@@ -1109,13 +1149,31 @@ class Player:
             self.active_card = None
             
         self.cancel_select()
+        
+    def roll(self):
+        if self.auto and not self.turbo:
+            
+            if self.tr == self.max - 1:
+                
+                self.log.append({'t': 'drs'})
+                
+        if self.rolling and self.tr > 0:
+                
+            self.dice_roll()
+            
+        self.tr = max(self.tr - 1, 0)
+        
+        if self.tr == 0:
+            
+            self.rolling = False
+            self.dice = None
             
     def dice_roll(self):
         if self.tr <= self.max / 2:
             
-            if self.tr <= 1:
+            if self.tr == self.max / 2:
         
-                self.log.append({'type': 'rd', 'dice': self.dice, 'd': False})
+                self.log.append({'t': 'dre', 'dice': self.dice, 'd': False})
             
         else:
             
@@ -1124,15 +1182,19 @@ class Player:
     def new_selection(self, c, cards, r=False): #empty list could cause problems with active card waiting for selection
         if cards:
             
-            self.selection.clear()
-
-            self.selection = cards
-            self.selecting = True
+            if cards != self.selection:
             
-            self.rolling = self.flipping = False
+                self.selection.clear()
+
+                self.selection = cards
+                self.selecting = True
+                
+                self.rolling = self.flipping = False
+                
+                self.log.append({'t': 'sels', 'cards': cards.copy(), 'c': c})
             
             c.wait = 'select'
-            
+
             if c is not self.active_card:
             
                 self.requests.append(c)
@@ -1148,6 +1210,9 @@ class Player:
         self.selected.clear()
         
         self.selecting = False
+        
+        self.log.append({'t': 'sele'})
+        self.log.append({'t': 'rac'})
 
 #log stuff -----------------------------------------------------------------------------------------------
 
@@ -1156,21 +1221,21 @@ class Player:
         
         for log in self.log:
             
-            if log.get('type') == type and not log.get('d'):
+            if log.get('t') == type and not log.get('d'):
                 
                 logs.append(log)
                 
         return logs
                 
     def check_log(self, c, type):
-        return any(log.get('type') == type and log.get('d') == False for log in self.log)
+        return any(log.get('t') == type and log.get('d') == False for log in self.log)
         
     def get_m_logs(self, type):
         logs = []
     
         for log in self.master_log:
             
-            if log.get('type') == type and not log.get('d'):
+            if log.get('t') == type and not log.get('d'):
                 
                 logs.append(log)
                 
@@ -1185,10 +1250,20 @@ class Player:
             
             self.log.remove(log)
             
+    def new_deck(self, deck, cards):
+        setattr(self, deck, cards)
+        
+        self.log.append({'t': 'nd', 'deck': deck, 'cards': cards.copy()})
+        
+    def clear_deck(self, deck):
+        getattr(self, deck).clear()
+        
+        self.log.append({'t': 'cd', 'd': deck})
+            
 #item stuff-------------------------------------------------------------------------------------------------------------
 
     def use_item(self, c):
-        self.log.append({'type': 'ui', 'card': c.copy(), 'd': False})
+        self.log.append({'t': 'ui', 'c': c.copy(), 'd': False})
         
         self.used_items.append(c)
         
@@ -1207,29 +1282,75 @@ class Player:
                 
                 self.items += item
                 
-                self.log.append({'type': 'di', 'card': self.items[-1].copy(), 'd': d})
+                self.log.append({'t': 'di', 'c': self.items[-1].copy(), 'd': d})
 
             else:
                 
                 break
-  
-    def discard_item(self, c, d=False):
-        if c in self.items:
+                
+    def steal_item(self, target, c=None):
+        if c is None:
+    
+            items = [c for c in target.items if c not in target.requests]
+            
+            if items:
+                
+                c = random.choice(items)
+                
+            else:
+                
+                return
+                
+        else:
+            
+            if c in target.items:
+                
+                target.items.remove(c)
+
+        if c in target.equipped:
+            
+            target.unequip(c)
+
+        self.items.append(c)
         
+        self.log.append({'t': 'si', 'target': target, 'c': c})
+            
+    def give_item(self, c, target):
+        if c in self.equipped:
+            
+            self.unequip(c)
+
+        if c in self.items and c not in self.requests:
+            
             self.items.remove(c)
+            target.items.append(c)
+            
+            self.log.append({'t': 'gi', 'target': target, 'c': c})
+            
+    def add_item(self, c):
+        self.items.append(c)
+        
+        self.log.append({'t': 'ai', 'c': c})
+            
+    def discard_item(self, c, d=False):
+        if c in self.equipped:
+            
+            self.unequip(c)
             
         if c in self.ongoing:
             
             self.ongoing.remove(c)
             
-        if c in self.equipped:
+        if c in self.items:
             
-            self.equipped.remove(c)
+            self.items.remove(c)
+            
+            self.log.append({'t': 'disc', 'c': c.copy()})
             
         if not d:
             
             self.game.discard.append(c)
-        
+
     def has_item(self, name):
         return any(c.name == name for c in self.items + self.equipped)
         
@@ -1239,11 +1360,18 @@ class Player:
             self.items.remove(c)
             self.ongoing.append(c)
             self.equipped.append(c)
+            
+            self.log.append({'t': 'eq', 'c': c})
         
-    def unequip(self, c):
+    def unequip(self, c):  
+        c = c.copy()
+        if c not in self.ongoing:
+            print(c, self.ongoing, self.items, self.equipped, self.master_log + self.log)
         self.items.append(c)
         self.ongoing.remove(c)
         self.equipped.remove(c)
+        
+        self.log.append({'t': 'ueq', 'c': c})
         
 #spell stuff-----------------------------------------------------------------------------------------
         
@@ -1260,22 +1388,50 @@ class Player:
                 
                 self.spells += spell
                 
-                self.log.append({'type': 'ds', 'card': self.spells[-1].copy(), 'd': d})
+                self.log.append({'t': 'ds', 'c': self.spells[-1].copy(), 'd': d})
 
             else:
                 
                 break
+                
+    def steal_spell(self, target):
+        spells = target.spells.copy()
+        
+        if spells:
+            
+            c = random.choice(spells)
+            target.spells.remove(c)
+            self.spells.append(c)
+            
+            self.log.append({'t': 'si', 'target': target, 'c': c})
+            
+    def give_spell(self, c, target):
+        if c in self.spells:
+            
+            self.spells.remove(c)
+            target.spells.append(c)
+            
+            self.log.append({'t': 'gi', 'target': target, 'c': c})
         
     def has_spell(self, name):
         return any(c.name == name for c in self.get_spells())
+        
+    def add_spell(self, c):
+        if self.can_cast(c):
+            
+            self.ongoing.append(c)
+            
+            self.log.append({'t': 'as', 'c': c})
 
     def remove_spell(self, c):
         if c in self.ongoing:
         
             self.ongoing.pop(self.ongoing.index(c))
+            
+            self.log.append({'t': 'rs', 'c': c})
 
     def can_cast(self, s):
-        return not any(s == c.name and not c.mult for c in self.get_spells())
+        return not any(s.name == c.name and not c.mult for c in self.get_spells())
         
 #treasure stuff-----------------------------------------------------------------------------------------
 
@@ -1284,7 +1440,7 @@ class Player:
             
             if len(self.treasure) > 10:
                 
-                    break
+                break
         
             t = self.game.draw_cards('treasure')
             
@@ -1292,7 +1448,7 @@ class Player:
                 
                 self.treasure += t
                 
-                self.log.append({'type': 'dt', 'card': self.treasure[-1].copy(), 'd': d})
+                self.log.append({'t': 'dt', 'c': self.treasure[-1].copy(), 'd': d})
                 
                 if hasattr(t, 'draw'):
                     
@@ -1302,23 +1458,51 @@ class Player:
                 
                 break
             
-    def steal_treasure(self, target):
+    def steal_treasure(self, target, c=None):
         treasure = [c for c in target.treasure if c not in target.requests]
         
-        if treasure:
+        if c is not None:
+            
+            for t in treasure:
+                
+                if t == c:
+                    
+                    target.treasure.remove(c)
+                    self.treasure.append(c)
+                    
+                    self.log.append({'t': 'st', 'target': target, 'c': c})
+        
+        elif treasure:
             
             c = random.choice(treasure)
-            
             target.treasure.remove(c)
-            
             self.treasure.append(c)
             
-    def take_treasure(self, c, target):
-        if c in target.treasure and c not in target.requests:
+            self.log.append({'t': 'st', 'target': target, 'c': c})
             
-            target.treasure.remove(c)
+        else:
             
-            self.treasure.append(c)
+            self.draw_treasure()
+            
+    def give_treasure(self, c, target):
+        if c in self.treasure and c not in self.requests:
+            
+            self.treasure.remove(c)
+            target.treasure.append(c)
+            
+            self.log.append({'t': 'gt', 'target': target, 'c': c})
+            
+    def use_treasure(self, c):
+        if c in self.treasure:
+            
+            self.treasure.remove(c)
+            
+            self.log.append({'t': 'ut', 'c': c})
+            
+    def add_treasure(self, c):
+        self.treasure.append(c)
+        
+        self.log.append({'t': 'at', 'c': c})
         
 #landscape stuff-----------------------------------------------------------------------------------------
         
@@ -1327,6 +1511,13 @@ class Player:
         
     def has_landscape(self, ls):
         return self.landscape.name == ls
+        
+#unplayed stuff--------------------------------------------------------------------------------------
+
+    def add_unplayed(self, c):
+        self.unplayed.append(c)
+        
+        self.log.append({'t': 'au', 'c': c})
         
 #point stuff-----------------------------------------------------------------------------------------
  
@@ -1337,7 +1528,7 @@ class Player:
         
         if sp:
             
-            self.log.append({'type': 'sp', 'card': c.copy(), 'target': target, 'sp': sp, 'd': d})
+            self.log.append({'t': 'sp', 'c': c.copy(), 'target': target, 'sp': sp, 'd': d})
             
         return sp
             
@@ -1352,7 +1543,7 @@ class Player:
         
         if rp:
             
-            self.log.append({'type': 'rp', 'card': c.copy(), 'robber': robber, 'rp': rp, 'd': d})
+            self.log.append({'t': 'rp', 'c': c.copy(), 'robber': robber, 'rp': rp, 'd': d})
         
         return rp
         
@@ -1361,7 +1552,7 @@ class Player:
         
         if gp:
         
-            self.log.append({'type': 'gp', 'card': c.copy(), 'gp': gp, 'd': d})
+            self.log.append({'t': 'gp', 'c': c.copy(), 'gp': gp, 'd': d})
             
         return gp
         
@@ -1372,7 +1563,7 @@ class Player:
         
         if lp:
 
-            self.log.append({'type': 'lp', 'card': c.copy(), 'lp': lp, 'd': d})
+            self.log.append({'t': 'lp', 'c': c.copy(), 'lp': lp, 'd': d})
             
         return lp
         
@@ -1385,7 +1576,7 @@ class Player:
         
         if gp:
 
-            self.log.append({'type': 'give', 'card': c.copy(), 'target': target, 'gp': -gp, 'd': d})
+            self.log.append({'t': 'give', 'c': c.copy(), 'target': target, 'gp': -gp, 'd': d})
             
         return gp
         

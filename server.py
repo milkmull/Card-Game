@@ -1,6 +1,6 @@
 import socket
 from _thread import start_new_thread
-import pickle
+import json
 import sys
 from game import Game
 
@@ -20,7 +20,7 @@ except socket.error as e:
     print(e, 's3')
     
 s.settimeout(3) #sets server to close if nobody connects within 10 seconds
-    
+
 s.listen() #listen for connections. argument is how many people can connect
 
 print('waiting for connection, server started')
@@ -37,144 +37,154 @@ def check_int(string):
     except ValueError:
         
         return False
+        
+def close_all(connections):
+    for pid, conn in connections.items():
+        
+        conn.close()
 
 def threaded_client(conn, id):
     global game
     global pid
+    global connections
     
     connected = game.new_player(id)
     
-    conn.send(str.encode(str(id)))
+    if connected:
     
-    reply = ''
-    
-    while connected:
+        conn.send(str.encode(str(id)))
         
-        try:
+        reply = ''
         
-            data = conn.recv(4096).decode() #might need to increase
+        while connected:
+            
+            try:
+            
+                data = conn.recv(4096).decode() #might need to increase
+                    
+                if not data:
+                    
+                    break
+                    
+                else:
+                    
+                    if data == 'disconnect': #disconnect
+                        
+                        connected = False
+
+                    elif data == 'u': #check if there are any updates
+
+                        game.update_player(id)
+                        game.main()
+                        
+                        reply = game.check_logs(id)
+                        
+                    elif data == 'info': #get update info
+                    
+                        reply = game.get_info(id)
+                        
+                    elif data.startswith('name'): #set player name
+                        
+                        reply = game.get_player(id).set_name(data.split(',')[-1])
+                    
+                    elif data == 'start': #start game
+                        
+                        game.start(id)
+                        
+                        reply = 1
+                        
+                    elif data == 'reset': #reset game
+                        
+                        game.reset()
+                        
+                        reply = 1
+                        
+                    elif data == 'continue': #continue to next game/round
+                        
+                        status = game.status
+                        
+                        if status == 'next round':
+                            
+                            game.new_round()
+                            
+                        elif status == 'new game':
+                            
+                            game.new_game()
+                            
+                        reply = 1
+                        
+                    elif data == 'play': #play card
+                        
+                        if game.status == 'playing':
+                        
+                            game.play(id)
+                            
+                        reply = 1
+                        
+                    elif data == 'cancel': #cancel selection
+                        
+                        if game.status == 'playing':
+                        
+                            game.cancel(id)
+                            
+                        reply = 1
+                        
+                    elif check_int(data):
+                    
+                        game.select(id, int(data))
+                            
+                        reply = 1
+                        
+                    elif data == 'update':
+
+                        game.update_player(id)
+                        game.main()
+                            
+                        reply = 1
+                        
+                    elif data == 'flip':
+                        
+                        if game.status == 'playing':
+                        
+                            game.flip(id)
+                            
+                        reply = 1
+                        
+                    elif data == 'roll':
+                        
+                        if game.status == 'playing':
+                        
+                            game.roll(id)
+                            
+                        reply = 1
+
+                    elif data == 'settings': #get settings
+                        
+                        reply = game.get_settings()
+                        
+                    elif data.startswith('-s:'):
+                    
+                        reply = game.get_setting(data[3:])
+                        
+                    elif '~' == data[0]: #update settings
+                        
+                        if game.status == 'waiting':
+                        
+                            game.update_settings(data)
+                            
+                            reply = 1
+                            
+                        else:
+                            
+                            reply = 0
+
+                    conn.sendall(bytes(json.dumps(reply), encoding='utf-8'))
+
+            except Exception as e:
                 
-            if not data:
+                print(e, 's1')
                 
                 break
-                
-            else:
-
-                if data.startswith('info'):
-                    
-                    data = data.split('-')
-                    
-                    reply = game.get_info(id, int(data[1]), data[2].split(',')) #get info for each player (points, visible cards)
-                    
-                elif data.startswith('name'):
-                    
-                    reply = game.get_player(id).set_name(data.split(',')[-1])
-                    
-                elif data == 'players':
-                            
-                    reply = game.check_order()
-                
-                elif data == 'start':
-                    
-                    reply = game.start(id)
-                    
-                elif data == 'reset':
-                    
-                    reply = game.reset()
-                    
-                elif data == 'settings':
-                    
-                    reply = game.get_settings()
-                    
-                elif '~' == data[0]:
-                    
-                    if game.wait:
-                    
-                        reply = game.update_settings(data)
-                        
-                    else:
-                        
-                        reply = False
-                        
-                elif data == 'disconnect':
-                    
-                    connected = False
-                    
-                elif data == 'status':
-                            
-                    reply = game.check_status()
-                    
-                elif game.wait: #won't go past here if client is waiting to start game
-                    
-                    reply = 'w'
-                
-                elif data == 'status':
-                            
-                    reply = game.check_status()
-                    
-                elif data == 'continue':
-                    
-                    text = game.check_status()
-                    
-                    if text == 'next round':
-                        
-                        game.new_round()
-                        
-                    elif text == 'new game':
-                        
-                        game.new_game()
-                        
-                    reply = True
-                    
-                elif data == 'winner':
-                    
-                    reply = game.get_winner()
-                    
-                elif data == 'update':
-                    
-                    game.update_player(id)
-                    
-                    game.main()
-
-                elif check_int(data):
-
-                    reply = game.select(id, int(data))
-                    
-                elif data == 'event':
-                    
-                    reply = game.event_info()
-                    
-                elif data == 'shop':
-                    
-                    reply = game.get_shop()
-                    
-                elif data == 'click':
-                    
-                    reply = game.select(id)
-                    
-                elif data == 'play':
-                    
-                    reply = game.play(id)
-                    
-                elif data == 'flip':
-                    
-                    reply = game.flip(id)
-                    
-                elif data == 'roll':
-                    
-                    reply = game.roll(id)
-                    
-                elif data == 'cancel':
-                    
-                    reply = game.cancel(id)
-
-                conn.sendall(pickle.dumps(reply))
-
-        except Exception as e:
-            
-            print(e, 's1')
-            
-            break
             
     print('lost connection')
         
@@ -183,6 +193,9 @@ def threaded_client(conn, id):
     game.remove_player(id)
             
     conn.close()
+    del connections[id]
+    
+connections = {}
                 
 while True: #looking for connections
     
@@ -193,24 +206,29 @@ while True: #looking for connections
         print('connected to', addr)
         
         start_new_thread(threaded_client, (conn, pid)) #function imported from _thread. precesses client's requests while searching for other connections
-        
+        connections[pid] = conn
         pid += 1
-        
+
     except socket.timeout:
         
         if pid == 0:
-        
+
             break
             
     except Exception as e:
         
         print(e, 's4')
         
-        if pid == 0:
-            
-            break
+        break
         
+    if len(connections) == 0:
+        
+        break
+            
+close_all(connections)     
+s.close()
 
+print('server closed')
         
         
         

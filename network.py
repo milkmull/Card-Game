@@ -1,5 +1,5 @@
 import socket
-import pickle
+import json
 
 class InvalidIP(Exception):
     pass
@@ -9,8 +9,9 @@ class Network:
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #type of connection, how server string is delivered
         
         self.server = server if server is not None else socket.gethostbyname(socket.gethostname()) #local ip address, must be the same as server
-        
         self.port = 5555
+        
+        print(self.server)
         
         self.addr = (self.server, self.port)
         
@@ -39,7 +40,7 @@ class Network:
             
             self.client.send(str.encode(data)) #dumps object into byte data and sends info
             
-            return pickle.loads(self.client.recv(4096)) #recieves info from client
+            return json.loads(self.client.recv(4096)) #recieves info from client
             
         except socket.error as e:
             
