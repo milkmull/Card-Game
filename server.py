@@ -4,8 +4,22 @@ import json
 import sys
 from game import Game
 
+def get_port():
+    try:
+    
+        with open('save.json', 'r') as f:
+            
+            data = json.load(f)
+            port = data['port']
+            
+    except:
+        
+        port = 5555
+        
+    return port
+
 server = socket.gethostbyname(socket.gethostname())# '192.168.1.15' local ip address --> 'ipconfig' in cmd, IPv4
-port = 5555 #port we are using
+port = get_port()
 
 pid = 0
 

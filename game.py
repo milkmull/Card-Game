@@ -89,8 +89,11 @@ class Game:
         
         self.logs = {}
         
+        self.info = {'count': 0, 'avetime': 0, 'aveturns': 0}
+        
         self.turn = 0 #turn of game
         self.current_turn = 0
+        self.counter = 0
 
         self.event = None #impliment multiple
         
@@ -109,6 +112,23 @@ class Game:
         if self.mode == 'single':
             
             self.new_player(0)
+            
+#testing stuff------------------------------------------------------------------------------------------------
+
+    def add_info(self, info):
+        count = self.info['count']
+        
+        ave = self.info['avetime']
+        time = info['time'] * 1000
+        self.info['avetime'] = ave + ((time - ave) / (count + 1))
+        
+        ave = self.info['aveturns']
+        turns = info['turns']
+        self.info['aveturns'] = ave + ((turns - ave) / (count + 1))
+        
+        self.info['count'] += 1
+        
+        #print(self.info)
             
 #copy stuff---------------------------------------------------------------------------------------------------
 
@@ -193,6 +213,7 @@ class Game:
         
         self.turn = 0 #turn of game
         self.round = 1
+        self.update_round()
         self.current_turn = 0
 
         self.deal('items', 'items', self.get_setting('items'))
@@ -215,8 +236,10 @@ class Game:
         self.log.append({'t': 'nr'})
         
         self.round += 1
+        self.update_round()
         
         self.phase = 'draft'
+        self.new_status('draft')
         self.done = False
         self.turn = 0
         self.current_turn = 0
@@ -236,16 +259,21 @@ class Game:
 
             self.event = self.event_cards.pop(random.randrange(len(self.event_cards)))
             
+    def update_round(self):
+        text = f"round {self.round}/{self.get_setting('rounds')}"
+        
+        self.log.append({'t': 'ur', 's': text})
+            
     def add_cpus(self):
         self.pid = 1
 
         for _ in range(self.get_setting('cpus')):
-
-            self.players.append(Player(self, self.pid, self.get_setting('ss'), auto=True))
             
-            self.logs[0][self.pid] = []
+            p = Player(self, self.pid, self.get_setting('ss'), auto=True)
+            self.players.append(p)      
+            self.logs[0][p.pid] = []
             
-            self.log.append({'t': 'add', 'pid': self.pid})
+            self.log.append({'t': 'add', 'pid': p.pid})
 
             self.pid += 1
             
@@ -261,8 +289,9 @@ class Game:
                 
             self.pid += 1
             
-            self.logs[pid] = {p.pid: p.master_log.copy() for p in self.players}
-            self.logs[pid]['g'] = self.master_log.copy()
+            self.log.append({'t': 'add', 'pid': pid})
+            
+            self.logs[pid] = self.get_startup_log()
             
             for p in self.players:
                 
@@ -270,8 +299,6 @@ class Game:
             
                     self.logs[p.pid][pid] = []
 
-            self.log.append({'t': 'add', 'pid': pid})
-            
             return True
             
         else:
@@ -286,8 +313,10 @@ class Game:
             for key in self.logs:
             
                 del self.logs[key][p.pid]
+                
+            if p.pid in self.logs:
 
-            del self.logs[p.pid]
+                del self.logs[p.pid]
             
             self.players.remove(p)
             
@@ -340,13 +369,21 @@ class Game:
             
     def fill_shop(self, num=3): #will cause problems with empty decks
         for _ in range(num):
-        
-            card = random.choice(self.deck + self.items + self.spells)#, self.landscapes])
-            deck = next((deck for deck in [self.deck, self.items, self.spells] if card in deck))
-            deck.remove(card)
-            self.shop.append(card)
             
-            self.log.append({'t': 'fill', 'c': card})
+            cards = self.deck + self.items + self.spells
+            
+            if cards:
+
+                card = random.choice(cards)#, self.landscapes])
+                deck = next((deck for deck in [self.deck, self.items, self.spells] if card in deck))
+                deck.remove(card)
+                self.shop.append(card)
+                
+                self.log.append({'t': 'fill', 'c': card})
+                
+            else:
+                
+                break
             
     def buy(self, player, uid):
         for c in self.shop.copy():
@@ -376,12 +413,6 @@ class Game:
             
                 info[key] = pack_log(log)
                 sublog[key].clear()
-                
-        for pid in info:
-            
-            if pid != 'g':
-                
-                info[pid].append({'t': 'score', 's': self.get_player(pid).score})
 
         return info
                 
@@ -409,7 +440,9 @@ class Game:
     def check_logs(self, pid):
         sublog = self.logs[pid]
         
-        return any(log for log in sublog.values())
+        scores = {p.pid: p.score for p in self.players}
+        
+        return (any(log for log in sublog.values()), scores)
 
     def get_log(self, id, oid):
         logs = self.logs.get(id)
@@ -434,6 +467,17 @@ class Game:
             for sublog in self.logs[key].values():
                 
                 sublog.clear()
+                
+    def get_startup_log(self):
+        log = {'g': [{'t': 'ns', 'stat': 'waiting'}]}
+        
+        for p in self.players:
+            
+            log[p.pid] = [{'t': 'add', 'pid': p.pid}, {'t': 'cn', 'pid': p.pid, 'name': p.name}]
+            
+        log['g'].append({'t': 'ord', 'ord': [p.pid for p in self.players]})
+        
+        return log
 
 #server communication functions-----------------------------------------------------------------------------
 
@@ -503,28 +547,30 @@ class Game:
         else:
             
             self.settings[key] = int(val)
-        
-    
             
-    def check_status(self):
-        if self.wait:
+        if key == 'cpus' and self.mode == 'single':
             
-            return 'waiting'
-    
-        if self.done:
-        
-            if self.round <= self.get_setting('rounds') - 1:
-                
-                return 'next round'
-                
-            else:
-                
-                return 'new game'
-                
-        else:
+            players = sorted(self.players, key=lambda p: p.pid, reverse=True)
+
+            dif = (len(self.players) - 1) - int(val)
             
-            return 'playing'
-            
+            if dif > 0:
+                
+                for i in range(dif):
+                    
+                    p = players[i]
+                    self.remove_player(p.pid)
+                    
+            elif dif < 0:
+                
+                for p in self.players.copy():
+                    
+                    if p.auto:
+                        
+                        self.remove_player(p.pid)
+                        
+                self.add_cpus()
+
     def get_shop(self):
         return [(c.name, c.uid) for c in self.shop]
         
@@ -552,7 +598,7 @@ class Game:
                 self.main()
                 
                 reply = self.check_logs(0)
-                
+
             elif data == 'info': #get update info
             
                 reply = self.get_info(0)
@@ -659,6 +705,21 @@ class Game:
         
     def close(self):
         self.running = False
+        
+    def main(self):
+        if not self.wait:
+
+            for p in self.players:
+            
+                if p.auto:
+                    
+                    p.auto_update()
+                    
+            self.counter += 1
+      
+        if not self.mode == 'turbo':
+                
+            self.update_game_logs()
             
 #turn stuff-----------------------------------------------------------------------------------------------
 
@@ -800,16 +861,7 @@ class Game:
             
             self.log.append({'t': 'nt', 'pid': self.main_p.pid})
         
-    def main(self):
-        if not self.wait:
-        
-            for p in self.players:
-            
-                if p.auto:
-                    
-                    p.auto_update()
-                
-        self.update_game_logs()
+    
         
 #player stuff-----------------------------------------------------------------------------------------------
         

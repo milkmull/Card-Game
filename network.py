@@ -3,21 +3,20 @@ import json
 
 class InvalidIP(Exception):
     pass
+    
+class PortInUse(Exception):
+    pass
 
 class Network:
-    def __init__(self, server=None):
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #type of connection, how server string is delivered
+    def __init__(self, server, port):
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
-        self.server = server if server is not None else socket.gethostbyname(socket.gethostname()) #local ip address, must be the same as server
-        self.port = 5555
-        
-        print(self.server)
-        
+        self.server = server if server else socket.gethostbyname(socket.gethostname())
+        self.port = port
+
         self.addr = (self.server, self.port)
         
-        print(self.server, 'n2')
-        
-        self.pid = self.connect() #sets initial return string recieved from server
+        self.pid = int(self.connect())
         
     def get_pid(self):
         return self.pid
@@ -33,7 +32,19 @@ class Network:
         
             raise InvalidIP
         
-        return self.client.recv(4096).decode() #loads byte data
+        pid = self.client.recv(4096).decode() #loads byte data
+        
+        try:
+            
+            pid = int(pid)
+            
+        except ValueError:
+            
+            self.client.close()
+            
+            raise PortInUse
+            
+        return pid
             
     def send(self, data):
         try:
@@ -50,3 +61,4 @@ class Network:
             
     def close(self):
         self.send('disconnect')
+        self.client.close()

@@ -1,5 +1,6 @@
 import random
-import copy
+import time
+from math import exp
 
 types = ('play', 'select')
 
@@ -20,7 +21,7 @@ class Player:
 
         self.pid = pid
         
-        self.name = 'player {}'.format(self.pid)
+        self.name = f'Player {self.pid}'
 
         self.selecting = True #if player has to make a selection
         self.click = False
@@ -40,7 +41,10 @@ class Player:
         self.thinking = False
         self.sims = 0
         self.seed = 0
-        self.max_sims = 200
+        self.max_sims = 1
+        self.turns = 0
+        self.choices = 0
+        self.timeout = 0
         self.info = []
         self.decision = {}
         self.tree = []
@@ -50,8 +54,9 @@ class Player:
         self.active_card = None
 
         self.max = 80 #if not self.auto else 2
-        self.tf = 0
-        self.tr = 0
+        self.ft = 0
+        self.rt = 0
+        self.tt = 0
         self.coin = None
         self.dice = None
 
@@ -84,10 +89,10 @@ class Player:
         return self.pid == other.get_id()
        
     def __str__(self):
-        return 'player {}'.format(self.pid)
+        return self.name
         
     def __repr__(self):
-        return 'player {}'.format(self.pid)
+        return self.name
        
     def get_image(self, mini=False):
         return self.pc.text
@@ -103,77 +108,6 @@ class Player:
         
     def get_id(self):
         return self.pid
-        
-#network stuff------------------------------------------------------------------------------------------
-
-    def get_info(self, attr):    
-        if attr == 'coin':
-            
-            return self.coin
-            
-        elif attr == 'dice':
-            
-            return self.dice
-            
-        elif attr == 'flipping':
-            
-            return self.flipping
-            
-        elif attr == 'rolling':
-            
-            return self.rolling
-            
-        elif attr == 'score':
-            
-            return self.score
-            
-        elif attr == 'is_turn':
-
-            return self.is_turn
-
-        elif attr == 'selection':
-            
-            return [(c.name, c.get_id()) for c in self.selection]
-            
-        elif attr == 'unplayed':
-            
-            return [(c.name, c.uid) for c in self.unplayed]
-            
-        elif attr == 'played':
-            
-            return [(c.name, c.uid) for c in self.played]
-            
-        elif attr == 'equipped':
-            
-            return [(c.name, c.uid) for c in self.equipped]
-            
-        elif attr == 'items':
-            
-            return [(c.name, c.uid) for c in self.items]
-            
-        elif attr == 'spells':
-            
-            return [(c.name, c.uid) for c in self.spells]
-            
-        elif attr == 'ongoing':
-            
-            return [(c.name, c.uid) for c in self.get_spells()]
-            
-        elif attr == 'treasure':
-            
-            return [(c.name, c.uid) for c in self.treasure]
-            
-        elif attr == 'log':
-            
-            return
-            
-        elif attr == 'active_card':
-            
-            return (self.active_card.name, self.active_card.uid) if self.active_card is not None else False
-            
-        elif attr == 'landscape':
-            
-            return (self.landscape.name, self.landscape.uid) if self.landscape is not None else False
 
 #starting stuff--------------------------------------------------------------------------------------------                
 
@@ -194,8 +128,8 @@ class Player:
 
         self.active_card = None
         
-        self.tf = 0
-        self.tr = 0
+        self.ft = 0
+        self.rt = 0
         self.coin = None
         self.dice = None
 
@@ -220,6 +154,10 @@ class Player:
         self.set_score()
         self.set_landscape()
         
+        if self.auto and not self.turbo:
+            
+            self.set_difficulty(self.game.get_setting('diff'))
+        
     def set_landscape(self):
         self.landscape = self.game.draw_cards(deck='landscapes')[0]
         self.add_og(self.landscape)
@@ -230,7 +168,7 @@ class Player:
         self.score = self.game.get_setting('ss')
         
     def new_round(self):
-        self.ongoing.clear()
+        self.ongoing = [c for c in self.ongoing if c in self.equipped]
         self.requests.clear()
         self.selection.clear()
         self.selected.clear()
@@ -281,8 +219,8 @@ class Player:
         self.active_card = None
 
         self.max = 60
-        self.tf = 0
-        self.tr = 0
+        self.ft = 0
+        self.rt = 0
         self.coin = None
         self.dice = None
 
@@ -462,9 +400,9 @@ class Player:
                 
                 self.start_cast(c)
                 
-            self.log.append({'t': 'aac', 'c': self.active_card})
+            self.log.append({'t': 'aac', 'c': self.active_card, 'w': self.active_card.wait})
 
-        if c.wait == 'coin' and self.tf == 1:
+        if c.wait == 'coin' and self.ft == 1:
 
             if self.coin is not None:
                 
@@ -472,7 +410,7 @@ class Player:
 
                 c.coin(self, self.coin)
                 
-        elif c.wait == 'dice' and self.tr == 1:
+        elif c.wait == 'dice' and self.rt == 1:
             
             if self.dice is not None:
                 
@@ -505,6 +443,8 @@ class Player:
             self.active_card = None
             
             self.cancel_select()
+            
+            self.log.append({'t': 'rac'})
 
         if self.turbo and self.requests:
             
@@ -519,7 +459,7 @@ class Player:
         
                 if self.safety_pin[0] > 20:
                     
-                    print('ex', self.pid, self.requests, self.active_card, self.selection, self.selected, self.spells, self.tf, self.tr)
+                    print('ex', self.pid, self.requests, self.active_card, self.selection, self.selected, self.spells, self.ft, self.rt)
                     print('')
                     print(self.master_log + self.log)
                     
@@ -568,7 +508,7 @@ class Player:
                     
             for c in self.treasure:
                 
-                if c == card:
+                if c == card and c not in self.requests:
                     
                     if hasattr(c, 'start'):
                     
@@ -578,7 +518,7 @@ class Player:
                     
             for c in self.equipped:
                 
-                if c == card and c.wait is None:   
+                if c == card and c not in self.requests:   
 
                     self.unequip(c)
                         
@@ -604,6 +544,8 @@ class Player:
                 self.active_card = None
                 
                 self.cancel_select()
+                
+                self.log.append({'t': 'rac'})
  
     def update(self, cmd='', card=None):
         if cmd == 'select' and card is not None and not self.check_end_game() and not ((self.flipping and self.coin != -1) or (self.rolling and self.dice != -1)):
@@ -739,8 +681,8 @@ class Player:
         
         self.invincible = ref.invincible
 
-        self.tf = min(ref.tf, 2)
-        self.tr = min(ref.tr, 2)
+        self.ft = min(ref.ft, 2)
+        self.rt = min(ref.rt, 2)
         self.coin = ref.coin
         self.dice = ref.dice
 
@@ -767,7 +709,7 @@ class Player:
         
             self.active_card = None
         
-        self.master_log = [L.copy() for L in ref.master_log]
+        self.master_log = ref.master_log.copy()
         self.log = [L.copy() for L in ref.log]
         self.temp_log = []
         
@@ -800,22 +742,29 @@ class Player:
             else:
 
                 self.tree.append([d, [1, score]])
+                
+        choices = len(self.tree)
+        
+        if self.choices == choices:
+        
+            self.timeout += 1
+            
+        else:
+            
+            self.choices = choices
+            self.timeout = 0
+            
+        if self.timeout > self.max_sims // 3:
+            
+            self.sims = self.max_sims
         
     def simulate(self):
-        sims = 2
-        
-        for _ in range(sims):
-        
-            turns = 999
-            
-            def stop(g):
-                return g.done or g.current_turn > turns
+        if self.turns >= 25 or (self.turns < 25 and self.game.counter % len(self.game.players) == self.pid):
 
             g = self.game.copy()
-            
             p = g.get_player(self.pid)
 
-            while not stop(g):
+            while not (g.done or g.current_turn > self.turns):
                 
                 g.main()
 
@@ -840,17 +789,39 @@ class Player:
         self.sims = 0 
         self.decision = None
         self.tree.clear()
-        
-        if self.game.phase != 'draft':
-        
-            self.max_sims = 100
-            
-        else:
-            
-            self.max_sims = 100
  
 #auto stuff-----------------------------------------------------------------------------------------
 
+    def set_difficulty(self, diff):
+        p = len(self.game.players)
+        
+        if diff == 0:
+            
+            self.max_sims = 0
+            
+        elif diff == 1:
+            
+            self.max_sims = 5 // len(self.game.players)
+            
+        elif diff == 2:
+            
+            self.max_sims = 25 // len(self.game.players)
+            
+        elif diff == 3:
+            
+            self.max_sims = 100 // len(self.game.players)
+            
+        elif diff == 4:
+            
+            self.max_sims = 200 // len(self.game.players)
+ 
+        if self.max_sims:
+            
+            turns = ((len(self.game.players) * (self.game.get_setting('cards') + self.game.get_setting('items') + self.game.get_setting('spells') + 1)) + 1.77) / 1.61
+            t = exp(0.0654 * turns) / 1000
+            
+            self.turns = max(int(turns / (30 * len(self.game.players) * t)) - 5, 1)
+ 
     def can_play(self):
         return self.game.phase != 'draft' and self.is_turn and not self.gone and not self.requests
         
@@ -887,8 +858,8 @@ class Player:
             
             return
             
-        if not self.turbo:
-        
+        if not self.turbo and self.max_sims:
+
             if self.sims < self.max_sims:
             
                 self.simulate()
@@ -920,12 +891,12 @@ class Player:
                             
                             self.sims = len(self.tree) // 2
                         
-                else:
+                elif self.max_sims > 0:
                 
                     self.simulate()
                     
-        else:
-            
+        elif self.turbo or self.max_sims == 0:
+
             if self.game.phase == 'draft' or self.selection:
                 
                 if self.selecting:
@@ -938,7 +909,7 @@ class Player:
                 
             cards = self.get_selection()
             
-            if cards and (not self.requests and random.choice(range(len(cards))) != 0):
+            if cards and (not self.requests and random.choice(range(len(cards) + 1)) != 0):
                 
                 return 'select'
             
@@ -955,7 +926,7 @@ class Player:
     def auto_select(self):
         s = None
         
-        if not self.turbo:
+        if not self.turbo and self.max_sims:
             
             if self.decision:
                 
@@ -970,9 +941,7 @@ class Player:
             elif not self.requests:
                 
                 cards = self.get_selection()
-                    
-                #print(cards)
-                    
+
                 if cards:
 
                     s = random.choice(cards)
@@ -1001,7 +970,6 @@ class Player:
                 if self.game.phase == 'draft':
                 
                     self.draft(card)
-                
                     self.game.check_rotate()
                     
                 else:
@@ -1016,7 +984,6 @@ class Player:
         if self.gone and not self.ogp:
 
             self.og('play')
-            
             self.ogp = True
 
         if self.flipping:
@@ -1056,7 +1023,7 @@ class Player:
 
         self.game.check_advance()
         
-        #print('out', self.requests, self.pid, self.tf)
+        #print('out', self.requests, self.pid, self.ft)
 
 #request stuff ------------------------------------------------------------------------------------------
         
@@ -1089,44 +1056,42 @@ class Player:
         self.coin = -1
         self.flipping = True
         
-        self.tf = self.max
+        self.ft = self.max
         
         c.wait = 'coin'
-        
-        self.log.append({'t': 'cfr', 'c': c})
-        
+
         if c is not self.active_card:
         
             self.requests.append(c)
-            
             self.active_card = None
+            self.coin = None
             
         self.cancel_select()
         
     def flip(self):
         if self.auto and not self.turbo:
             
-            if self.tf == self.max - 1:
+            if self.ft == self.max - 1:
                 
                 self.log.append({'t': 'cfs'})
     
-        if self.flipping and self.tf > 0:
+        if self.flipping and self.ft > 0:
                 
             self.coin_flip()
             
-        self.tf = max(self.tf - 1, 0)
+        self.ft = max(self.ft - 1, 0)
         
-        if self.tf == 0:
+        if self.ft == 0:
             
             self.flipping = False
             self.coin = None
         
     def coin_flip(self):
-        if self.tf <= self.max / 2:
+        if self.ft <= self.max / 2:
             
-            if self.tf == self.max / 2:
+            if self.ft == self.max / 2:
             
-                self.log.append({'t': 'cfe', 'coin': self.coin, 'tf': self.tf - 2, 'd': False})
+                self.log.append({'t': 'cfe', 'coin': self.coin, 'ft': self.ft - 2, 'd': False})
             
         else:
             
@@ -1136,44 +1101,42 @@ class Player:
         self.dice = -1
         self.rolling = True
         
-        self.tr = self.max
+        self.rt = self.max
 
         c.wait = 'dice'
-        
-        self.log.append({'t': 'drr', 'c': c})
-        
+
         if c is not self.active_card:
             
             self.requests.append(c)
-            
             self.active_card = None
+            self.dice = None
             
         self.cancel_select()
         
     def roll(self):
         if self.auto and not self.turbo:
             
-            if self.tr == self.max - 1:
+            if self.rt == self.max - 1:
                 
                 self.log.append({'t': 'drs'})
                 
-        if self.rolling and self.tr > 0:
+        if self.rolling and self.rt > 0:
                 
             self.dice_roll()
             
-        self.tr = max(self.tr - 1, 0)
+        self.rt = max(self.rt - 1, 0)
         
-        if self.tr == 0:
+        if self.rt == 0:
             
             self.rolling = False
             self.dice = None
             
     def dice_roll(self):
-        if self.tr <= self.max / 2:
+        if self.rt <= self.max / 2:
             
-            if self.tr == self.max / 2:
+            if self.rt == self.max / 2:
         
-                self.log.append({'t': 'dre', 'dice': self.dice, 'd': False})
+                self.log.append({'t': 'dre', 'dice': self.dice, 'rt': self.rt - 2, 'd': False})
             
         else:
             
@@ -1212,7 +1175,6 @@ class Player:
         self.selecting = False
         
         self.log.append({'t': 'sele'})
-        self.log.append({'t': 'rac'})
 
 #log stuff -----------------------------------------------------------------------------------------------
 

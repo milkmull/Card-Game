@@ -360,7 +360,7 @@ class AuntPeg(Card):
         
         if owner:
             
-            gp = owner.played.index(self)
+            gp = owner.played.index(self) + 1
             
         else:
             
@@ -759,13 +759,10 @@ class LuckyDuck(Card):
         player.new_flip(self)
         
     def start(self, player):
-        self.counter = 0
-        
-        if not self.counter and player.spells:
-        
-            self.counter = len(player.spells)
-
-            self.start_request(player)
+        for _ in range(len(player.spells)):
+            
+            c = self.copy()
+            c.start_request(player)
                 
         if player.has_landscape('sky'):
             
@@ -775,12 +772,6 @@ class LuckyDuck(Card):
         if coin:
             
             player.gain(self, 5)
-            
-        self.counter -= 1
-        
-        if self.counter:
-            
-            player.new_flip(self)
             
     def ongoing(self, player):
         owner = self.game.find_owner(self)
@@ -967,12 +958,16 @@ class Clam(Card):
     def coin(self, player, coin):  
         if coin:
             
+            t1 = len(player.treasure)
+            
             player.draw_treasure()
+            
+            if len(player.treasure) > t1:
                 
-            if player.treasure[-1].name == 'pearl':
-                
-                player.draw_items()
-                player.draw_spells()
+                if player.treasure[-1].name == 'pearl':
+                    
+                    player.draw_items()
+                    player.draw_spells()
         
     def ongoing(self, player):
         owner = self.game.find_owner(self)
@@ -1169,7 +1164,7 @@ class FishingPole(Card):
         
         super().__init__('fishing pole', 35, 'item')
         
-        self.option1 = Textbox('flip for treasure')
+        self.option1 = Textbox('flip for\n treasure')
         self.option2 = Textbox('move fish')
         
     def can_use(self, player):
@@ -1325,7 +1320,7 @@ class SpeedBoostPotion(Card):
         super().__init__('speed boost potion', 38, 'item')
         
         self.option1 = Textbox('go first')
-        self.option2 = Textbox('steal treasure')
+        self.option2 = Textbox('steal\n treasure')
         
     def can_use(self, player):
         return self.game.players[0] != player
@@ -1437,7 +1432,7 @@ class Sword(Card):
 
         self.tag = 'cont'
         
-        self.option1 = Textbox('recover your last item')
+        self.option1 = Textbox('recover\n your last\n item')
         self.option2 = Textbox('equip')
         
     def can_use(self, player):
@@ -1507,7 +1502,7 @@ class Fertilizer(Card):
         super().__init__('fertilizer', 41, 'item')
 
         self.option1 = Textbox('draw treasure')
-        self.option2 = Textbox('play plant card')
+        self.option2 = Textbox('play plant\n card')
         
     def can_use(self, player):
         return any(c.type == 'plant' for c in player.played)
@@ -2541,7 +2536,7 @@ class Sunflower(Card):
             
         elif points < 0:
             
-            player.lose(self, points)
+            player.lose(self, -points)
             
         if player.has_item('sunglasses'):
             
@@ -2931,8 +2926,7 @@ class OfficeFern(Card):
         else:
             
             i = len(player.played)
-        
-        
+
         lp = i + 1
         
         player.lose(self, lp)
@@ -3787,7 +3781,7 @@ class Torpedo(Card):
         player.use_item(self)
 
     def ongoing(self, player):
-        logs = [log for log in player.get_logs('sp') if log['c'].type not in ('equipment', 'item')]
+        logs = [log for log in player.get_logs('sp') if log['c'].type not in ('equipment', 'item') and not log.get('d')]
         
         if logs:
 
@@ -3919,7 +3913,7 @@ class Balloon(Card): #stuck in loop
         self.tag = 'cont'
         
         self.option1 = Textbox('equip')
-        self.option2 = Textbox('flip for treasure')
+        self.option2 = Textbox('flip for\n treasure')
         
     def can_use(self, player):
         return True

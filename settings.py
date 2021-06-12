@@ -4,14 +4,12 @@ settings = {
                 'ss': 20, 
                 
                 'rounds': 1, 
-                
-                'players': 3, 
-                
+
                 'event': True, 
                 
                 'ls': True, 
                 
-                'cards': 5, 
+                'cards': 3, 
                 
                 'items': 2, 
                 
@@ -21,6 +19,8 @@ settings = {
                 
                 'score wrap': False,
                 
-                'cpus': 1
+                'cpus': 3,
+                
+                'diff': 0
                 
             }

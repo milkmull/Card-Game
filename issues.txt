@@ -1,0 +1,19 @@
+
+
+turns out of sync in free play
+game freezing issue (not sure what caused it, maybe speed boost potion breaks game (something with treasure curse))
+sky flower freezes game
+
+moving cards for stealing
+moving cards for buying
+spell color not showing
+
+fix lines
+messages when players leave game
+messages when rules are changed
+fix counter button
+
+
+
+
+

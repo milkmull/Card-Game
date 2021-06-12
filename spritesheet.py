@@ -1,24 +1,164 @@
 import pygame as pg
+from constants import *
 
-def create_text(message, size=10, color=(255, 255, 255), font='freesansbold.ttf'): #returns surface with rendered text
-    text_font = pg.font.Font(font, size)
-    text = text_font.render(message, size, color)
+def outline_points(r):
+    x, y, e = r, 0, 1 - r
+    points = []
+
+    while x >= y:
+    
+        points.append((x, y))
+        
+        y += 1
+        
+        if e < 0:
+        
+            e += 2 * y - 1
+            
+        else:
+        
+            x -= 1
+            e += 2 * (y - x) - 1
+            
+    points += [(y, x) for x, y in points if x > y]
+    points += [(-x, y) for x, y in points if x]
+    points += [(x, -y) for x, y in points if y]
+    
+    points.sort()
+    
+    return points
+
+def create_text(message, size=10, color=(255, 255, 255)): #returns surface with rendered text
+    font = 'freesansbold.ttf'
+    
+    if '\n' not in message:
+        
+        text_font = pg.font.Font(font, size)
+        text = text_font.render(message, size, color).convert_alpha()
+
+    else:
+        
+        lines = message.split('\n')
+        images = []
+        
+        for message in lines:
+        
+            text = create_text(message.strip(), size, color)
+            images.append(text)
+            
+        w = max(img.get_size()[0] for img in images)
+        h = sum(img.get_size()[1] for img in images)
+        
+        text = pg.Surface((w, h)).convert_alpha()
+        text.fill((0, 0, 0, 0))
+        
+        y = 0
+        
+        for img in images:
+            
+            text.blit(img, (0, y))
+            y += img.get_size()[1]
+
     return text
 
 class Textbox: #used to easily position text on screen
-    def __init__(self, message, tsize=10, tcolor=(255, 255, 255)):
+    def __init__(self, message, tsize=10, tcolor=(255, 255, 255), is_button=True):
         self.message = message
-        
+
         self.text = create_text(message, tsize, tcolor) #rendered text image
-        
+
         self.rect = self.text.get_rect() #indicates where textbox is
         
         self.tsize = tsize #text size
         self.tcolor = tcolor #text color (rgb)
+        self.is_button = is_button
+        self.outlined = False
+        self.olc = None
         
         self.uid = id(self) #id of textbox
+        
+    def add_background(self, color):
+        bg = self.text.copy()
+        bg.fill(color)
+        bg.blit(self.text, (0, 0))
+        
+        self.text = bg
+        
+    def update_text_multicolor(self, message, colors):
+        c = self.rect.center
+        x = 0
+        j = 0
+        
+        img = create_text(message, self.tsize)
+        img.fill((0, 0, 0, 0))
+        
+        for i in range(len(message)):
+            
+            color = colors[j % len(colors)]
+            char = message[i]
+            
+            if char != ' ':
+                
+                j += 1
+            
+            char_img = create_text(char, self.tsize, color)
+            img.blit(char_img, (x, 0))
+            
+            x += char_img.get_size()[0]
 
-    def update_text(self, message, tcolor=None): #updates the text in the text box
+        self.message = message
+        self.text = img
+        self.rect = self.text.get_rect()
+        self.rect.center = c
+
+    def add_outline(self, olc=None, r=2):
+        if self.is_button:
+            
+            c = self.rect.center
+            
+            if olc and not self.outlined:
+
+                w, h = self.rect.size
+                w = w + 2 * r
+                
+                osurf = pg.Surface((w, h + 2 * r)).convert_alpha()
+                osurf.fill((0, 0, 0, 0))
+                surf = osurf.copy()
+                osurf.blit(create_text(self.message, self.tsize, olc), (0, 0))
+                
+                for dx, dy in outline_points(r):
+                
+                    surf.blit(osurf, (dx + r, dy + r))
+
+                surf.blit(self.text, (r, r))
+                self.text = surf
+                
+                self.outlined = True
+                self.olc = olc
+                
+            elif not olc:
+
+                self.text = create_text(self.message, self.tsize, self.tcolor)
+                self.outlined = False
+                self.olc = None
+            
+            self.rect = self.text.get_rect()
+            self.rect.center = c
+            
+    def get_outline(self, color=(255, 0, 0)):
+        if self.outlined:
+            
+            bg = self.text.copy()
+            bg.set_colorkey(self.tcolor)
+            
+            olc = pg.Surface(bg.get_size()).convert()
+            olc.fill(color)
+            
+            bg.blit(olc, (0, 0))
+            
+            return bg
+
+    def update_text(self, message, tcolor=None, olc=None): #updates the text in the text box
         if tcolor is not None:
         
             self.tcolor = tcolor
@@ -30,12 +170,17 @@ class Textbox: #used to easily position text on screen
         self.rect = self.text.get_rect()
         self.rect.center = c
         
+        self.outlined = False
+        
+    def clear(self):
+        self.update_text('')
+        
     def get_image(self, mini=False):
         return self.text #return text image
         
 class Counter:
     def __init__(self, message, counter=0, r=range(-999, 999), tsize=10, tcolor=(255, 255, 255)):
-        self.textbox = Textbox(message, tsize, tcolor)
+        self.textbox = Textbox(message, tsize, tcolor, False)
 
         self.counter = {'down': Textbox('<', tsize), 'num': Textbox(str(counter), tsize), 'up': Textbox('>', tsize)} #display for simple counter "<num>"
         self.range = r #set upper and lower limit for counter
@@ -70,7 +215,7 @@ class Counter:
             
         return img
         
-    def incriment(self, dir): #incriments counter value by updating text
+    def incriment(self, dir):
         if dir == 'up' and self.get_count() + 1 in self.range:
             
             self.counter['num'].update_text(str(int(self.counter['num'].message) + 1))
@@ -78,6 +223,8 @@ class Counter:
         elif dir == 'down' and self.get_count() - 1 in self.range:
             
             self.counter['num'].update_text(str(int(self.counter['num'].message) - 1))
+            
+        self.move_counter()
             
     def get_count(self): #get the current number the counter is displaying as integer
         return int(self.counter['num'].message)
@@ -98,34 +245,85 @@ class Counter:
         return False
         
 class Input(Textbox):
-    def __init__(self, message='', tsize=10, tcolor=(255, 255, 255)):
-        super().__init__(message, tsize, tcolor)
+    def __init__(self, message='', tsize=10, tcolor=(255, 255, 255), type=0):
+        super().__init__(message, tsize, tcolor, False)
         
+        self.defmessage = message
+
         self.active = True
         
-        self.timer = 50
+        self.timer = 25
+        self.btimer = 0
         
         self.lock = False
+
+        if type == 1:
+            
+            self.chars = alpha
+            
+        elif type == 2:
+            
+            self.chars = numeric
+            
+        elif type == 3:
+            
+            self.chars = numeric + '.'
+            
+        else:
+            
+            self.chars = chars
+            
+    def clear(self):
+        tl = self.rect.topleft
+        self.update_text('')
+        
+        if self.lock:
+            
+            self.rect.topleft = tl
+            
+    def reset(self):
+        tl = self.rect.topleft
+        self.update_text(self.defmessage)
+        
+        if self.lock:
+            
+            self.rect.topleft = tl
         
     def set_lock(self):
         self.lock = True
         
     def close(self):
-        self.update_text(self.get_message())
+        tl = self.rect.topleft
+        
+        m = self.get_message()
+        
+        if not m:
+            
+            m = self.defmessage
+        
+        self.update_text(m)
+        
+        if self.lock:
+            
+            self.rect.topleft = tl
         
     def get_message(self):
         return self.message.replace('|', '')
         
-    def send_keys(self, char=''):
+    def send_keys(self, text=''):
         tl = self.rect.topleft
         
-        if char:
+        if text:
             
-            self.update_text(self.get_message() + char)
+            if all(char in self.chars for char in text):
             
-        else:
+                self.update_text(self.get_message() + text)
+            
+        elif self.btimer <= 0:
             
             self.update_text(self.get_message()[:-1])
+            
+            self.btimer = 5
             
         if self.lock:
             
@@ -133,6 +331,7 @@ class Input(Textbox):
         
     def update(self):
         self.timer -= 1
+        self.btimer -= 1
     
         if self.active and not self.timer:
             
@@ -150,7 +349,7 @@ class Input(Textbox):
                 
                 self.rect.topleft = tl
     
-            self.timer = 50
+            self.timer = 25
 
 class Spritesheet:
     def __init__(self):
@@ -174,8 +373,12 @@ class Spritesheet:
                              
         self.sheet, self.images = self.load_cards() #spritesheet and dictionary of names with coordinates for each image
         
-    def make_player(self, name):
-        return Textbox(name, 15).text #returns "fake" card to represent the player. Used when players need to be displayed in the selection pane
+    def make_player(self, c):
+        color = c.color if c.color is not None else (255, 255, 255)
+        tb = Textbox(c.name, 18, tcolor=color)
+        tb.add_outline((0, 0, 0), 2)
+        
+        return tb.text
         
     def check_name(self, name):
         return any(name in row for row in self.names)
@@ -183,10 +386,12 @@ class Spritesheet:
     def get_by_id(self, id):
         return self.ids.get(id)
         
-    def get_image(self, name, mini=True): #get the image of given card by name. Used when card needs to be displayed on screen
+    def get_image(self, c, mini=True): #get the image of given card by name. Used when card needs to be displayed on screen
+        name = c.name
+        
         if not self.check_name(name):
             
-            img = self.make_player(name) #get fake player card
+            img = self.make_player(c) #get fake player card
             
         else:
             

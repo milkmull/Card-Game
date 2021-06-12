@@ -4,90 +4,138 @@ import sys
 import os
 import subprocess
 import random
-from requests import get as getreq
-from network import Network, InvalidIP
-from spritesheet import Spritesheet, Textbox, create_text, Counter, Input
+import urllib.request
+import json
+from colorsys import hsv_to_rgb
+from tkinter import Tk
+from constants import *
+from network import Network, InvalidIP, PortInUse
+from spritesheet import Spritesheet, Textbox, Counter, Input
 from settings import settings as defult_settings
 
-operating_system = sys.platform
+#save data stuff -----------------------------------------------------------------------------------------------------
 
-pg.init()
-
-clock = pg.time.Clock()
-
-width = 1024
-height = 576
-
-cw = 375 // 10
-ch = 525 // 10
-ph = ch * 7
-
-fps = 30
-
-win = pg.display.set_mode((width, height)) #initiate window
-
-spritesheet = Spritesheet() #load spritesheet info
-
-def get_ips(): #returns dictionary of any saved ip addresses (used for connecting via port forwarding)
-    ips = {}
+def new_save():
+    save_data = {'username': 'Player 0', 'port': 5555, 'ips': []}
     
-    with open('ips.txt', 'r') as f:
+    with open('save.json', 'w') as f:
         
-        for tup in f:
+        json.dump(save_data, f, indent=4)
+        
+    return save_data
+
+def read_save():
+    try:
+    
+        with open('save.json', 'r') as f:
+
+            save_data = json.load(f)
             
-            name, ip = tup.strip().split(' ')
+    except:
     
-            ips[name] = ip
+        new_message('an error occurred, save data has been cleared', 2000)
         
-    return ips
-    
-def update_ips(name, ip):
-    ips = {}
-    
-    with open('ips.txt', 'r+') as f:
-        
-        for tup in f:
-            
-            name, ip = tup.strip().split(' ')
-            
-            ips[name] = ip
+        save_data = new_save()
 
-        if name not in ips.keys() and ip not in ips.values():
+    return save_data
     
-            f.write('{} {}\n'.format(name, ip))
+def get_data(key):
+    global save_data
+    
+    return save_data[key]
+    
+def set_data(key, val):
+    global save_data
+
+    if save_data[key] != val:
+        
+        save_data[key] = val
+
+        with open('save.json', 'w') as f:
+        
+            json.dump(save_data, f, indent=4)
+    
+def update_ips(entry):
+    ips = get_data('ips').copy()
+
+    if entry not in ips:
+    
+        ips.append(entry)
+        set_data('ips', ips)
+
+def del_ips(name, ip):
+    ips = get_data('ips').copy()
+    
+    for data in ips.copy():
+        
+        if data['name'] == name and data['ip'] == ip:
             
-def del_ips(name):
-    ips = get_ips()
+            ips.remove(data)
+            set_data('ips', ips)
+            
+            break
+            
+def set_port(new_port):
+    new_port = int(new_port)
+    old_port = get_data('port')
     
-    del ips[name]
+    if new_port != old_port:
+        
+        set_data('port', new_port)
+        
+def set_username(new_name):
+    old_name = get_data('username')
     
-    with open('ips.txt', 'w+') as f:
-        
-        for name, ip in ips.items():
-        
-            f.write('{} {}\n'.format(name, ip))
+    if new_name != old_name:
+    
+        set_data('username', new_name)
+            
+#---------------------------------------------------------------------------------------------------------------
+
+def get_pub_ip():
+    return urllib.request.urlopen('https://api.ipify.org').read().decode()
             
 def flatten(lst):
     return [c for L in lst for c in L]
 
 def copy_to_clipboard(text):
-    if operating_system.startswith('linux'):
-        
-        command = 'echo ' + text.strip() + '| xclip'
-        
-    elif operating_system.startswith('win'):
+    Tk().clipboard_append(text)
     
-        command = 'echo ' + text.strip() + '| clip'
+def get_clip():
+    try:
     
-    elif operating_system.startswith('darwin'):
+        text =  Tk().clipboard_get()
+        
+    except:
+        
+        text = None
+        
+    return text
+    
+def gen_colors(num):
+    golden = (1 + 5 ** 0.5) / 2
+    colors = []
+    
+    for i in range(num):
+        
+        h = (i * (golden - 1)) % 1
+        r, g, b = hsv_to_rgb(h, 0.8, 1)
+        rgb = (r * 255, g * 255, b * 255)
+        colors.append(rgb)
 
-        command = 'echo ' + text.strip() + '| pbcopy'
-        
-    else:
-        
-        return
-        
-    os.system(command)
+    return colors
+
+def get_outline(rect, color=(255, 0, 0), r=2):
+    ol = pg.Surface((rect.width + (2 * r), rect.height + (2 * r))).convert()
+    ol.fill(color)
+    
+    mid = pg.Surface(rect.size).convert()
+    mid.fill((0, 0, 0))
+    
+    ol.blit(mid, (r, r))
+    ol.set_colorkey((0, 0, 0))
+    
+    return ol
 
 #screen stuff----------------------------------------------------------------------
 
@@ -129,6 +177,22 @@ def get_dx(r1, r2):
     dx = (width // 2) - xc
     
     return dx
+    
+def outline_buttons(mouse, btns, olc=(255, 0, 0)):
+    hit = False
+    
+    for b in btns:
+        
+        if hasattr(b, 'add_outline'):
+        
+            if mouse.colliderect(b.rect) and not hit:
+                
+                b.add_outline(olc)
+                hit = True
+                
+            else:
+                
+                b.add_outline()
 
 #main------------------------------------------------------------------------------
 
@@ -139,17 +203,22 @@ def main():
         
         mode = main_menu()
         
-        if mode == 'search online':
+        if mode == 'settings':
             
-            ip = client_menu()
+            user_settings()
+        
+        elif mode == 'search online':
             
-            if ip:
+            addr = choose_host()
+            
+            if addr:
                 
-                connect(ip)
+                ip, port = addr
+                connect(ip, port)
                 
         elif mode == 'search local':
             
-            connect()
+            connect('', get_data('port'))
                 
         elif mode == 'host':
 
@@ -184,6 +253,43 @@ def set_screen(mode, wait=0): #returns all screen objects for given menu
         screen.append(text)
         
         text = Textbox('find local game', 20)
+        text.rect.midtop = screen[-1].rect.midbottom
+        screen.append(text)
+        
+        text = Textbox('settings', 20)
+        text.rect.midtop = screen[-1].rect.midbottom
+        text.rect.y += text.rect.height
+        screen.append(text)
+        
+    elif mode == 'user settings':
+        
+        text = Textbox('display name:  ', 20, tcolor=gen_colors(1)[0])
+        text.rect.right = width // 2
+        text.rect.bottom = height // 2
+        text.rect.midbottom = text.rect.midtop
+        screen.append(text)
+        
+        text = Input(get_data('username'), 20)
+        text.rect.midleft = screen[-1].rect.midright
+        text.set_lock()
+        screen.append(text)
+        
+        text = Textbox('default port:  ', 20)
+        text.rect.right = width // 2
+        text.rect.y = screen[-1].rect.bottom
+        screen.append(text)
+        
+        text = Input(str(get_data('port')), 20, type=2)
+        text.rect.midleft = screen[-1].rect.midright
+        text.set_lock()
+        screen.append(text)
+        
+        text = Textbox('save', 20, (255, 255, 0))
+        text.rect.centerx = width // 2
+        text.rect.y = screen[-1].rect.bottom + text.rect.height
+        screen.append(text)
+        
+        text = Textbox('cancel', 20)
         text.rect.midtop = screen[-1].rect.midbottom
         screen.append(text)
         
@@ -223,9 +329,9 @@ def set_screen(mode, wait=0): #returns all screen objects for given menu
         
     elif mode == 'choose host':
         
-        for name, ip in get_ips().items():
+        for entry in get_data('ips'):
         
-            text = Textbox(name + ': ' + ip, 20)
+            text = Textbox(entry['name'] + ': ' + entry['ip'], 20)
             screen.append(text)
             
         y = (height - sum(t.rect.height for t in screen)) / 2
@@ -249,20 +355,29 @@ def set_screen(mode, wait=0): #returns all screen objects for given menu
             
         text = Textbox('back', 20)
         text.rect.midtop = screen[-1].rect.midbottom
-        text.rect.y += 5
+        text.rect.y += text.rect.height
         screen.append(text)
         
-        text = Textbox(' [join game]', 20, tcolor=(0, 255, 0))
+        text = Textbox(' Port: ', 20, (255, 255, 0), is_button=False)
+        text.rect.bottomright = (0, 0)
+        screen.append(text)
+
+        text = Textbox(' [join game]', 20, tcolor=(0, 255, 0), is_button=False)
         text.rect.bottomright = (0, 0)
         screen.append(text)
         
-        text = Textbox(' [delete]', 20, tcolor=(255, 0, 0))
+        text = Input(' [specify port]', 20, tcolor=(255, 255, 0), type=2)
         text.rect.bottomright = (0, 0)
+        text.set_lock()
         screen.append(text)
         
+        text = Textbox(' [delete]', 20, tcolor=(255, 0, 0), is_button=False)
+        text.rect.bottomright = (0, 0)
+        screen.append(text)
+
     elif mode == 'new entry':
         
-        text = Textbox('entry name: ', 20)
+        text = Textbox('entry name: ', 20, is_button=False)
         text.rect.midright = (width / 2, height / 2)
         text.rect.midbottom = text.rect.midtop
         screen.append(text)
@@ -276,12 +391,12 @@ def set_screen(mode, wait=0): #returns all screen objects for given menu
         screen[0].rect.x += dx
         screen[1].rect.x += dx
         
-        text = Textbox('entry IP: ', 20)
+        text = Textbox('entry IP: ', 20, is_button=False)
         text.rect.topright = screen[-2].rect.bottomright
         text.rect.y += 20
         screen.append(text)
         
-        text = Input('012.345.6789', 20)
+        text = Input('012.345.6789', 20, type=3)
         text.rect.midleft = screen[-1].rect.midright
         text.set_lock()        
         screen.append(text)
@@ -295,13 +410,13 @@ def set_screen(mode, wait=0): #returns all screen objects for given menu
         text.rect.y = screen[-1].rect.bottom + (text.rect.height * 2)
         screen.append(text)
         
-        text = Textbox('back', 20)
+        text = Textbox('cancel', 20)
         text.rect.midtop = screen[-1].rect.midbottom
         screen.append(text)
         
     elif mode == 'name':
         
-        text = Textbox('enter your name:', 30)
+        text = Textbox('enter your name:', 30, is_button=False)
         text.rect.midbottom = (width // 2, height // 2)
         screen.append(text)
         
@@ -323,7 +438,7 @@ def set_screen(mode, wait=0): #returns all screen objects for given menu
         
     elif mode == 'view ip':
 
-        text = Textbox('your public IP:  {}'.format(getreq('http://ip.42.pl/raw').text), 20)
+        text = Textbox(f'your public IP:  {get_pub_ip()}', 20, is_button=False)
         text.rect.midbottom = (width // 2, height // 2)
         screen.append(text)
         
@@ -342,16 +457,18 @@ def set_screen(mode, wait=0): #returns all screen objects for given menu
     return screen
 
 def main_menu():
+    mouse = pg.Rect(0, 0, 1, 1)
     btns = set_screen('main')
     
     mode = None
 
     while mode is None: #once player chooses a mode, go to next screen
         
-        x, y = pg.mouse.get_pos()
-    
-        r = pg.Rect(x, y, 1, 1)
-        
+        clock.tick(30)
+        mouse.center = pg.mouse.get_pos()
+        outline_buttons(mouse, btns)
+        new_screen(btns)
+
         for e in pg.event.get():
                 
             if e.type == pg.QUIT:
@@ -366,155 +483,58 @@ def main_menu():
                     
             elif e.type == pg.MOUSEBUTTONDOWN:
 
-                for t in btns:
+                for b in btns:
                     
-                    if t.rect.colliderect(r):
+                    if b.rect.colliderect(mouse):
                         
-                        if t.message == 'find online game':
+                        if b.message == 'find online game':
                             
                             mode = 'search online'
                             
-                        elif t.message == 'host game':
+                        elif b.message == 'host game':
                             
                             mode = 'host'
                             
-                        elif t.message == 'find local game':
+                        elif b.message == 'find local game':
                             
                             mode = 'search local'
                             
-                        elif t.message == 'single player':
+                        elif b.message == 'single player':
                             
                             mode = 'single'
+                            
+                        elif b.message == 'settings':
+                            
+                            mode = 'settings'
+                            
+                        break
         
     return mode
     
-def client_menu():
-    btns = set_screen('choose host')
-    options = btns[-2:]
-
-    def move_options(p):
-        options[0].rect.topleft = p
-        options[1].rect.topleft = options[0].rect.topright
-        
-    def reset_options():
-        for t in options:
-        
-            t.rect.bottomright = (0, 0)
-            
-    name = ''
-    ip = ''
-    
-    running = True
-    
-    while running:
-        
-        clock.tick(60)
-        
-        new_screen(btns)
-
-        x, y = pg.mouse.get_pos()
-    
-        r = pg.Rect(x, y, 1, 1)
-        
-        for e in pg.event.get():
-               
-            if e.type == pg.QUIT:
-            
-                return
-                
-            elif e.type == pg.KEYDOWN:
-            
-                if e.key == pg.K_ESCAPE:
-                
-                    return
-                    
-            elif e.type == pg.MOUSEBUTTONDOWN:
-
-                for t in btns:
-                    
-                    if t.rect.colliderect(r):
-                        
-                        if t.message == 'back':
-                            
-                            return
-                            
-                        elif t.message == 'new entry':
-                        
-                            tup = new_entry()
-                            
-                            if tup is not None:
-                            
-                                name, ip = tup
-                                
-                                update_ips(name, ip)
-                                
-                                btns = set_screen('choose host')
-                                options = btns[-2:]
-                                
-                            break
-                            
-                        elif t.message == 'view my ip':
-                            
-                            view_ip()
-                            
-                            break
-                            
-                        elif ip and 'join game' in t.message:
-                            
-                            return ip
-                            
-                        elif ip and 'delete' in t.message:
-                            
-                            del_ips(name)
-                            
-                            btns = set_screen('choose host')
-                            options = btns[-2:]
-                            
-                            break
-                            
-                        elif isinstance(t, Textbox):
-                            
-                            name, ip = t.message.split(': ')
-
-                            move_options(t.rect.topright)
-                            
-                            break
-                            
-                else:
-                
-                    name = ''
-                    ip = ''
-                    
-                    reset_options()
-        
-def new_entry(info=None):
-    btns = set_screen('new entry')
-    
-    if info:
-        
-        name, ip = info
-        
-        btns[1].update_text(name)
-        btns[3].update_text(ip)
-
+def user_settings():
+    mouse = pg.Rect(0, 0, 1, 1)
+    btns = set_screen('user settings')
     field = None
     
+    username_field = btns[1]
+    port_field = btns[3]
+    
+    backspace = False
+    checks = [0, 0]
+    
     running = True
     
     while running:
         
-        clock.tick(60)
-        
+        clock.tick(30)
+        mouse.center = pg.mouse.get_pos()
+        outline_buttons(mouse, btns)
         new_screen(btns)
         
         if field is not None:
 
             field.update()
 
-        x, y = pg.mouse.get_pos()
-    
-        r = pg.Rect(x, y, 1, 1)
-        
         for e in pg.event.get():
                
             if e.type == pg.QUIT:
@@ -527,9 +547,9 @@ def new_entry(info=None):
                 
                     return
                     
-                elif field is not None and e.key == pg.K_BACKSPACE:
+                if field is not None and e.key == pg.K_BACKSPACE:
                     
-                    field.send_keys()
+                    backspace = True
                     
                 elif field is not None and e.key == pg.K_RETURN:
                     
@@ -538,58 +558,419 @@ def new_entry(info=None):
                     
                 elif field is not None and hasattr(e, 'unicode'):
                     
-                    if e.unicode.strip():
+                    char = e.unicode.strip()
                     
-                        field.send_keys(e.unicode)
+                    if char and char in chars:
+
+                        field.send_keys(char)
+                        
+                if (e.key == pg.K_RCTRL) or (e.key == pg.K_LCTRL):
+                    
+                    checks[0] = 1
+                        
+                elif e.key == pg.K_v:
+                    
+                    checks[1] = 1
+                    
+            elif e.type == pg.KEYUP:
+                
+                if e.key == pg.K_BACKSPACE:
+                    
+                    backspace = False
+                
+                elif (e.key == pg.K_RCTRL) or (e.key == pg.K_LCTRL):
+                    
+                    checks[0] = 0
+                        
+                elif e.key == pg.K_v:
+                    
+                    checks[1] = 0
 
             elif e.type == pg.MOUSEBUTTONDOWN:
 
-                for btn in btns:
+                for b in btns:
                     
-                    if r.colliderect(btn.rect):
+                    if mouse.colliderect(b.rect):
                     
-                        if isinstance(btn, Input):
+                        if isinstance(b, Input):
                             
                             if field is not None:
                                 
                                 field.close()
                             
-                            field = btn
+                            field = b
                             
-                        elif btn.message == 'back':
+                        elif b.message == 'save':
+                            
+                            username = username_field.get_message()
+                            port = port_field.get_message()
+                            
+                            set_username(username)
+                            set_port(port)
+                            
+                            new_message('changes saved', 1500)
+                            
+                            return
+                            
+                        elif b.message == 'cancel':
                         
                             return
                             
-                        elif btn.message == 'save':
-                            
-                            return (btns[1].get_message(), btns[3].get_message())
-                            
                         break
-                        
-                        
-                        
+
                 else:
                     
                     if field is not None:
                     
                         field.close()
                         field = None
-  
+                        
+        if field is not None:
+                        
+            if backspace:
+                
+                field.send_keys()
+                        
+            elif checks[0] and checks[1]:
+                
+                text = get_clip()
+                
+                if text:
+                
+                    field.send_keys(text)
+                
+                checks = [0, 0]
+
+def choose_host():
+    btns = set_screen('choose host')
+    mouse = pg.Rect(0, 0, 1, 1)
+
+    def get_options():
+        return btns[-3:]
+
+    def move_options(p):
+        options[0].rect.topleft = p
+        options[1].rect.topleft = options[0].rect.topright
+        options[2].rect.topleft = options[1].rect.topright
+        
+        btns[-4].rect.bottomright = (0, 0)
+        
+    def reset_options():
+        for t in options:
+        
+            t.rect.bottomright = (0, 0)
+            
+        options[-2].reset()
+        btns[-4].rect.bottomright = (0, 0)
+        
+    def move_port_text():
+        options[-1].rect.bottomright = (0, 0)
+        btns[-4].rect.topleft = options[0].rect.topright
+        options[1].rect.topleft = btns[-4].rect.topright
+        
+    def get_port():
+        port = -1
+        
+        try:
+    
+            port = int(options[-2].get_message())
+            
+        except ValueError:
+            
+            port = get_data('port')
+
+        return port
+            
+    options = get_options()
+    field = None
+            
+    name = ''
+    ip = ''
+    
+    backspace = False
+    
+    running = True
+    
+    while running:
+
+        clock.tick(30)
+        mouse.center = pg.mouse.get_pos()
+        outline_buttons(mouse, btns)
+        new_screen(btns)
+        
+        if field is not None:
+
+            field.update()
+        
+        for e in pg.event.get():
+               
+            if e.type == pg.QUIT:
+            
+                return
+                
+            elif e.type == pg.KEYDOWN:
+
+                if e.key == pg.K_ESCAPE:
+                
+                    return
+                    
+                elif field is not None:
+                    
+                    if e.key == pg.K_BACKSPACE:
+                        
+                        backspace = True
+                        
+                    elif e.key == pg.K_RETURN:
+                        
+                        field.close()
+                        field = None
+
+                    elif hasattr(e, 'unicode'):
+                        
+                        char = e.unicode.strip()
+                        
+                        if char and char in chars:
+
+                            field.send_keys(char)
+                        
+            elif e.type == pg.KEYUP:
+                
+                if e.key == pg.K_BACKSPACE:
+                    
+                    backspace = False
+                    
+            elif e.type == pg.MOUSEBUTTONDOWN:
+
+                for b in btns:
+                    
+                    if b.rect.colliderect(mouse):
+                        
+                        if isinstance(b, Input):
+                            
+                            b.clear()
+                            field = b
+                            move_port_text()
+                            
+                            break
+                            
+                        else:
+                            
+                            if field is not None:
+                                
+                                field.close()
+                                field = None
+                        
+                            if b.message == 'back':
+                                
+                                return
+                                
+                            elif b.message == 'new entry':
+                            
+                                tup = new_entry()
+                                
+                                if tup is not None:
+                                
+                                    name, ip = tup
+                                    update_ips({'name': name, 'ip': ip})
+                                    
+                                    btns = set_screen('choose host')
+                                    options = get_options()
+                                    
+                                break
+                                
+                            elif b.message == 'view my ip':
+                                
+                                try:
+                                
+                                    view_ip()
+                                    
+                                except urllib.error.URLError:
+                                    
+                                    new_message('connection could not be found', 2000)
+                                
+                                break
+                                
+                            elif ip and 'join game' in b.message:
+                                
+                                return (ip, get_port())
+                                
+                            elif ip and 'delete' in b.message:
+                                
+                                del_ips(name, ip)
+                                
+                                btns = set_screen('choose host')
+                                options = get_options()
+                                
+                                break
+                                
+                            elif isinstance(b, Textbox) and ':' in b.message and getattr(b, 'is_button', False):
+                                
+                                name, ip = b.message.split(': ')
+                                move_options(b.rect.topright)
+                                
+                                break
+                            
+                else:
+                
+                    name = ''
+                    ip = ''
+                    
+                    if field is not None:
+                    
+                        field.close()
+                        field = None
+                    
+                    reset_options()
+                    
+        if field is not None:
+                            
+            if backspace:
+                
+                field.send_keys()
+        
+def new_entry(info=None):
+    btns = set_screen('new entry')
+    mouse = pg.Rect(0, 0, 1, 1)
+    
+    if info:
+        
+        name, ip = info
+        
+        btns[1].update_text(name)
+        btns[3].update_text(ip)
+
+    field = btns[1]
+    
+    backspace = False
+    
+    running = True
+    
+    checks = [0, 0]
+    
+    while running:
+        
+        clock.tick(30)
+        mouse.center = pg.mouse.get_pos()
+        outline_buttons(mouse, btns)
+        new_screen(btns)
+        
+        if field is not None:
+
+            field.update()
+
+        for e in pg.event.get():
+               
+            if e.type == pg.QUIT:
+            
+                return
+                
+            elif e.type == pg.KEYDOWN:
+            
+                if e.key == pg.K_ESCAPE:
+                
+                    return
+                    
+                if field is not None and e.key == pg.K_BACKSPACE:
+                    
+                    backspace = True
+                    
+                elif field is not None and e.key == pg.K_RETURN:
+                    
+                    field.close()
+                    field = None
+                    
+                elif field is not None and hasattr(e, 'unicode'):
+                    
+                    char = e.unicode.strip()
+                    
+                    if char and char in chars:
+
+                        field.send_keys(char)
+                        
+                if (e.key == pg.K_RCTRL) or (e.key == pg.K_LCTRL):
+                    
+                    checks[0] = 1
+                        
+                elif e.key == pg.K_v:
+                    
+                    checks[1] = 1
+                    
+            elif e.type == pg.KEYUP:
+                
+                if e.key == pg.K_BACKSPACE:
+                    
+                    backspace = False
+                
+                elif (e.key == pg.K_RCTRL) or (e.key == pg.K_LCTRL):
+                    
+                    checks[0] = 0
+                        
+                elif e.key == pg.K_v:
+                    
+                    checks[1] = 0
+
+            elif e.type == pg.MOUSEBUTTONDOWN:
+
+                for b in btns:
+                    
+                    if mouse.colliderect(b.rect):
+                    
+                        if isinstance(b, Input):
+                            
+                            if field is not None:
+                                
+                                field.close()
+                            
+                            field = b
+                            
+                        elif b.message == 'cancel':
+                        
+                            return
+                            
+                        elif b.message == 'save':
+                            
+                            return (btns[1].get_message(), btns[3].get_message())
+                            
+                        break
+    
+                else:
+                    
+                    if field is not None:
+                    
+                        field.close()
+                        field = None
+                        
+        if field is not None:
+                        
+            if backspace:
+                
+                field.send_keys()
+                        
+            elif checks[0] and checks[1]:
+                
+                text = get_clip()
+                
+                if text:
+                
+                    field.send_keys(text)
+                
+                checks = [0, 0]
+
 def view_ip(info=None):
     btns = set_screen('view ip')
+    mouse = pg.Rect(0, 0, 1, 1)
+    
+    timer = 0
 
     running = True
     
     while running:
         
-        clock.tick(60)
-        
+        clock.tick(30)
+        mouse.center = pg.mouse.get_pos()
+        outline_buttons(mouse, btns)
         new_screen(btns)
 
-        x, y = pg.mouse.get_pos()
-    
-        r = pg.Rect(x, y, 1, 1)
-        
         for e in pg.event.get():
                
             if e.type == pg.QUIT:
@@ -604,27 +985,37 @@ def view_ip(info=None):
 
             elif e.type == pg.MOUSEBUTTONDOWN:
 
-                for btn in btns:
+                for b in btns:
                     
-                    if r.colliderect(btn.rect):
+                    if mouse.colliderect(b.rect):
                     
-                        if btn.message == 'back':
+                        if b.message == 'back':
                             
                             return
                             
-                        elif 'copy' in btn.message:
+                        elif 'cop' in b.message:
                             
-                            copy_to_clipboard(getreq('http://ip.42.pl/raw').text)
+                            copy_to_clipboard(get_pub_ip())
+                            
+                            btns[1].update_text('[coppied]')
+                            
+                            timer = 125
+                            
+        timer -= 1
+        
+        if timer == 0:
+            
+            btns[1].update_text('[copy to clipboard]')
   
 #in game menues------------------------------------------------------------------------------
  
 def settings_screen(pid, settings): #special function to set up the settings screen
     screen = []
     
-    text = Counter('rounds', settings['rounds'], range(1, 26), 20)
+    text = Counter('rounds: ', settings['rounds'], range(1, 26), 20)
     screen.append(text)
     
-    text = Textbox('free play: {}'.format(settings['fp']), tsize=20)
+    text = Textbox(f"free play: {settings['fp']}", tsize=20, is_button=False)
     screen.append(text)
     
     text = Counter('starting score: ', settings['ss'], range(5, 51), 20)
@@ -639,24 +1030,27 @@ def settings_screen(pid, settings): #special function to set up the settings scr
     text = Counter('starting spells: ', settings['spells'], range(0, 6), 20)
     screen.append(text)
     
-    text = Textbox('score wrap: {}'.format(settings['score wrap']), tsize=20)
+    text = Textbox(f"score wrap: {settings['score wrap']}", tsize=20, is_button=False)
     screen.append(text)
     
-    text = Counter('number of cpus: ', settings['cpus'], range(1, 10), 20)
+    text = Counter('number of cpus: ', settings['cpus'], range(1, 15), 20)
+    screen.append(text)
+    
+    text = Counter('cpu difficulty: ', settings['diff'], range(0, 5), 20)
     screen.append(text)
     
     y = (height - sum(t.rect.height for t in screen)) / 2
     
-    for t in screen:
+    for b in screen:
         
-        t.rect.y = y
-        t.rect.centerx = width / 2
+        b.rect.y = y
+        b.rect.centerx = width / 2
         
-        if isinstance(t, Counter):
+        if isinstance(b, Counter):
         
-            t.move_counter()
+            b.move_counter()
         
-        y += t.rect.height
+        y += b.rect.height
     
     if pid == 0:
     
@@ -689,19 +1083,19 @@ def game_menu(client):
     else:
         
         mode = 'client options'
+        
+    btns = set_screen(mode)
+    mouse = pg.Rect(0, 0, 1, 1)
 
     running = True
     
     while running:
         
         client.clock.tick(30)
-        
-        btns = set_screen(mode)
-        
-        x, y = pg.mouse.get_pos()
-    
-        r = pg.Rect(x, y, 1, 1)
-        
+        mouse.center = pg.mouse.get_pos()
+        new_screen(btns)
+        outline_buttons(mouse, btns)
+
         for e in pg.event.get():
                 
             if e.type == pg.QUIT:
@@ -716,47 +1110,46 @@ def game_menu(client):
                     
             elif e.type == pg.MOUSEBUTTONDOWN:
 
-                for t in btns:
+                for b in btns:
                     
-                    if t.rect.colliderect(r):
+                    if b.rect.colliderect(mouse):
                         
-                        if t.message == 'new game':
+                        if b.message == 'new game':
                             
                             client.send('reset')
                             
                             return
                             
-                        elif t.message == 'disconnect':
+                        elif b.message == 'disconnect':
                             
                             client.exit()
-                            
                             pg.time.wait(1000)
                             
                             return
                             
-                        elif t.message == 'back':
+                        elif b.message == 'back':
                             
                             return
                             
-                        elif t.message == 'game settings':
+                        elif b.message == 'game settings':
                             
                             settings_menu(client, client.send('settings'))
                             
 def settings_menu(client, settings):
     pid = client.pid
     
+    btns = settings_screen(pid, settings)
+    mouse = pg.Rect(0, 0, 1, 1)
+    
     running = True
     
     while running:
     
         client.clock.tick(30)
+        mouse.center = pg.mouse.get_pos()
+        new_screen(btns)
+        outline_buttons(mouse, btns)
 
-        btns = settings_screen(pid, settings)
-
-        x, y = pg.mouse.get_pos()
-    
-        r = pg.Rect(x, y, 1, 1)
-        
         for e in pg.event.get():
                 
             if e.type == pg.QUIT:
@@ -771,21 +1164,21 @@ def settings_menu(client, settings):
                     
             elif e.type == pg.MOUSEBUTTONDOWN:
 
-                for t in btns:
+                for b in btns:
                     
-                    if t.rect.colliderect(r):
+                    if b.rect.colliderect(mouse):
                         
                         if pid == 0:
                         
-                            if 'free play' in t.message:
+                            if 'free play' in b.message:
 
                                 settings['fp'] = not settings['fp']
                                 
-                            elif 'score wrap' in t.message:
+                            elif 'score wrap' in b.message:
                             
                                 settings['score wrap'] = not settings['score wrap']
                                 
-                            elif t.message == 'save changes':
+                            elif b.message == 'save changes':
                                 
                                 new_message('saving...', 500)
                                 
@@ -801,68 +1194,71 @@ def settings_menu(client, settings):
                                 
                                 return
                                 
-                            elif t.message == 'reset':
+                            elif b.message == 'reset':
                                 
                                 settings = defult_settings.copy()
+                                btns = settings_screen(pid, settings)
+                                new_screen(btns)
                             
-                            elif t.message == 'cancel':
+                            elif b.message == 'cancel':
                                 
                                 return
                                 
-                        elif t.message == 'cancel':
+                        elif b.message == 'cancel':
                             
                             return
 
-                    elif pid == 0 and isinstance(t, Counter):
+                    elif pid == 0 and isinstance(b, Counter):
                         
-                        if t.click_counter(r):
+                        if b.click_counter(mouse):
                         
-                            if 'starting score' in t.message:
+                            if 'starting score' in b.message:
 
-                                settings['ss'] = t.get_count()
+                                settings['ss'] = b.get_count()
                                 
-                            elif 'rounds' in t.message:
+                            elif 'rounds' in b.message:
                                 
-                                settings['rounds'] = t.get_count()
+                                settings['rounds'] = b.get_count()
                                 
-                            elif 'cards' in t.message:
+                            elif 'cards' in b.message:
                                 
-                                settings['cards'] = t.get_count()
+                                settings['cards'] = b.get_count()
                         
-                            elif 'items' in t.message:
+                            elif 'items' in b.message:
                                 
-                                settings['items'] = t.get_count()
+                                settings['items'] = b.get_count()
                                 
-                            elif 'spells' in t.message:
+                            elif 'spells' in b.message:
                                 
-                                settings['spells'] = t.get_count()
+                                settings['spells'] = b.get_count()
                                 
-                            elif 'cpus' in t.message:
+                            elif 'cpus' in b.message:
                                 
-                                settings['cpus'] = t.get_count()
+                                settings['cpus'] = b.get_count()
                                 
-def name_entry(id):
+                            elif 'diff' in b.message:
+                                
+                                settings['diff'] = b.get_count()
+                                
+def name_entry(id, color):
     btns = set_screen('name')
+    mouse = pg.Rect(0, 0, 1, 1)
 
     field = btns[1]
-    field.update_text('player {}'.format(id), tcolor=colors[id])
+    field.update_text(f'Player {id}', tcolor=color)
     
     running = True
     
     while running:
         
-        clock.tick(60)
-        
+        clock.tick(30)
+        mouse.center = pg.mouse.get_pos()
         new_screen(btns)
-
         field.update()
+        outline_buttons(mouse, btns)
         
         name = field.get_message()
 
-        x, y = pg.mouse.get_pos()
-    
-        r = pg.Rect(x, y, 1, 1)
-        
         for e in pg.event.get():
                
             if e.type == pg.QUIT:
@@ -891,67 +1287,68 @@ def name_entry(id):
 
             elif e.type == pg.MOUSEBUTTONDOWN:
 
-                for t in btns:
+                for b in btns:
                     
-                    if t.rect.colliderect(r):
+                    if b.rect.colliderect(mouse):
                         
                         m = field.get_message()
                         
-                        if t.message == 'OK' and name:
+                        if b.message == 'OK' and name:
                             
                             return name
                             
-                        elif t.message == 'back':
+                        elif b.message == 'back':
                             
                             return
 
 #new game stuff-------------------------------------------------------------------------
 
-def connect(ip=None): #try connecting to game
-    new_message('searching for game...')
+def connect(ip, port):
+    new_message('searching for game...', 500)
+    
+    print(ip, port)
 
     try:
              
-        net = Network(ip)
-        c = Client(win, net) #attempt to find running game
+        net = Network(ip, port)
+        c = Client(win, net, 'online')
         
     except InvalidIP:
         
-        new_message('invalid IP address', 1500)
+        new_message('invalid IP address', 2000)
         
-    except EOFError as e: #triggers if host or client leaves game
+    except PortInUse:
+        
+        new_message('the specified port is currently in use', 2000)
+        
+    except EOFError as e:
     
         print(e)
-        
         new_message('disconnecting...', 1000)
         
-    except Exception as e: #catch all other exceptions while playing
+    except Exception as e:
         
         print(e, 'c1')
-        
         new_message('no games could be found', 2000)
         
-def start_game(): #start a new game
+def start_game():
     new_message('starting game...', 500)
-    
-    subprocess.Popen([sys.executable, 'server.py'])
-    
-    net = Network()
-    
+
     try:
-                
-        c = Client(win, net) #try to host a game
         
-    except EOFError as e: #triggers if host leaves game
+        subprocess.Popen([sys.executable, 'server.py'])
+        net = Network('', get_data('port'))
+        print(net.server)
+        c = Client(win, net, 'online')
+        
+    except EOFError as e:
         
         print(e)
-
         new_message('diconnected', 1000)
         
-    except Exception as e: #catch any other exceptions
+    except Exception as e:
     
         print(e, 'c2')
-        
         new_message('an error occurred', 2000)
         
 def single_player(): #start a single player game
@@ -961,7 +1358,7 @@ def single_player(): #start a single player game
     
     g = Game('single')
     
-    Client(win, g)
+    Client(win, g, 'single')
     
     new_message('returning to main menu...', 1000) #if any errors occur or player leaves game, retrun to main menu
 
@@ -969,23 +1366,16 @@ def single_player(): #start a single player game
 
 def get_btn(btns, text): #find button in list of buttons based on text
     return next((b for b in btns if b.message == text), None)
-    
-def show_winner(players): #shows winner of the round
-    players.sort(key=lambda p: p.score, reverse=True)
-    
-    for i, p in enumerate(players):
         
-        new_message('1: {}: {} points'.format(p.pid, p.score))
-        
-class Particle:
-    def __init__(self, rect, color):
+class Particle1:
+    def __init__(self, rect, color, radius=None):
         self.pos = [random.randrange(rect.left, rect.right), random.randrange(rect.top, rect.bottom)]
         
         self.vel = [random.randrange(-5, 5), random.randrange(-5, 5)]
         
-        self.timer = random.randrange(10)
+        self.timer = random.randrange(1, 50)
         
-        self.r = random.randrange(3)
+        self.r = random.randrange(3) if radius is None else radius
         
         self.color = color
 
@@ -998,69 +1388,23 @@ class Particle:
         self.timer -= 1
         
         return self.timer
+        
+class Particle2:
+    def __init__(self, rect, color, radius=None):
+        self.pos = [random.randrange(rect.left, rect.right), random.randrange(rect.top, rect.bottom)]
+        
+        self.vel = [0, random.randrange(1, 5)]
 
-class Coin:
-    def __init__(self, game, tsize=20):
-        self.game = game
+        self.r = random.randrange(1, 10)
         
-        self.text = [Textbox('tails', tsize), Textbox('heads', tsize), Textbox('flip', tsize)]
-        
-    def move_text(self, pos):
-        for t in self.text:
-            
-            t.rect.topleft = pos
-            
-    def adjust_x(self, dx):
-        for t in self.text:
-            
-            t.rect.x += dx
-            
-    def adjust_y(self, dy):
-        for t in self.text:
-            
-            t.rect.y += dy
-            
-class Dice:
-    def __init__(self, game, tsize=20):
-        self.game = game
-        
-        self.text = [Textbox(str(i + 1), tsize) for i in range(6)]
-        self.text.append(Textbox('roll', tsize))
-            
-    def move_text(self, pos):
-        for t in self.text:
-            
-            t.rect.topleft = pos
-            
-    def adjust_x(self, dx):
-        for t in self.text:
-            
-            t.rect.x += dx
-            
-    def adjust_y(self, dy):
-        for t in self.text:
-            
-            t.rect.y += dy
-            
-class TurnIndicator:
-    def __init__(self, game, textbox):
-        self.game = game
-        
-        self.text = textbox
-        
-        self.rect = self.text.rect.copy()
-        
-    def change_color(self, tcolor):
-        self.text.tcolor = tcolor
-        
-    def get_image(self):
-        return self.text.get_image()
-        
-    def set_pos(self, rect):
-        self.rect.topright = rect.topleft
-        
-    def reset(self):
-        self.rect.bottomright = (0, 0)
+        self.color = color
+
+    def update(self):
+        self.pos[1] -= 2
+
+        self.r -= 1
+
+        return self.r
  
 class Target:
     def __init__(self, client):
@@ -1086,7 +1430,7 @@ class Target:
         self.counter = 0
         self.timer = 0
         
-        self.textbox.update_text('')
+        self.textbox.clear()
         
     def add_points(self, num, s):
         self.points.append(Points(num, s, self.rect.center))
@@ -1106,7 +1450,7 @@ class Target:
     def update_text(self):
         if self.counter > 0:
             
-            text = '+{}'.format(self.counter)
+            text = f'+{self.counter}'
             
         else:
             
@@ -1154,11 +1498,13 @@ class Points:
 
         if points > 0:
         
-            self.text = Textbox('+{}'.format(points), 30, (0, 255, 0))
+            self.text = Textbox(f'+{points}', 30, (0, 255, 0))
             
         else:
             
-            self.text = Textbox('{}'.format(points), 30, (255, 0, 0))
+            self.text = Textbox(f'{points}', 30, (255, 0, 0))
+            
+        self.text.add_outline((0, 0, 0))
         
         self.rect = self.text.rect
         self.rect.topleft = self.pos
@@ -1187,7 +1533,7 @@ class MovingCard:
         self.vel = [(self.target[0] - self.pos[0]) // 30, (self.target[1] - self.pos[1]) // 30]
         
     def get_image(self, mini=True):
-        return spritesheet.get_image(self.name, mini)
+        return spritesheet.get_image(self, mini)
         
     def update(self):
         self.pos[0] += self.vel[0]
@@ -1199,7 +1545,15 @@ class Pane:
     def __init__(self, rect, message, color=(0, 0, 0, 0), layer=0, tsize=10, tcolor=(255, 255, 255)):
         self.rect = rect
         self.textbox = Textbox(message, tsize, tcolor)
+
+        self.scroll_buttons = [Textbox('       v       ', 20), Textbox('       ^       ', 20)]
         
+        for b in self.scroll_buttons:
+            
+            b.add_background((0, 0, 0))
+            
+        self.lock = 1
+
         self.move_text()
         
         self.color = color
@@ -1211,6 +1565,14 @@ class Pane:
         self.image = self.get_image()
         self.bg = pg.Surface((cw, ch)).convert()
         
+    def resize(self, w, h):
+        tl = self.rect.topleft
+        self.rect.size = (w, h)
+        self.rect.topleft = tl
+        
+        self.image = self.get_image()
+        self.redraw()
+
     def get_image(self):
         s = pg.Surface(self.rect.size).convert_alpha()
         
@@ -1231,38 +1593,12 @@ class Pane:
     def move_text(self):
         self.textbox.rect.midbottom = self.rect.midtop
         
+        self.scroll_buttons[0].rect.midbottom = self.rect.midbottom
+        self.scroll_buttons[1].rect.midtop = self.rect.midtop
+        
     def move_body(self):
         self.rect.midtop = self.textbox.rect.midbottom
-        
-    def new_x(self, x):
-        dx = x - self.pos[0]
-        self.pos[0] = x
-        
-        self.adjust_pos()
-        
-        if hasattr(self, 'ref'):
-            
-            self.ref.x += dx
-            
-        if hasattr(self, 'sensor'):
-            
-            self.sensor.x += dx
-            
-    def new_y(self, y):
-        dy = y - self.pos[1]
-        self.pos[1] = y
-        
-        self.adjust_pos()
-        
-        if hasattr(self, 'ref'):
-            
-            self.ref.y += dy
-            
-        if hasattr(self, 'sensor'):
-            
-            self.sensor.y += dy
 
-        
     def update_text(self, message, tcolor=None):
         self.textbox.update_text(message, tcolor)
         
@@ -1271,13 +1607,13 @@ class Pane:
     def add_cards(self, cards, ypad=5, xpad=5, dir='y', color=None):
         if cards != self.cards:
 
-            if self.rect.size == (cw, ch):
+            if self.rect.width == cw:
                 
-                ypad = xpad = 0
-
-            if self.color:
+                xpad = 0
+            
+            if self.rect.height == ch:
                 
-                self.image.fill(self.color)
+                ypad = 0
             
             if dir == 'y':
             
@@ -1285,29 +1621,8 @@ class Pane:
                 x = 0
 
                 for c in cards:
-
-                    if self.rect.y + y + ypad + c.rect.height > self.rect.bottom:
-                        
-                        y = 0
-                        x = c.rect.width + xpad
                 
-                    c.rect.topleft = (self.rect.x + x + xpad, self.rect.y + y + ypad)
-                    
-                    rel_pos = (x + xpad, y + ypad)
-                    
-                    color = c.color if color is None else color
-                    
-                    if color:
-
-                        self.bg.fill(color)
-                        self.image.blit(self.bg, (rel_pos[0] - 2, rel_pos[1] - 2))
-                        
-                        c.color = color
-                        
-                    self.image.blit(c.get_image(), rel_pos)
-                    
-                    c.set_rel_pos(rel_pos)
-                    
+                    c.rect.midtop = (self.rect.centerx, self.rect.y + y + ypad)
                     y += c.rect.height + ypad
 
             elif dir == 'x':
@@ -1323,31 +1638,29 @@ class Pane:
                         y = c.rect.height + ypad
                     
                     c.rect.topleft = (self.rect.x + x + xpad, self.rect.y + y + ypad)
-                    
-                    rel_pos = (x + xpad, y + ypad)
-                    
-                    color = self.uids.get(c.uid) if color is None else color
-                    
-                    if color:
-
-                        self.bg.fill(color)
-                        self.image.blit(self.bg, (rel_pos[0] - 2, rel_pos[1] - 2))
-                        
-                        c.color = color
-                    
-                    self.image.blit(c.get_image(), rel_pos)
-                    
-                    c.set_rel_pos(rel_pos)
-                    
                     x += c.rect.width + xpad
 
             if hasattr(self, 'start_auto'):
-                
+
                 self.start_auto(60)
-                
+
             self.cards = cards.copy()
             
-        return self.cards
+            if self.lock == 0:
+                
+                self.go_to_bottom()
+                
+            self.redraw()
+            
+        if getattr(self, 'opened', True):
+            
+            cards = [c for c in self.cards if self.rect.bottom >= c.rect.bottom and self.rect.top <= c.rect.top]
+            
+        else:
+            
+            cards = []
+            
+        return cards
         
     def add_rows(self, cards, ypad=5, xpad=5):
         if self.cards != flatten(cards.values()):
@@ -1388,12 +1701,75 @@ class Pane:
                 
             self.cards = flatten(cards.values())
             
-        return self.cards
+        return [c for c in self.cards if self.rect.contains(c.rect)]
 
-    def draw(self, win):
+    def draw(self, win):  
         win.blit(self.image, self.rect)
         
         win.blit(self.textbox.text, self.textbox.rect)
+        
+    def redraw(self):
+        if self.color:
+            
+            self.image.fill(self.color)
+            
+        for c in self.cards:
+            
+            rel_pos = (c.rect.x - self.rect.x, c.rect.y - self.rect.y)
+            c.set_rel_pos(rel_pos)
+            
+            if c.color and spritesheet.check_name(c.name):
+
+                self.bg.fill(c.color)
+                self.image.blit(self.bg, (rel_pos[0] - 2, rel_pos[1] - 2))
+                
+            self.image.blit(c.get_image(), rel_pos)
+
+        if self.can_scroll_down(): 
+            
+            b = self.scroll_buttons[0]
+            rel_pos = (b.rect.x - self.rect.x, b.rect.y - self.rect.y)
+            self.image.blit(b.get_image(), rel_pos)
+            
+        if self.can_scroll_up():
+            
+            b = self.scroll_buttons[1]
+            rel_pos = (b.rect.x - self.rect.x, b.rect.y - self.rect.y)
+            self.image.blit(b.get_image(), rel_pos)
+        
+    def can_scroll_up(self):
+        return any(c.rect.top < self.rect.top for c in self.cards)
+        
+    def can_scroll_down(self):
+        return any(c.rect.bottom > self.rect.bottom for c in self.cards) and self.rect.size != (cw, ch)
+            
+    def scroll(self, mouse, dir):
+        if self.cards:
+        
+            if mouse.colliderect(self.rect) and dir == 5:
+                
+                if self.can_scroll_down():
+
+                    for c in self.cards:
+                        
+                        c.rect.y -= 25
+                        
+                    self.redraw()
+                    
+            elif mouse.colliderect(self.rect) and dir == 4:
+
+                if self.can_scroll_up():
+                
+                    for c in self.cards:
+                        
+                        c.rect.y += 25
+                    
+                    self.redraw()
+                    
+    def go_to_bottom(self):
+        while self.can_scroll_down():
+            
+            self.scroll(self.rect, 5)
         
 class Slider(Pane):
     def __init__(self, rect, message, color=(0, 0, 0, 0), layer=0, tsize=10, tcolor=(255, 255, 255), type=0, dir='y', sensor=None):
@@ -1430,6 +1806,34 @@ class Slider(Pane):
         
     def check_mode(self):
         return self.auto or self.mode is not None
+        
+    def new_x(self, x):
+        dx = x - self.pos[0]
+        self.pos[0] = x
+        
+        self.adjust_pos()
+        
+        if hasattr(self, 'ref'):
+            
+            self.ref.x += dx
+            
+        if hasattr(self, 'sensor'):
+            
+            self.sensor.x += dx
+            
+    def new_y(self, y):
+        dy = y - self.pos[1]
+        self.pos[1] = y
+        
+        self.adjust_pos()
+        
+        if hasattr(self, 'ref'):
+            
+            self.ref.y += dy
+            
+        if hasattr(self, 'sensor'):
+            
+            self.sensor.y += dy
         
     def adjust_pos(self):
         self.rect.topleft = self.pos
@@ -1594,27 +1998,21 @@ class Slider(Pane):
             
             self.sensor.height = 10
             self.sensor.y -= 10
-            
-info = ['log', 'is_turn', 'coin', 'dice', 'flipping', 'rolling', 'score', 'selection', 'unplayed', 'played', 'equipped', 'items', 'spells', 'ongoing', 'treasure', 'active_card', 'landscape']
-
-light_info = ['log', 'flipping', 'rolling', 'is_turn', 'coin', 'dice', 'score', 'ongoing', 'played' 'active_card', 'landscape', 'treasure']
-
-colors = ((0, 0, 255), (0, 255, 0), (255, 0, 0), (255, 255, 0), (0, 255, 255), (255, 0, 255), (255, 128, 0), (210, 105, 30), (255, 192, 203), (255, 127, 0))
 
 class Player:
     def __init__(self, client, pid, name=None):
         self.client = client
         
         self.pid = pid
-        self.name = name if name is not None else 'Player {}'.format(pid)
-        self.color = colors[pid]
+        self.name = name if name is not None else f'Player {pid}'
+        self.color = self.client.colors[pid]
 
         self.score = self.client.send('-s:ss')
         
         self.coin = None
         self.dice = None
         self.timer = 0
-        self.max = 60
+        self.frt = 0
         
         self.flipping = False
         self.rolling = False
@@ -1636,14 +2034,20 @@ class Player:
         
         self.card = Textbox('')
         
+    def __repr__(self):
+        return self.name
+        
+    def __str__(self):
+        return self.name
+        
     def update(self):
-        if self.flipping:
+        if self.flipping and not self.frt % 2:
                 
             self.coin = random.choice((0, 1))
             
-        elif self.rolling:
+        elif self.rolling and not self.frt % 2:
             
-            self.dice = random.choice(range(1, 7))
+            self.dice = random.choice(range(0, 6))
             
         if self.timer:
             
@@ -1658,11 +2062,19 @@ class Player:
                 if self.dice != -1:
                 
                     self.dice = None
+                    
+                self.timer = 0
+                    
+        self.frt = (self.frt + 1) % 500
+        
+        if self.active_card is None:
+
+            self.coin = None
+            self.dice = None
         
     def reset(self):
         self.score = self.client.send('-s:ss')
-       
-        
+
         self.coin = None
         self.dice = None
         
@@ -1696,18 +2108,15 @@ class Player:
         
     def get_image(self, mini=False):
         return self.card.text
-        
-    def get_info(self):
-        pass
-
-    def update_info(self, attr, val):        
-        pass
-            
-    def parse_log(self, val):
-        pass
             
     def get_target(self):
-        return client.targets.get(self.pid)
+        return self.client.targets.get(self.pid)
+        
+    def get_spot(self):
+        return self.client.get_spot(self.pid)
+        
+    def get_starting_point(self):
+        return self.get_spot().rect.topleft
         
     def play(self, uid):
         for c in self.unplayed:
@@ -1735,7 +2144,17 @@ class Player:
         
         setattr(self, deck, cards)
         
-        if deck == 'selection':
+        if deck == 'selection' and self is self.client.main_p:
+            
+            for c in self.selection:
+
+                for p in self.client.players:
+
+                    if p.name == c.name:
+ 
+                        c.color = p.color
+                        
+                        break
             
             if self.coin == -1:
                 
@@ -1778,7 +2197,7 @@ class Player:
                 
                 r = self.client.get_spot(self.pid).rect
                 self.client.add_particles(r, 100)
-                
+
                 break
                 
     def steal_item(self, target, uid):
@@ -1856,14 +2275,20 @@ class Player:
     def draw_treasure(self, name, uid):
         self.treasure.append(Card(name, uid))
         
-        r = self.client.get_spot(self.pid).rect
+        r = self.get_spot().rect
         self.client.add_particles(r, 100)
         
     def draw_item(self, name, uid):
         self.items.append(Card(name, uid))
         
+        r = self.get_spot().rect
+        self.client.add_particles(r, 100, (255, 0, 0))
+        
     def draw_spell(self, name, uid):
         self.spells.append(Card(name, uid))
+        
+        r = self.get_spot().rect
+        self.client.add_particles(r, 100, (255, 0, 255))
         
     def cast(self, uid, target):
         for c in self.spells:
@@ -1922,7 +2347,7 @@ class Player:
                 
                 self.client.shop.remove(c)
                 card = c
-                
+
                 break
                 
         c = card
@@ -1959,8 +2384,16 @@ class Player:
     def update_name(self, name):
         self.name = name
     
-    def new_ac(self, c):
+    def new_ac(self, c, wait):
         self.active_card = c
+        
+        if wait == 'coin':
+            
+            self.coin = -1
+            
+        elif wait == 'dice':
+            
+            self.dice = -1
         
     def remove_ac(self):
         self.active_card = None
@@ -1993,12 +2426,12 @@ class Player:
     def start_roll(self):
         self.rolling = True
         
-    def end_roll(self, dice):
+    def end_roll(self, dice, timer):
         self.rolling = False
         
-        self.dice = dice
+        self.dice = dice - 1
         
-        self.timer = self.max
+        self.timer = timer
         
     def remove_coins(self, uid):
         for c in self.treasure:
@@ -2010,19 +2443,15 @@ class Player:
                 break
 
 class Card:
-    def __init__(self, name, uid=None):
+    def __init__(self, name, uid=None, color=None):
         self.name = name
         self.uid = uid if uid is not None else id(self)
-        
-        self.rect = pg.Rect(0, 0, cw, ch)
+
         self.rel_pos = [0, 0]
         
-        self.color = None
+        self.color = color
         
-        if not spritesheet.check_name(self.name):
-            
-            w, h = self.get_image().get_size()
-            self.rect = pg.Rect(0, 0, w, h)
+        self.rect = self.get_image().get_rect()
             
         self.on = False
         
@@ -2030,7 +2459,7 @@ class Card:
         self.rel_pos = pos
         
     def copy(self):
-        return type(self)(self.name, self.uid)
+        return type(self)(self.name, self.uid, self.color)
         
     def __eq__(self, other):
         return self.uid == other.uid
@@ -2039,7 +2468,10 @@ class Card:
         return self.name
         
     def get_image(self, mini=True):
-        return spritesheet.get_image(self.name, mini)
+        return spritesheet.get_image(self, mini)
+        
+    def get_outline(self):
+        return get_outline(self.rect, r=3)
         
     def update(self, name, uid):
         self.name = name
@@ -2050,22 +2482,22 @@ class Card:
         self.rect.y = rect.y + self.rel_pos[1]
         
 class Client:
-    def __init__(self, screen, connection):
+    def __init__(self, screen, connection, mode):
         self.screen = screen
-        pg.display.set_caption('test')
-        
+        self.mode = mode
+        self.status = 'waiting' if self.mode == 'online' else 'start'
+
         self.frame = pg.Surface((width, height)).convert()
+        self.camera = self.frame.get_rect()
         
         self.clock = pg.time.Clock()
-        
-        self.mouse = pg.Rect(0, 0, 1, 1)
-        
-        self.n = connection #if no game is sent, we need network to connect to game, otherwise use game as network
+
+        self.n = connection
         self.playing = True
-        self.status = 'waiting'
-        
-        self.pid = int(self.n.get_pid())
-        self.name = 'player {}'.format(self.pid)
+        self.logs = {}
+
+        self.pid = self.n.get_pid()
+        self.colors = gen_colors(self.pid + 1)
         self.players = [Player(self, self.pid)]
         
         self.main_p = self.players[0]
@@ -2073,36 +2505,38 @@ class Client:
         self.event = None
         self.view_card = None
         self.last_item = None
-
-        self.flipping = False
-        self.rolling = False
         
-        self.cards = [] #visible cards
-        self.lines = [] #visible lines (used to show 
+        self.card_outline = get_outline(pg.Rect(0, 0, cw, ch), r=4)
+        self.outlined_card = None
+        
+        self.cards = []
+        self.lines = []
         self.moving_cards = []
         self.particles = []
         self.shop = []
 
         self.loop_times = []
 
-        self.new_game()
+        self.set_screen()
+        self.add_panes()
         
         self.run()
         
 #screen stuff-----------------------------------------------------------------------------------
         
     def set_screen(self):
+        ph = ch * 6
+        
         self.panes = {}
         self.text = {}
-        self.coins = {}
-        self.dices = {}
         self.targets = {}
+        self.btns = []
 
         pane = Pane(pg.Rect(0, 0, cw * 1.5, ph), 'your sequence', (255, 0, 0))
         pane.rect.bottomleft = (20, height - 20)
         pane.move_text()
         self.panes['card area'] = pane
-        
+
         pane = Pane(pg.Rect(0, 0, cw * 2.5, ph), 'selection', (0, 0, 255))
         pane.rect.bottomright = (width - 20, height - 20)
         pane.move_text()
@@ -2119,7 +2553,7 @@ class Client:
         pane.new_y(height)
         self.panes['extra cards'] = pane
         
-        text = Textbox('play', 50)
+        text = Textbox('', 50, (0, 255, 0))
         text.rect.midbottom = (width // 2, height)
         text.rect.y -= 10
         self.text['play'] = text
@@ -2139,11 +2573,17 @@ class Client:
         text.rect.y += 30
         text.rect.x -= 30
         self.text['options'] = text
+        self.btns.append(text)
         
-        text = Textbox('', 20, tcolor=(0, 255, 0))
+        text = Textbox(self.status, 20, tcolor=(0, 255, 0))
         text.rect.centerx = self.text['options'].rect.centerx
         text.rect.y += 60
         self.text['status'] = text
+        
+        text = Textbox('', 20, (255, 255, 0))
+        text.rect.midtop = self.text['status'].rect.midbottom
+        text.rect.y += 10
+        self.text['round'] = text
         
         text = Textbox('', 100, tcolor=(255, 255, 0))
         text.rect.center = (width // 2, height // 2)
@@ -2163,157 +2603,279 @@ class Client:
         pane.rect.x -= 10
         pane.move_text()
         self.panes['last used item'] = pane
-
-        for t in self.coin.text + self.dice.text:
         
-            t.rect.bottomright = self.panes['active card'].rect.bottomleft
-            t.rect.x -= 20
+        self.coin = [Textbox('tails', 20, (255, 0, 0)), Textbox('heads', 20, (0, 255, 0)), Textbox('flip', 20, (255, 255, 0))]
+        self.dice = [Textbox(str(i + 1), 20, tcolor) for i, tcolor in enumerate(gen_colors(6))] + [Textbox('roll', 20, (255, 255, 0))]
+        self.select = Textbox('selecting', 15, (255, 255, 0))
+
+        for t in self.coin + self.dice + [self.select]:
+
+            t.add_outline((0, 0, 0))
+            
+#pane stuff --------------------------------------------------------------------------------------------------------------
 
     def add_panes(self):
-        left = self.panes['card area'].rect.right
-        right = self.panes['selection area'].rect.left
-        step = (right - left) // len(self.players) 
+        col = 5
+        rows = len(self.players) // col
+        ph = (height // (rows + 1)) * 0.6
 
-        for i, x in zip(range(len(self.players)), range(left + step // 2, right + step, step)):    
-            
-            p = self.players[i]
+        y = 40
 
-            pane = Pane(pg.Rect(x, 40, cw * 1.5, ph * 1.5), '', tsize=20, layer=len(self.players) - i, color=(0, 0, 0), tcolor=p.color)
-            self.panes['spot {}'.format(i)] = pane
+        for row in range(rows + 1):
+            
+            players = self.players[row * col:(row + 1) * col]
 
-            pane = Slider(pg.Rect(x, 40, cw * 1.5, ph), '', tsize=20, layer=(len(self.players) - i) + 1, dir='x', tcolor=p.color)
-            self.panes['items {}'.format(i)] = pane
+            if not players:
+                
+                break
             
-            pane = Slider(pg.Rect(x, 40, cw * 1.5, ph), '', tsize=20, layer=(len(self.players) - i) + 1, dir='-x', tcolor=p.color)
-            self.panes['landscape {}'.format(i)] = pane
+            left = self.panes['card area'].rect.right
+            right = self.panes['selection area'].rect.left - 50
+            step = (right - left) // len(players) 
+
+            for i, x in zip(range(len(players)), range(left + step // 2, right + step, step)):
+                
+                p = players[i]
+                
+                i += (col * row)
+        
+                pane = Pane(pg.Rect(x, y, cw * 1.5, ph), p.name, tsize=20, color=(0, 0, 0), tcolor=p.color)
+                pane.lock = 0
+                self.panes[f'spot {i}'] = pane
+
+                pane = Pane(pg.Rect(x, y, cw * 1.5, ch), '', tsize=20, tcolor=p.color)
+                pane.rect.x = pane.rect.right
+                pane.rect.y += 5
+                pane.move_text()
+                self.panes[f'ac {i}'] = pane
+                
+                pane = Slider(pg.Rect(x, y, cw * 1.5, ph), '', tsize=20, dir='-x', tcolor=p.color)
+                self.panes[f'landscape {i}'] = pane
+                
+                tr = self.panes[f'spot {i}'].rect.topright
+                
+                target = Target(self)
+                target.rect.bottomleft = self.panes[f'spot {i}'].rect.topright
+                target.rect.x += 5
+                self.targets[p.pid] = target
+                
+            y += 40 + ph
             
-            tr = self.panes['spot {}'.format(i)].rect.topright
+        for t in list(self.text.keys()):
             
-            coin = Coin(self)
-            coin.move_text((tr[0], tr[1] - coin.text[0].rect.height))
-            coin.adjust_x(15)
-            self.coins[i] = coin
+            if 'score' in t:
+                
+                del self.text[t]
             
-            dice = Dice(self)
-            dice.move_text((tr[0], tr[1] - dice.text[0].rect.height))
-            dice.adjust_x(15)
-            self.dices[i] = dice
-            
-            target = Target(self)
-            target.rect.bottomleft = self.panes['spot {}'.format(i)].rect.topright
-            target.rect.x += 5
-            self.targets[i] = target
-            
-        y = 0
+        y = 5
         
         for i, p in enumerate(self.players):
 
-            text = Textbox('{}: {}'.format(p.name, p.score))
-            text.rect.topleft = (0, y)
-            self.text['score {}'.format(i)] = text
+            text = Textbox(f'{p.name}: {p.score}', tsize=12, tcolor=p.color)
+            text.rect.topleft = (5, y)
+            self.text[f'score {i}'] = text
             
             y += text.rect.height
-            
-    def update_panes(self):
-        self.cards.clear()
-        
-        for i, p in enumerate(self.players):
 
-            pane = self.panes['spot {}'.format(i)]  
+    def relable_panes(self):
+        for i, p in enumerate(self.players):
+            
+            pane = self.panes[f'spot {i}']
             pane.update_text(p.name, p.color)
-            cards = [c.copy() for c in p.played]
-            self.cards += pane.add_cards(cards)
             
             target = self.targets[p.pid]
-            tl = target.rect.topleft
             target.rect.topleft = pane.textbox.rect.topright
             target.rect.x += 5
-            if target.rect.topleft != tl:
-                target.adjust_course()
+            target.adjust_course()
             
-            if p.is_turn:
+            text = self.text[f'score {i}']
+            tl = text.rect.topleft
+            text.update_text(f'{p.name}: {p.score}', tcolor=p.color)
+            text.rect.topleft = tl
+            
+    def update_scores(self, scores):
+        counter = 0
+        
+        for pid, score in scores.items():
+            
+            p = self.get_player_by_pid(int(pid))
                 
-                self.turnid.set_pos(pane.textbox.rect)
+            if p:
+                
+                if p.score == score:
+                    
+                    counter += 1
+                    
+                else:
+                
+                    p.score = score
+                    
+        if counter != len(self.players):
+                
+            y = 5
+            players = sorted(self.players, key=lambda p: p.score, reverse=True)
             
-            pane = self.panes['last used item'] 
-            if self.last_item:
-                cards = [self.last_item]
-                self.cards += pane.add_cards(cards)
-            else:
-                self.cards += pane.cards
+            for i, p in enumerate(players):
             
-            pane = self.panes['items {}'.format(i)]
-            cards = []
-            if p.active_card:
-                cards.append(p.active_card.copy())
-            #if p.used_items:
-            #    cards.append(p.used_items[-1].copy())
-            self.cards += pane.add_cards(cards)
+                text = self.text[f'score {i}']
+                text.update_text(f'{p.name}: {p.score}', tcolor=p.color)
+                text.rect.topleft = (5, y)
+                y += text.rect.height
+
+    def update_panes(self):
+        self.cards.clear()
+
+        self.cards += self.panes['last used item'].add_cards([self.last_item] if self.last_item is not None else [])
+        self.cards += self.panes['event'].add_cards([self.event] if self.event is not None else [])
+        self.cards += self.panes['shop'].add_cards(self.shop, dir='x')
+
+        for i, p in enumerate(self.players):
+
+            self.cards += self.panes[f'spot {i}'].add_cards(p.played)
+            self.cards += self.panes[f'ac {i}'].add_cards([p.active_card] if p.active_card is not None else [])
+            
+            cards = p.ongoing.copy()
+            
+            if self.status not in ('waiting', 'playing', 'draft'):
+                
+                cards += [c.copy() for c in p.treasure]
             
             if p.landscape is not None:
-            
-                pane = self.panes['landscape {}'.format(i)]
-                cards = [p.landscape] + [c.copy() for c in p.ongoing]
-                if self.status not in ('waiting', 'playing'):
-                    cards += p.treasure
-                self.cards += pane.add_cards(cards)
                 
-            else:
+                cards.insert(0, p.landscape)
                 
-                self.panes['landscape {}'.format(i)].cards.clear()
+            self.cards += self.panes[f'landscape {i}'].add_cards(cards)
 
             if p == self.main_p:
                 
-                self.cards += self.panes['card area'].add_cards(p.unplayed)
+                self.cards += self.panes['card area'].add_cards(p.unplayed.copy())
                 self.cards += self.panes['extra cards'].add_rows({(255, 0, 0): p.items + p.equipped, (255, 0, 255): p.spells, (255, 255, 0): p.treasure})
-                self.cards += self.panes['selection area'].add_cards(p.selection)
+                self.cards += self.panes['selection area'].add_cards(p.selection.copy())
+                self.cards += self.panes['active card'].add_cards([p.active_card.copy()] if p.active_card is not None else [])
+      
+    def get_pane(self, key):
+        return self.panes.get(key)
+        
+    def get_pane_by_player(self, name, player):
+        key = name + ' ' + str(self.players.index(player))
+        
+        return self.panes.get(key)
 
-                self.cards += self.panes['active card'].add_cards([p.active_card] if p.active_card is not None else [])
- 
-        y = 0
-                
-        players = sorted(self.players, key=lambda p: p.score, reverse=True)
+#option stuff------------------------------------------------------------------------------
+              
+    def set_option(self):
+        mp = self.main_p
+        option = ''
+        tcolor = (0, 0, 0)
+        text = self.text['play']
         
-        for i, p in enumerate(players):
-        
-            text = self.text['score {}'.format(i)]
-            text.update_text('{}: {}'.format(p.name, p.score))
-            text.rect.topleft = (0, y)
-            y += text.rect.height
+        if mp.coin is not None:
             
-        pane = self.panes['event']
-        pane.cards.clear()
-        self.cards += pane.add_cards([self.event] if self.event is not None else [])
+            option = self.coin[mp.coin].message
+            tcolor = self.coin[mp.coin].tcolor
+            
+        elif mp.dice is not None:
+            
+            option = self.dice[mp.dice].message
+            tcolor = self.dice[mp.dice].tcolor
+            
+        elif mp.selection:
+            
+            option = 'select'
+            tcolor = (255, 255, 0)
+            
+        elif mp.is_turn:
+            
+            option = 'play'
+            tcolor = (0, 255, 0)
+            
+        if text.message != option:
+            
+            text.update_text(option, tcolor)
         
-        pane = self.panes['shop']
-        self.cards += pane.add_cards(self.shop, dir='x')
+            if option in ('play', 'flip', 'roll'):
+                
+                if text not in self.btns:
+                    
+                    self.btns.append(text)
+                    
+            else:
+                
+                if text in self.btns:
+                    
+                    self.btns.remove(text)
+        
+    def is_option(self, option):
+        return self.get_option() == option
+        
+    def get_option(self):
+        return self.text['play'].message
+        
+#status stuff----------------------------------------------------------------------------------
+
+    def change_round(self, text):
+        self.text['round'].update_text(text)
+        
+    def set_status(self, stat):
+        btn = self.text['status']
+        
+        if stat == 'waiting':
+        
+            if (self.mode == 'online' and self.pid == 0 and len(self.players) > 1) or self.mode == 'single':
+        
+                stat = 'start'
+                
+        elif stat == 'new round':
+            
+            if self.pid != 0:
+                
+                stat = 'round over'
+                
+        elif stat == 'new game':
+            
+            if self.pid != 0:
+                
+                stat = 'game over'
+
+        self.status = stat
+        btn.update_text(stat)
+        
+        if stat in ('new round', 'new game', 'start'):
+            
+            if btn not in self.btns:
+            
+                self.btns.append(btn)
+            
+        elif btn in self.btns:
+            
+            self.btns.remove(btn)
+            
+    def get_status(self):
+        return self.text['status'].message
+        
+    def is_status(self, stat):
+        return self.get_status() == stat
                 
 #start up stuff-----------------------------------------------------------------------------------------
 
-    def new_game(self):
-        self.turnid = TurnIndicator(self, Textbox('->', 20))
-        self.turnid.reset()
-        
-        self.coin = Coin(self, 50)
-        self.dice = Dice(self, 50)
-        
-        self.set_screen()
-        self.add_panes()
-        
     def reset(self):
-        for p in self.panes.values():
+        for p in list(self.panes.values()):
             
             p.reset()
             
         for p in self.players:
             
             p.reset()
-            
+
         self.cards.clear()
         self.shop.clear()
         self.event = None
+        self.last_item = None
         
-        self.status = 'waiting'
+        self.status = 'waiting' if self.mode == 'online' else 'start'
+        self.change_round('')
+
+        self.reset_win_screen()
         
     def new_round(self):
         for p in self.players:
@@ -2345,289 +2907,327 @@ class Client:
                 self.playing = False
                 
             else:
-                
+
                 return reply
                 
     def set_name(self):
-        name = name_entry(self.pid)
+        name = name_entry(self.pid, self.colors[self.pid])
         
         if not name:
             
             self.exit()
             
         else:
-            
-            self.name = name
-            self.main_p.name = name
-            self.send('name,{}'.format(name))
-            
-#log stuff-----------------------------------------------------------------------------
 
-    def new_info(self):
-        if self.send('u'):
+            self.main_p.name = name
+            self.send(f'name,{name}')
+            
+#server stuff-----------------------------------------------------------------------------
+        
+    def get_info(self):
+        u, scores = self.send('u')
+        self.update_scores(scores)
+        
+        if u:
             
             info = self.send('info')
 
-            glog = info.get('g')
-            
-            if glog:
-            
-                for log in glog:
-                    
-                    self.parse_log('g', log)
-                    
-                del info['g']
-                
-            for pid in info:
-                
-                pid = int(pid)
-                
-                if not any(p.pid == pid for p in self.players):
-                    
-                    self.add_player(pid)
-            
             for key in info:
                 
-                logs = info[key]
-                
-                for log in logs:
+                if key in self.logs:
                     
-                    self.parse_log(int(key), log)
-            
-    def parse_log(self, pid, log):
-        type = log.get('t')
+                    self.logs[key] += info[key]
+                    
+                else:
+                    
+                    self.logs[key] = info[key]
+
+    def update_info(self):
+        glogs = self.logs.get('g')
         
-        if 'c' in log:
-        
-            name, uid = log.get('c')
-        
-        if pid == 'g':
+        if glogs:
+
+            self.parse_logs('g', glogs[:5])
+            self.logs['g'] = self.logs['g'][5:]
             
-            if type == 'fill':
-                
-                self.shop.append(Card(name, uid))
-                
-            elif type == 'sw':
-                
-                self.swap(log.get('c1'), log.get('c2'))
-                
-            elif type == 'add':
-                
-                self.add_player(log.get('pid'))
-                
-            elif type == 'del':
-                
-                self.remove_player(log.get('pid'))
-                
-            elif type == 'ord':
-                
-                self.reorder(log.get('ord'))
-                
-            elif type == 'sd':
-                
-                self.shift_down(log.get('pid'))
-                
-            elif type == 'su':
-                
-                self.shift_up(log.get('pid'))
-                
-            elif type == 'fin':
-                
-                self.win_screen(log.get('w')[0])
-                
-            elif type == 'res':
-                
-                self.reset()
-                
-            elif type == 'nt':
-            
-                self.switch_turn(log.get('pid'))
-                
-            elif type == 'ns':
-                
-                self.new_status(log.get('stat'))
-                
-            elif type == 'se':
-                
-                self.set_event(name, uid)
-                
-            elif type == 'nr':
-                
-                self.new_round()
-                
         else:
             
-            p = self.get_player_by_pid(pid)
+            for key, logs in self.logs.items():
+                
+                if key != 'g' and logs:
+                    
+                    pid = int(key)
+                    
+                    if not self.get_player_by_pid(pid):
+                        
+                        self.add_player(pid)
+                        
+                    self.parse_logs(pid, logs[:5])
+                    self.logs[key] = self.logs[key][5:]
+                    
+                    break
             
-            if type == 'play' and not log.get('d'):
-                
-                p.play(uid)
-                
-            elif type in ('gp', 'lp', 'give', 'sp'):
-                
-                self.unpack_points(pid, log)
-                
-            elif type == 'nl':
-                
-                p.new_lead(uid)
-                
-            elif type == 'nd':
-                
-                p.new_deck(log.get('deck'), log.get('cards'))
-                
-            elif type == 'cd':
+    def parse_logs(self, pid, logs):
+        for log in logs:
+        
+            type = log.get('t')
             
-                p.clear_deck(log.get('d'))
-                
-            elif type == 'eq':
-                
-                p.equip(uid)
-                
-            elif type == 'ueq':
-                
-                p.unequip(uid)
-                
-            elif type == 'st':
-                
-                p.steal_treasure(self.get_player_by_pid(log.get('target')), uid)
-                
-            elif type == 'si':
-                
-                p.steal_item(self.get_player_by_pid(log.get('target')), uid)
-                
-            elif type == 'ss':
+            if 'c' in log:
             
-                p.steal_spell(self.get_player_by_pid(log.get('target')), uid)
-                
-            elif type == 'gt':
-                
-                p.give_treasure(self.get_player_by_pid(log.get('target')), uid)
-                
-            elif type == 'gi':
-                
-                p.give_item(self.get_player_by_pid(log.get('target')), uid)
-                
-            elif type == 'gs':
+                name, uid = log.get('c')
             
-                p.give_spell(self.get_player_by_pid(log.get('target')), uid)
+            if pid == 'g':
                 
-            elif type == 'ut':
+                if type == 'fill':
+                    
+                    self.shop.append(Card(name, uid))
+                    
+                elif type == 'sw':
+                    
+                    self.swap(log.get('c1'), log.get('c2'))
+                    
+                elif type == 'add':
+                    
+                    self.add_player(log.get('pid'))
+                    
+                    if self.mode == 'online':
                 
-                p.use_treasure(uid)
+                        if self.pid == 0 and len(self.players) > 1:
+                        
+                            self.set_status('start')
+
+                elif type == 'del':
+                    
+                    self.remove_player(log.get('pid'))
+                    
+                    if self.pid == 0:
+                    
+                        if self.mode == 'online':
+
+                            if len(self.players) == 1 and self.is_status('start'):
+                            
+                                self.set_status('waiting')
+                            
+                            if self.get_status() not in ('waiting', 'start'):
+                                
+                                self.send('reset')
+                    
+                elif type == 'ord':
+                    
+                    self.reorder(log.get('ord'))
+                    
+                elif type == 'sd':
+                    
+                    self.shift_down(log.get('pid'))
+                    
+                elif type == 'su':
+                    
+                    self.shift_up(log.get('pid'))
+                    
+                elif type == 'fin':
+                    
+                    self.win_screen(log.get('w'))
+                    
+                elif type == 'res':
+                    
+                    self.reset()
+                    
+                elif type == 'nt':
                 
-            elif type == 'ui':
+                    self.switch_turn(log.get('pid'))
+                    
+                elif type == 'ns':
+                    
+                    self.set_status(log.get('stat'))
+                    
+                elif type == 'se':
+                    
+                    self.set_event(name, uid)
+                    
+                elif type == 'nr':
+                    
+                    self.new_round()
+                    
+                elif type == 'ur':
+
+                    self.change_round(log.get('s'))
+                    
+            else:
                 
-                p.use_item(uid, name)
+                p = self.get_player_by_pid(pid)
                 
-            elif type in ('dt', 'at'):
+                if type == 'play' and not log.get('d'):
+                    
+                    p.play(uid)
+                    
+                elif type in ('gp', 'lp', 'give', 'sp'):
+                    
+                    self.unpack_points(pid, log)
+                    
+                elif type == 'nl':
+                    
+                    p.new_lead(uid)
+                    
+                elif type == 'nd':
+                    
+                    p.new_deck(log.get('deck'), log.get('cards'))
+                    
+                elif type == 'cd':
                 
-                p.draw_treasure(name, uid)
+                    p.clear_deck(log.get('d'))
+                    
+                elif type == 'eq':
+                    
+                    p.equip(uid)
+                    
+                elif type == 'ueq':
+                    
+                    p.unequip(uid)
+                    
+                elif type == 'st':
+                    
+                    p.steal_treasure(self.get_player_by_pid(log.get('target')), uid)
+                    
+                elif type == 'si':
+                    
+                    p.steal_item(self.get_player_by_pid(log.get('target')), uid)
+                    
+                elif type == 'ss':
                 
-            elif type in ('di', 'ai'):
+                    p.steal_spell(self.get_player_by_pid(log.get('target')), uid)
+                    
+                elif type == 'gt':
+                    
+                    p.give_treasure(self.get_player_by_pid(log.get('target')), uid)
+                    
+                elif type == 'gi':
+                    
+                    p.give_item(self.get_player_by_pid(log.get('target')), uid)
+                    
+                elif type == 'gs':
                 
-                p.draw_item(name, uid)
+                    p.give_spell(self.get_player_by_pid(log.get('target')), uid)
+                    
+                elif type == 'ut':
+                    
+                    p.use_treasure(uid)
+                    
+                elif type == 'ui':
+                    
+                    p.use_item(uid, name)
+                    
+                elif type in ('dt', 'at'):
+                    
+                    p.draw_treasure(name, uid)
+                    
+                elif type in ('di', 'ai'):
+                    
+                    p.draw_item(name, uid)
+                    
+                elif type == 'ds':
+                    
+                    p.draw_spell(name, uid)
+                    
+                elif type == 'as':
+                    
+                    p.add_spell(name, uid)
+                    
+                elif type == 'cast':
+                    
+                    p.cast(uid, self.get_player_by_pid(log.get('target')))
+                    
+                elif type in ('rs', 'disc'):
+                    
+                    p.discard(uid)
+                    
+                elif type == 'buy':
+                    
+                    p.buy(uid, log.get('ctype'))
+                    
+                elif type == 'au':
+                    
+                    p.add_unplayed(name, uid)
+                    
+                elif type == 'd':
+                    
+                    p.draft(uid)
+                    
+                elif type == 'cn':
+                    
+                    p.update_name(log.get('name'))
+                    self.relable_panes()
+                    
+                elif type == 'aac':
+                    
+                    p.new_ac(Card(name, uid), log.get('w'))
+                    
+                elif type == 'rac':
+                    
+                    p.remove_ac()
+                    
+                elif type == 'sl':
+                    
+                    p.set_landscape(Card(name, uid))
+                    
+                elif type == 'sels':
+                    
+                    p.new_deck('selection', log.get('cards'))
+                    
+                elif type == 'sele':
+                    
+                    p.cancel_select()
+                    
+                elif type == 'cfr':
+                    
+                    p.flip_request()
+                    
+                elif type == 'cfs':
+                    
+                    p.start_flip()
+                    
+                elif type == 'cfe':
+                    
+                    p.end_flip(log.get('coin'), log.get('ft'))
+
+                elif type == 'drr':
+                    
+                    p.roll_request()
+                    
+                elif type == 'drs':
+                    
+                    p.start_roll()
+                    
+                elif type == 'dre':
+                    
+                    p.end_roll(log.get('dice'), log.get('rt'))
+                    
+                elif type == 'rc':
                 
-            elif type == 'ds':
-                
-                p.draw_spell(name, uid)
-                
-            elif type == 'as':
-                
-                p.add_spell(name, uid)
-                
-            elif type == 'cast':
-                
-                p.cast(uid, self.get_player_by_pid(log.get('target')))
-                
-            elif type in ('rs', 'disc'):
-                
-                p.discard(uid)
-                
-            elif type == 'buy':
-                
-                p.buy(uid, log.get('ctype'))
-                
-            elif type == 'au':
-                
-                p.add_unplayed(name, uid)
-                
-            elif type == 'd':
-                
-                p.draft(uid)
-                
-            elif type == 'cn':
-                
-                p.update_name(log.get('name'))
-                
-            elif type == 'aac':
-                
-                p.new_ac(Card(name, uid))
-                
-            elif type == 'rac':
-                
-                p.remove_ac()
-                
-            elif type == 'sl':
-                
-                p.set_landscape(Card(name, uid))
-                
-            elif type == 'sels':
-                
-                p.new_deck('selection', log.get('cards'))
-                
-            elif type == 'sele':
-                
-                p.cancel_select()
-                
-            elif type == 'cfr':
-                
-                p.flip_request()
-                
-            elif type == 'cfs':
-                
-                p.start_flip()
-                
-            elif type == 'cfe':
-                
-                p.end_flip(log.get('coin'), log.get('tf'))
-                
-            elif type == 'drr':
-                
-                p.roll_request()
-                
-            elif type == 'drs':
-                
-                p.start_roll()
-                
-            elif type == 'dre':
-                
-                p.end_roll(log.get('dice'))
-                
-            elif type == 'rc':
-            
-                p.remove_coins(uid)
-                
-            elif type == 'score':
-                
-                p.score = log.get('s')
+                    p.remove_coins(uid)
      
 #main loop-----------------------------------------------------------------------------
             
     def run(self):
         self.set_name()
-        
+
         while self.playing:
         
             self.clock.tick(30)
+            
+            #print(self.clock.get_fps())
 
-            self.new_info()
+            self.get_info()
+            self.update_info()
             
             self.events()
             self.update()
             self.draw()
-       
+            
     def events(self):
-        self.mouse.topleft = pg.mouse.get_pos()
+        mouse = pg.Rect(0, 0, 1, 1)
+        mouse.center = pg.mouse.get_pos()
+        
+        outline_buttons(mouse, self.btns)
 
         for e in pg.event.get():
             
@@ -2644,7 +3244,6 @@ class Client:
                 elif e.key == pg.K_s and self.pid == 0:
                     
                     self.send('start')
-                    self.new_game()
                     
                 elif e.key == pg.K_p:
                     
@@ -2658,7 +3257,7 @@ class Client:
 
                     for c in self.cards:
                         
-                        if c.rect.colliderect(self.mouse):
+                        if c.rect.colliderect(mouse):
                             
                             self.view_card = c
                             
@@ -2672,64 +3271,88 @@ class Client:
                     
             elif e.type == pg.MOUSEBUTTONDOWN:
                 
-                if self.mouse.colliderect(self.text['options'].rect):
-                    
-                    game_menu(self)
-                    
-                    return
-                    
-                elif self.mouse.colliderect(self.text['status'].rect) and self.pid == 0:
-                    
-                    self.send('continue')
-
-                if self.mouse.colliderect(self.text['play'].rect):
-                    
-                    self.send('play')
-                    
-                elif self.mouse.colliderect(self.coin.text[-1].rect) and self.main_p.coin is not None:
-                    
-                    self.send('flip')
-
-                elif self.mouse.colliderect(self.dice.text[-1].rect) and self.main_p.dice is not None:
-
-                    self.send('roll')
-                    
-                else:
-                    
-                    for c in self.cards:
+                if e.button == 1:
+                
+                    if mouse.colliderect(self.text['options'].rect):
                         
-                        if self.mouse.colliderect(c.rect):
+                        game_menu(self)
+                        
+                        return
+                        
+                    elif mouse.colliderect(self.text['status'].rect) and self.pid == 0:
+                        
+                        stat = self.get_status()
+                        
+                        if stat == 'start':
+                            
+                            self.send('start')
+                            
+                        else:
+                            
+                            self.send('continue')
 
-                            self.send(str(c.uid))
+                    elif mouse.colliderect(self.text['play'].rect):
+                        
+                        option = self.get_option()
+                        mp = self.main_p
+                        
+                        if option == 'play' and mp.is_turn:
+                        
+                            self.send('play')
                             
-                            break
+                        elif option == 'flip' and mp.coin is not None:
                             
+                            self.send('flip')
+                            
+                        elif option == 'roll' and mp.dice is not None:
+                            
+                            self.send('roll')
+                        
                     else:
                         
-                        self.send('select')
-                        
-                for p in self.panes.values():
-                    
-                    if hasattr(p, 'click'):
-                        
-                        if p.rect.colliderect(self.mouse):
+                        for c in self.cards:
                             
-                            p.click()
+                            if mouse.colliderect(c.rect):
+
+                                self.send(str(c.uid))
+                                
+                                break
+                            
+                    for p in self.panes.values():
+                        
+                        if hasattr(p, 'click'):
+                            
+                            if p.rect.colliderect(mouse):
+                                
+                                p.click()
+                                
+                                break
+                                
+                elif e.button in (4, 5):
+
+                    for pane in self.panes.values():
+                        
+                        if pane.rect.colliderect(mouse):
+                        
+                            pane.scroll(mouse, e.button)
                             
                             break
                         
-        for pane in self.panes.values():
-            
-            if hasattr(pane, 'hit'):
-                
-                pane.hit(self.mouse)
-                        
     def update(self):  
+        mouse = pg.Rect(0, 0, 1, 1)
+        mouse.center = pg.mouse.get_pos()
+        
+        self.set_option()
+
         for p in self.players:
             
             p.update()
 
         for pane in self.panes.values():
+            
+            if hasattr(pane, 'hit'):
+                
+                pane.hit(mouse)
             
             if hasattr(pane, 'update'):
                 
@@ -2739,7 +3362,10 @@ class Client:
 
         for c in self.cards:
             
-            if c.rect.colliderect(self.mouse):
+            if c.rect.colliderect(mouse):
+                
+                self.outlined_card = c
+                self.card_outline = c.get_outline()
             
                 s = c.rect.center
                 
@@ -2752,20 +3378,30 @@ class Client:
                     
                 break
                 
-        for c in self.main_p.equipped:
-        
-            c = self.find_local_card(c)
+        else:
             
-            if c is not None:
+            self.outlined_card = None
+    
+        for c in self.main_p.equipped:
+
+            if c.rect.colliderect(self.camera):
+            
+                self.add_particles(c.rect, 1, (255, 0, 0), type=2)
+    
+        for p in self.players:
+            
+            if p.is_turn:
                 
-                self.add_particles(c.rect, 2, (255, 0, 0))
+                self.add_particles(p.get_spot().rect, 2, p.color, type=2)
+                
+                break
 
         for p in self.particles.copy():
             
             if not p.update():
                 
                 self.particles.remove(p)
-                        
+                
         self.update_panes()
 
         for target in self.targets.values():
@@ -2775,15 +3411,26 @@ class Client:
     def draw(self):
         self.frame.fill((0, 0, 0))
 
-        self.draw_panes(self.frame)
+        for i in range(len(self.players)):
+            
+            self.panes[f'landscape {i}'].draw(self.frame)
+            self.panes[f'ac {i}'].draw(self.frame)
+            self.panes[f'spot {i}'].draw(self.frame)
+            
+        self.panes['card area'].draw(self.frame)
+        self.panes['selection area'].draw(self.frame)
+        self.panes['active card'].draw(self.frame)
+        self.panes['extra cards'].draw(self.frame)
+        self.panes['event'].draw(self.frame)
+        self.panes['active card'].draw(self.frame)
+        self.panes['last used item'].draw(self.frame)
+        self.panes['shop'].draw(self.frame)
 
-        self.frame.blit(self.turnid.get_image(), self.turnid.rect)
- 
         for key in self.text:
         
             text = self.text[key]
             self.frame.blit(text.text, text.rect)
-            
+
         for t in self.targets.values():
             
             self.frame.blit(t.textbox.get_image(), t.rect)
@@ -2802,32 +3449,30 @@ class Client:
             
         self.lines.clear()
 
-        for i, p in enumerate(self.players):
+        for p in self.players:
+
+            c = self.get_pane_by_player('ac', p).rect.center
             
-            if p == self.main_p:
+            if p.coin is not None:
                 
-                if p.coin is not None:
-                    
-                    text = self.coin.text[p.coin]
-                    self.frame.blit(text.get_image(), text.rect)
-                    
-                elif p.dice is not None:
-                    
-                    text = self.dice.text[-1] if p.dice == -1 else self.dice.text[p.dice - 1]
-                    self.frame.blit(text.get_image(), text.rect)
-                    
-            else:
+                img = self.coin[p.coin].get_image()
+                r = img.get_rect()
+                r.center = c
+                self.frame.blit(img, r)
                 
-                if p.coin is not None:
-                    
-                    text = self.coins[i].text[p.coin]
-                    self.frame.blit(text.get_image(), text.rect)
-                    
-                elif p.dice is not None:
-                    
-                    text = self.dices[i].text[-1] if p.dice == -1 else self.dices[i].text[p.dice - 1]
-                    
-                    self.frame.blit(text.get_image(), text.rect)
+            elif p.dice is not None:
+            
+                img = self.dice[p.dice].get_image()
+                r = img.get_rect()
+                r.center = c
+                self.frame.blit(img, r)
+                
+            elif p.selection:
+                
+                img = self.select.get_image()
+                r = img.get_rect()
+                r.center = c
+                self.frame.blit(img, r)
                     
         for c in self.moving_cards:
             
@@ -2840,55 +3485,134 @@ class Client:
         for p in self.particles:
             
             pg.draw.circle(self.frame, p.color, p.pos, p.r)
+            
+        if self.outlined_card:
+            
+            wo, ho = self.card_outline.get_size()
+            wc, hc = self.outlined_card.rect.size
+            xc, yc = self.outlined_card.rect.topleft
+            
+            self.frame.blit(self.card_outline, (xc - ((wo - wc) // 2), yc - ((ho - hc) // 2)))
 
         self.screen.blit(self.frame, (0, 0))
-
         pg.display.flip()
         
 #helper stuff-------------------------------------------------------------------------------
 
+    def update_colors(self):
+        self.colors = gen_colors(len(self.colors) + 1)
+        
+        for p in self.players:
+            
+            p.color = self.colors[p.pid]
+
     def add_player(self, pid):
         if not any(p.pid == pid for p in self.players):
+            
+            self.update_colors()
         
             p = Player(self, pid)
             
             self.players.append(p)
             self.players.sort(key=lambda p: p.pid)
             self.add_panes()
-            self.set_screen()
-            
+
             return p
         
     def remove_player(self, pid):
         if any(p.pid == pid for p in self.players):
-        
-            self.players.remove(self.get_player_by_pid(pid))
             
-            del self.targets[pid]
+            p = self.get_player_by_pid(pid)
+            i = self.players.index(p)
             
-            self.set_screen()
+            del self.targets[p.pid]
+            del self.panes[f'spot {i}']
+            del self.panes[f'ac {i}']
+            del self.panes[f'landscape {i}']
+            
+            if p.pid in self.logs:
+                
+                del self.logs[p.pid]
+
+            self.players.remove(p)
+            self.update_colors()
+            self.add_panes()
+            
+            if pid == 0:
+                
+                self.exit()
+                
+                new_message('the host closed the game', 2000)
         
     def reorder(self, pids):
-        self.players = [self.get_player_by_pid(pid) for pid in pids]
+        players = []
         
-        self.set_screen()
+        for pid in pids:
+            
+            p = self.get_player_by_pid(pid)
+            
+            if p:
+                
+                players.append(p)
+                
+        self.players = players
+
+        self.relable_panes()
         
     def shift_down(self, pid):
         p = self.get_player_by_pid(pid)
         
         self.players.append(self.players.pop(self.players.index(p)))
         
+        self.relable_panes()
+        
     def shift_up(self, pid):
         p = self.get_player_by_pid(pid)
         
         self.players.insert(0, self.players.pop(self.players.index(p)))
         
-    def win_screen(self, pid):
-        p = self.get_player_by_pid(pid)
-        text = self.text['winner']
-        text.update_text('{} wins!'.format(p.name), tcolor=p.color)
+        self.relable_panes()
         
-        self.add_particles(text.rect, 50, self.get_player_by_pid(pid).color)
+    def win_screen(self, pids):
+        winners = []
+        
+        for pid in pids:
+            
+            p = self.get_player_by_pid(pid)
+            
+            if p is not None:
+                
+                winners.append(p)
+                
+        text = self.text['winner']
+                
+        if len(winners) == 1:
+            
+            w = winners[0]
+            text.update_text(f'{w.name} wins!', tcolor=w.color)
+            text.add_outline((0, 0, 0))
+            self.add_particles(text.rect, 5000, w.color)
+            
+        else:
+            
+            colors = [w.color for w in winners]
+            
+            message = f'{len(winners)} way tie!'
+            
+            while len(message.replace(' ', '')) < len(winners):
+                
+                message += '!'
+            
+            text.update_text_multicolor(message, colors)
+            text.add_outline((0, 0, 0))
+
+            for c in colors:
+                
+                self.add_particles(text.rect, 5000 // len(colors), c)
+        
+    def reset_win_screen(self):
+        text = self.text['winner']
+        text.clear()
         
     def switch_turn(self, pid):
         for p in self.players:
@@ -2900,11 +3624,7 @@ class Client:
             else:
                 
                 p.is_turn = False
-                
-    def new_status(self, stat):
-        self.status = stat
-        self.text['status'].update_text(stat)
-        
+  
     def set_event(self, name, uid):
         self.event = Card(name, uid)
 
@@ -2914,7 +3634,7 @@ class Client:
         
         check1 = False
         check2 = False
-        
+       
         for p in self.players:
             
             for deck in p.get_cards():
@@ -2925,17 +3645,15 @@ class Client:
 
                     if c.uid == uid1 and not check1:
                         
-                        deck[i] = Card(name2, uid2)
+                        deck.pop(i)
+                        deck.insert(i, Card(name2, uid2))
                         check1 = True
                         
                     elif c.uid == uid2 and not check2:
                         
-                        deck[i] = Card(name1, uid1)
+                        deck.pop(i)
+                        deck.insert(i, Card(name1, uid1))
                         check2 = True
-                        
-                    if check1 and check2:
-
-                        return
                         
                 if check1 or check2:
                     
@@ -2992,22 +3710,6 @@ class Client:
             self.targets[pid].add_points(points, s)
 
 #-------------------------------------------------------------------------------------------
-        
-    def draw_panes(self, frame):
-        for i in range(len(self.players)):   
-
-            self.panes['landscape {}'.format(i)].draw(frame)
-            self.panes['items {}'.format(i)].draw(frame)
-            self.panes['spot {}'.format(i)].draw(frame)
-
-        self.panes['card area'].draw(frame)
-        self.panes['selection area'].draw(frame)
-        self.panes['active card'].draw(frame)
-        self.panes['extra cards'].draw(frame)
-        self.panes['event'].draw(frame)
-        self.panes['active card'].draw(frame)
-        self.panes['last used item'].draw(frame)
-        self.panes['shop'].draw(frame)
 
     def get_player_by_pid(self, pid):
         return next((p for p in self.players if p.pid == pid), None)
@@ -3015,7 +3717,7 @@ class Client:
     def update_settings(self, settings):
         for key, val in settings.items():
             
-            reply = self.send('~{},{}'.format(key, val))
+            reply = self.send(f'~{key},{val}')
             
         return reply
 
@@ -3033,8 +3735,8 @@ class Client:
         
         for p in self.players:
             
-            cards += self.panes['spot {}'.format(p.pid)].cards
-            cards += self.panes['landscape {}'.format(p.pid)].cards
+            cards += self.panes[f'spot {p.pid}'].cards
+            cards += self.panes[f'landscape {p.pid}'].cards
             
         c = next((c for c in cards if c.uid == other.uid and c is not other and spritesheet.check_name(c.name) and c.rect.topleft != pos), None)
             
@@ -3048,18 +3750,10 @@ class Client:
                 return c
     
     def get_spot(self, pid):
-        return self.panes['spot {}'.format(self.players.index(next((p for p in self.players if pid == p.pid))))]
+        return self.panes[f'spot {self.players.index(next((p for p in self.players if pid == p.pid)))}']
         
     def get_target(self, pid):
         return self.targets[pid]
-  
-    def check_status(self):
-        text = self.text['status']
-        text.update_text(self.status)
-        
-    
-        
-    
         
     def get_panes(self, name):
         panes = []
@@ -3071,43 +3765,38 @@ class Client:
                 panes.append(self.panes[key])
                 
         return panes
-        
     
-            
-    def add_particles(self, rect, num, color=(255, 255, 0)):
-        for _ in range(num):
-            
-            self.particles.append(Particle(rect, color))
+    def add_particles(self, rect, num, color=(255, 255, 0), radius=None, type=1):
+        if len(self.particles) < 1500:
         
+            for _ in range(num):
+                
+                if type == 1:
+                
+                    self.particles.append(Particle1(rect, color, radius))
+                
+                else:
+                    
+                    self.particles.append(Particle2(rect, color, radius))
+   
+pg.init()
+
+clock = pg.time.Clock()
+
+win = pg.display.set_mode((width, height))
+pg.display.set_caption('card game')
+
+spritesheet = Spritesheet()
+
+if not os.path.exists('save.json'):
+    
+    save_data = new_save()
+    
+else:
+    
+    save_data = read_save()
+   
 main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-     
-#try:
-#        
-#    c = Client(win)
-#    
-#except Exception as e:
-#    
-#    print(e)
-#    
-#    print('could not find server')
     
 pg.quit()
         
