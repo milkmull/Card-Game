@@ -1245,7 +1245,8 @@ def name_entry(id, color):
     mouse = pg.Rect(0, 0, 1, 1)
 
     field = btns[1]
-    field.update_text(f'Player {id}', tcolor=color)
+    username = get_data('username')
+    field.update_text(f'Player {id}' if username == 'Player 0' else username, tcolor=color)
     
     running = True
     
