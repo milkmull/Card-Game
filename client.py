@@ -1305,8 +1305,6 @@ def name_entry(id, color):
 
 def connect(ip, port):
     new_message('searching for game...', 500)
-    
-    print(ip, port)
 
     try:
              
@@ -1338,7 +1336,6 @@ def start_game():
         
         subprocess.Popen([sys.executable, 'server.py'])
         net = Network('', get_data('port'))
-        print(net.server)
         c = Client(win, net, 'online')
         
     except EOFError as e:

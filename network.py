@@ -27,13 +27,12 @@ class Network:
         try:
 
             self.client.connect(self.addr) #connects to server, sends address
+            pid = self.client.recv(4096).decode() #loads byte data
             
         except socket.gaierror:
         
             raise InvalidIP
-        
-        pid = self.client.recv(4096).decode() #loads byte data
-        
+
         try:
             
             pid = int(pid)
