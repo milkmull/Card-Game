@@ -1015,7 +1015,7 @@ def settings_screen(pid, settings): #special function to set up the settings scr
     text = Counter('rounds: ', settings['rounds'], range(1, 26), 20)
     screen.append(text)
     
-    text = Textbox(f"free play: {settings['fp']}", tsize=20, is_button=False)
+    text = Textbox('free play: ', settings['fp'], tsize=20, is_button=False)
     screen.append(text)
     
     text = Counter('starting score: ', settings['ss'], range(5, 51), 20)
@@ -1030,7 +1030,7 @@ def settings_screen(pid, settings): #special function to set up the settings scr
     text = Counter('starting spells: ', settings['spells'], range(0, 6), 20)
     screen.append(text)
     
-    text = Textbox(f"score wrap: {settings['score wrap']}", tsize=20, is_button=False)
+    text = Textbox('score wrap: ', settings['score wrap'], tsize=20, is_button=False)
     screen.append(text)
     
     text = Counter('number of cpus: ', settings['cpus'], range(1, 15), 20)
