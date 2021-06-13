@@ -8,6 +8,7 @@ import urllib.request
 import json
 from colorsys import hsv_to_rgb
 from tkinter import Tk
+from socket import gethostname, gethostbyname
 from constants import *
 from network import Network, InvalidIP, PortInUse
 from spritesheet import Spritesheet, Textbox, Counter, Input
@@ -92,7 +93,10 @@ def set_username(new_name):
             
 #---------------------------------------------------------------------------------------------------------------
 
-def get_pub_ip():
+def get_local_ip():
+    return gethostbyname(gethostname())
+    
+def get_public_ip():
     return urllib.request.urlopen('https://api.ipify.org').read().decode()
             
 def flatten(lst):
@@ -252,9 +256,9 @@ def set_screen(mode, wait=0): #returns all screen objects for given menu
         text.rect.midtop = screen[-1].rect.midbottom
         screen.append(text)
         
-        text = Textbox('find local game', 20)
-        text.rect.midtop = screen[-1].rect.midbottom
-        screen.append(text)
+        #text = Textbox('find local game', 20)
+        #text.rect.midtop = screen[-1].rect.midbottom
+        #screen.append(text)
         
         text = Textbox('settings', 20)
         text.rect.midtop = screen[-1].rect.midbottom
@@ -438,11 +442,21 @@ def set_screen(mode, wait=0): #returns all screen objects for given menu
         
     elif mode == 'view ip':
 
-        text = Textbox(f'your public IP:  {get_pub_ip()}', 20, is_button=False)
+        text = Textbox(f'your online IP:  {get_public_ip()}', 20, is_button=False)
         text.rect.midbottom = (width // 2, height // 2)
         screen.append(text)
         
-        text = Textbox('[copy to clipboard]', 15, tcolor=(255, 255, 0))
+        text = Textbox('[copy online IP to clipboard]', 15, tcolor=(255, 255, 0))
+        text.rect.midtop = screen[-1].rect.midbottom
+        text.rect.y += 5
+        screen.append(text)
+        
+        text = Textbox(f'your local IP: {get_local_ip()}', 20, is_button=False)
+        text.rect.midtop = screen[-1].rect.midbottom
+        text.rect.y += 5
+        screen.append(text)
+        
+        text = Textbox('[copy local IP to clipboard]', 15, tcolor=(255, 255, 0))
         text.rect.midtop = screen[-1].rect.midbottom
         text.rect.y += 5
         screen.append(text)
@@ -960,7 +974,8 @@ def view_ip(info=None):
     btns = set_screen('view ip')
     mouse = pg.Rect(0, 0, 1, 1)
     
-    timer = 0
+    timer1 = 0
+    timer2 = 0
 
     running = True
     
@@ -993,19 +1008,28 @@ def view_ip(info=None):
                             
                             return
                             
-                        elif 'cop' in b.message:
+                        elif 'online' in b.message:
                             
-                            copy_to_clipboard(get_pub_ip())
-                            
+                            copy_to_clipboard(get_public_ip())
                             btns[1].update_text('[coppied]')
+                            timer1 = 125
                             
-                            timer = 125
+                        elif 'local' in b.message:
                             
-        timer -= 1
+                            copy_to_clipboard(get_local_ip())
+                            btns[3].update_text('[coppied]')
+                            timer2 = 125
+      
+        timer1 -= 1
+        timer2 -= 1
         
-        if timer == 0:
+        if timer1 == 0:
             
-            btns[1].update_text('[copy to clipboard]')
+            btns[1].update_text('[copy online IP to clipboard]')
+            
+        if timer2 == 0:
+            
+            btns[3].update_text('[copy local IP to clipboard]')
   
 #in game menues------------------------------------------------------------------------------
  
