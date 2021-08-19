@@ -1,26 +1,2 @@
 
-settings = {
-        
-                'ss': 20, 
-                
-                'rounds': 1, 
-
-                'event': True, 
-                
-                'ls': True, 
-                
-                'cards': 3, 
-                
-                'items': 2, 
-                
-                'spells': 1,
-                
-                'fp': False,
-                
-                'score wrap': False,
-                
-                'cpus': 3,
-                
-                'diff': 0
-                
-            }
+settings = {'rounds': 3, 'ss': 20, 'cards': 5, 'items': 3, 'spells': 1, 'cpus': 1, 'diff': 4}

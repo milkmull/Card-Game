@@ -2,24 +2,13 @@ import sys
 import random
 import time
 import copy
-from settings import settings
-from cards import *
+from save import load_settings
+from cards import cards
 from player import Player
 
-def check_int(string): #checks to see if string can be represented as an integer
-    try:
-        
-        int(string)
-        
-        return True
-        
-    except ValueError:
-        
-        return False
-    
-def count_cards(card, deck): #returns number of specific card in given deck
-    return len([c for c in deck if type(c) == card])
-    
+class InfiniteLoop(Exception):
+    pass
+
 def pack_log(logs):
     new_log = []
     
@@ -32,31 +21,24 @@ def pack_log(logs):
             val = log[key]
             
             if isinstance(val, Player):
-                
                 new_entry[key] = val.pid
                 
             elif hasattr(val, 'uid'):
-                
                 new_entry[key] = (val.name, val.uid)
                 
             elif isinstance(val, list):
-                
                 new_list = []
                 
                 for i in val:
                     
                     if hasattr(i, 'get_id'):
-                        
-                        new_list.append([i.name, i.get_id()])
-                        
-                    else:
-                        
+                        new_list.append([i.name, i.get_id()])   
+                    else:   
                         new_list.append(i)
                         
                 new_entry[key] = new_list
 
             else:
-                
                 new_entry[key] = val
                 
         new_log.append(new_entry)
@@ -66,87 +48,63 @@ def pack_log(logs):
 class Game:
     def __init__(self, mode='online'):
         self.running = True
-        self.wait = True
-        self.done = False #true when game is over
         
-        self.settings = settings.copy()
+        self.settings = load_settings()
+        self.cards = cards.copy()
         
         self.uid = 0
         self.pid = 0
-        
-        self.deck = []
-        self.items = []
-        self.spells = []
-        self.treasure = []
-        self.event_cards = []
-        self.landscapes = []
+
         self.shop = []
 
         self.discard = []
         
         self.log = []
         self.master_log = []
-        
         self.logs = {}
         
-        self.info = {'count': 0, 'avetime': 0, 'aveturns': 0}
-        
+        self.mem = []
+        self.counter = 0
+
         self.turn = 0 #turn of game
         self.current_turn = 0
-        self.counter = 0
+        self.round = 0
 
         self.event = None #impliment multiple
         
         self.players = []
-
         self.current_player = 0 #index of player who is currently taking their turn
         self.main_p = None #main player
 
-        self.phase = ''
-        
-        self.mode = mode #single vs online
-        
+        self.mode = mode
         self.status = ''
         self.new_status('waiting')
-        
+
         if self.mode == 'single':
             
             self.new_player(0)
+            self.add_cpus()
             
-#testing stuff------------------------------------------------------------------------------------------------
-
-    def add_info(self, info):
-        count = self.info['count']
-        
-        ave = self.info['avetime']
-        time = info['time'] * 1000
-        self.info['avetime'] = ave + ((time - ave) / (count + 1))
-        
-        ave = self.info['aveturns']
-        turns = info['turns']
-        self.info['aveturns'] = ave + ((turns - ave) / (count + 1))
-        
-        self.info['count'] += 1
-        
-        #print(self.info)
+    @property
+    def done(self):
+        return self.status in ('new game', 'next round')
             
 #copy stuff---------------------------------------------------------------------------------------------------
 
     def copy(self):
         g = Game('turbo')
         
+        g.uid = self.uid
+        
         g.settings = self.settings.copy()
-        
-        g.done = self.done
-        g.wait = self.wait
-        
+
         g.turn = self.turn
+        g.current_turn = self.current_turn
         g.round = self.round
-        g.current_turn = 0
 
         g.current_player = self.current_player
 
-        g.phase = self.phase
+        g.status = self.status
         
         g.players = [Player(g, p.pid, p.score, True) for p in self.players]
         g.main_p = g.players[g.current_player]
@@ -154,13 +112,6 @@ class Game:
         for i in range(len(self.players)):
             
             g.players[i].start_copy(g, self.players[i])
-        
-        g.deck = [c.light_sim_copy(g) for c in self.deck[:8]]
-        g.items = [c.light_sim_copy(g) for c in self.items[:10]]
-        g.spells = [c.light_sim_copy(g) for c in self.spells[:5]]
-        g.treasure = [c.light_sim_copy(g) for c in self.treasure[:10]]
-        g.shop = [c.light_sim_copy(g) for c in self.shop]
-        g.landscapes = [c.light_sim_copy(g) for c in self.landscapes]
 
         g.discard = [c.light_sim_copy(g) for c in self.discard[:3]]
         
@@ -171,8 +122,8 @@ class Game:
 #new game stuff-----------------------------------------------------------------------------------------------
 
     def new_game(self):
-        self.log.clear()
-        self.master_log.clear()
+        self.clear_logs()
+        self.log.append({'t': 'res'})
         
         if self.mode == 'single':
             
@@ -181,89 +132,88 @@ class Game:
             
             self.add_cpus()
             
-        for p in self.players:
+        else:
             
-            p.reset()
-            
-        self.log.append({'t': 'res'})
+            for p in self.players: 
+                p.reset()
+     
+        self.shuffle_players()
+        self.current_player = 0
+        self.main_p = self.players[0] 
 
-        self.done = False
-        self.wait = False
-        self.phase = 'draft'
-        self.new_status('draft')
         self.uid = len(self.players)
         
-        self.current_player = 0 #index of player who is currently taking their turn
-        self.main_p = self.players[0] #main player
-        self.shuffle_players()
-        
-        self.deck = self.fill_deck(cards)
-        self.items = self.fill_deck(items)
-        self.spells = self.fill_deck(spells)
-        self.treasure = self.fill_deck(treasure)
-        self.event_cards = self.fill_deck(events)
-        self.landscapes = self.fill_deck(landscapes)
-        
-        self.shop.clear()
-        self.discard.clear()
-        
         for p in self.players:
-        
             p.start()
+
+        self.new_status('playing')
         
-        self.turn = 0 #turn of game
+        self.turn = 0
+        self.current_turn = 0
         self.round = 1
         self.update_round()
-        self.current_turn = 0
 
-        self.deal('items', 'items', self.get_setting('items'))
-        self.deal('spells', 'spells', self.get_setting('spells'))
+        self.mem.clear()
+        self.counter = 0
 
-        self.deal('deck', 'selection', self.get_setting('cards'))
+        self.discard.clear()
         
-        for p in self.players:
+        self.restock_shop()
+
+        self.event = self.draw_cards('events', 1)[0]
+        self.event.start(self)
+        self.log.append({'t': 'se', 'c': self.event.copy()})
             
-            p.add_treasure(GoldCoins(self, self.uid))
-            self.uid += 1
-        
-        if self.get_setting('event'):
-
-            self.event = self.event_cards.pop(random.randrange(len(self.event_cards)))
-            self.log.append({'t': 'se', 'c': self.event.copy()})
+        self.main_p.start_turn()
+        self.log.append({'t': 'nt', 'pid': self.main_p.pid})
 
     def new_round(self):
         self.clear_logs()
         self.log.append({'t': 'nr'})
         
-        self.round += 1
-        self.update_round()
+        self.shuffle_players() 
+        self.current_player = 0
+        self.main_p = self.players[0]
+
+        for p in self.players:
+            p.new_round()
+
+        self.new_status('playing')
         
-        self.phase = 'draft'
-        self.new_status('draft')
-        self.done = False
         self.turn = 0
         self.current_turn = 0
         
+        self.round += 1
+        self.update_round()
+        
+        self.restock_shop()
+
+        self.event = self.draw_cards('events', 1)[0]
+        self.event.start(self)
+        self.log.append({'t': 'se', 'c': self.event.copy()})
+            
+        self.main_p.start_turn()
+        self.log.append({'t': 'nt', 'pid': self.main_p.pid})
+ 
+    def reset(self):
+        self.new_status('waiting')
+
         for p in self.players:
             
-            p.new_round()
-
-        self.current_player = 0
-        self.main_p = self.players[0]
-        
-        self.shop.clear()
-
-        self.deal('deck', 'selection', self.get_setting('cards'))
-        
-        if self.get_setting('event'):
-
-            self.event = self.event_cards.pop(random.randrange(len(self.event_cards)))
+            p.reset()
             
-    def update_round(self):
-        text = f"round {self.round}/{self.get_setting('rounds')}"
-        
-        self.log.append({'t': 'ur', 's': text})
-            
+        self.log.append({'t': 'res'})
+ 
+    def start(self, pid):
+        if (pid == 0 and len(self.players) > 1) or self.mode == 'single':
+
+            self.new_game()
+ 
+#player stuff ------------------------------------------------------------------------
+ 
+    def get_pid(self):
+        return 0
+ 
     def add_cpus(self):
         self.pid = 1
 
@@ -284,20 +234,19 @@ class Game:
             self.players.append(p)  
             
             if pid == 0:
-            
                 self.main_p = p
                 
             self.pid += 1
             
             self.log.append({'t': 'add', 'pid': pid})
-            
             self.logs[pid] = self.get_startup_log()
             
             for p in self.players:
-                
                 if p.pid != pid:
-            
                     self.logs[p.pid][pid] = []
+                    
+            if len(self.players) > 1:
+                self.new_status('start')
 
             return True
             
@@ -305,85 +254,226 @@ class Game:
             
             return False
             
-    def remove_player(self, pid): #remove player from game
+    def remove_player(self, pid):
         p = self.get_player(pid)
         
         if p:
             
             for key in self.logs:
-            
                 del self.logs[key][p.pid]
                 
             if p.pid in self.logs:
-
                 del self.logs[p.pid]
             
             self.players.remove(p)
-            
             self.log.append({'t': 'del', 'pid': p.pid})
             
-    def start(self, pid):
-        if (pid == 0 and len(self.players) > 1) or self.mode == 'single':
+            if self.mode == 'online':
+                if self.status == 'playing':
+                    self.reset()
+                if len(self.players) == 1:
+                    self.new_status('waiting')
 
-            self.new_game()
-            
-    def reset(self):
-        self.done = False
-        self.wait = True
-        
-        self.new_status('waiting')
-        
-        self.phase = ''
-        
-        for p in self.players:
-            
-            p.reset()
-            
-        self.log.append({'t': 'res'})
-     
-    def fill_deck(self, cards):
-        deck = []
-        
-        for card in cards:
-            
-            m = cards[card]
-            
-            if m:
-            
-                for _ in range(m):
-                    
-                    deck.append(card(self, self.uid))
-                    
-                    self.uid += 1
-                    
-        random.shuffle(deck)
+    def balance_cpus(self):
+        players = sorted(self.players, key=lambda p: p.pid, reverse=True)
 
-        return deck
+        dif = (len(self.players) - 1) - self.get_setting('cpus')
         
-    def deal(self, deck, destination, num=5):
-        for p in self.players:
+        if dif > 0:
             
-            cards = self.draw_cards(deck, num)
-
-            p.new_deck(destination, cards)
-            
-    def fill_shop(self, num=3): #will cause problems with empty decks
-        for _ in range(num):
-            
-            cards = self.deck + self.items + self.spells
-            
-            if cards:
-
-                card = random.choice(cards)#, self.landscapes])
-                deck = next((deck for deck in [self.deck, self.items, self.spells] if card in deck))
-                deck.remove(card)
-                self.shop.append(card)
+            for i in range(dif):
                 
-                self.log.append({'t': 'fill', 'c': card})
+                p = players[i]
+                self.remove_player(p.pid)
+                
+        elif dif < 0:
+            
+            for p in self.players.copy():
+                
+                if p.auto:
+                    
+                    self.remove_player(p.pid)
+                    
+            self.add_cpus()
+   
+    def get_player(self, pid):
+        return next((p for p in self.players if p.pid == pid), None)
+
+    def check_last(self, player):
+        return all(len(p.played) > len(player.played) for p in self.players if p is not player)
+        
+    def check_first(self, player):
+        return all(len(p.played) <= len(player.played) for p in self.players)
+        
+    def shift_up(self, player):
+        self.players.remove(player)
+        self.players.insert(0, player)
+        self.current_player = self.players.index(self.main_p)
+                
+        self.log.append({'t': 'ord', 'ord': [p.pid for p in self.players]})
+        
+    def shift_down(self, player):
+        self.players.remove(player)
+        self.players.append(player)
+        self.current_player = self.players.index(self.main_p)
+                
+        self.log.append({'t': 'ord', 'ord': [p.pid for p in self.players]})
+        
+    def shuffle_players(self):
+        random.shuffle(self.players)
+        
+        self.log.append({'t': 'ord', 'ord': [p.pid for p in self.players]})
+
+#card stuff---------------------------------------------------------------------------------------
+     
+    def get_new_uid(self):
+        uid = self.uid
+        self.uid += 1
+        return uid
+     
+    def draw_cards(self, deck='play', num=1):
+        deck = self.cards[deck]
+        weights = [val[0] for val in deck.values()]
+        
+        cards = random.choices(list(deck.keys()), weights=weights, k=num)
+        
+        for i, card in enumerate(cards):
+
+            cards[i] = deck[card][1](self, self.uid)
+            self.uid += 1
+            
+        test = [c.name for c in cards]
+            
+        return cards
+        
+    def get_card(self, name):
+        for deck in self.cards.values():
+        
+            info = deck.get(name)
+            
+            if info is not None:
+                
+                card = info[1](self, self.uid)
+                self.uid += 1
+                
+                return card
+  
+    def transform(self, old_card, const):
+        uid = old_card.uid
+        new_card = const(self, uid)
+        
+        if old_card != new_card:
+
+            info = self.find_card_deep(old_card)
+
+            if info:
+
+                owner, attr, i = info
+                getattr(owner, attr)[i] = new_card
+                self.log.append({'t': 'tf', 'c': old_card, 'name': new_card.name})
+
+                return self.transform(old_card, const)
                 
             else:
                 
-                break
+                return new_card
+                
+        else:
+            
+            return new_card
+       
+    def find_card_deep(self, card):
+        for p in self.players:
+        
+            for i, c in enumerate(p.unplayed):
+                if c == card:
+                    return (p, 'unplayed', i)
+                    
+            for i, c in enumerate(p.played):
+                if c == card:
+                    return (p, 'played', i)
+    
+            for i, c in enumerate(p.equipped):
+                if c == card:
+                    p.unequip(c)
+                    
+            for i, c in enumerate(p.items):
+                if c == card:
+                    return (p, 'items', i)
+                    
+            for i, c in enumerate(p.spells):
+                if c == card:
+                    return (p, 'spells', i)
+                    
+            for i, c in enumerate(p.ongoing):
+                if c == card:
+                    return (p, 'ongoing', i)
+                    
+            for i, c in enumerate(p.landscapes):
+                if c == card:
+                    return (p, 'landscapes', i)
+                    
+    def swap(self, c1, c2):
+        self.transform(c1, type(c2))
+        self.transform(c2, type(c1))
+                 
+    def find_card(self, player, uid):
+        for c in player.played + player.unplayed + player.get_spells() + player.items + player.spells + player.treasure + player.equipped + player.selection + player.landscapes:
+            
+            if c.get_id() == uid:
+                
+                return c
+   
+    def find_owner(self, c):
+        return next((p for p in self.players if c in p.played), None)
+        
+    def get_discarded_items(self):
+        return [c.copy() for c in self.discard if 'item' in c.tags or 'equipment' in c.tags]
+        
+    def check_exists(self, uid):
+        return any(self.find_card(p, uid) for p in self.players)
+        
+    def restore(self, c):
+        if c in self.discard:
+        
+            self.discard.remove(c)
+            
+    def get_last_item(self):
+        i = self.get_discarded_items()
+        
+        if not i:
+            
+            i = self.draw_cards('items')[0]
+            
+        else:
+            
+            i = i[0]
+            
+        return i.copy()
+    
+    def get_event(self):
+        return self.event.name if hasattr(self, 'event') else None
+  
+#shop stuff---------------------------------------------------------------------------------------
+        
+    def fill_shop(self, m=3):
+        num = max(m - len(self.shop), 0)
+        cards = []
+        
+        decks = ('play', 'items', 'spells')
+        
+        for _ in range(num):
+            
+            deck = random.choice(decks)
+            cards += self.draw_cards(deck)
+            
+        self.shop += cards
+        
+        self.log.append({'t': 'fill', 'cards': self.shop.copy()})
+
+    def restock_shop(self):
+        self.shop.clear()
+        self.fill_shop()
             
     def buy(self, player, uid):
         for c in self.shop.copy():
@@ -391,12 +481,21 @@ class Game:
             if c.uid == uid:
                 
                 self.shop.remove(c)
-                
-                self.fill_shop(1)
+                self.fill_shop()
                 
                 return c
                 
 #log stuff--------------------------------------------------------------------------------------------------
+
+    def clear_logs(self):
+        for key in self.logs:
+            
+            for sublog in self.logs[key].values():
+                
+                sublog.clear()
+                
+        self.log.clear()
+        self.master_log.clear()
 
     def get_info(self, pid):
         p = self.get_player(pid)
@@ -443,31 +542,7 @@ class Game:
         scores = {p.pid: p.score for p in self.players}
         
         return (any(log for log in sublog.values()), scores)
-
-    def get_log(self, id, oid):
-        logs = self.logs.get(id)
         
-        log = logs.get(oid)
-        
-        if log is None:
-            
-            logs[oid] = []
-            
-            log = logs[oid]
-            
-        pack = pack_log(log)
-        
-        log.clear()
-        
-        return pack
-        
-    def clear_logs(self):
-        for key in self.logs:
-            
-            for sublog in self.logs[key].values():
-                
-                sublog.clear()
-                
     def get_startup_log(self):
         log = {'g': [{'t': 'ns', 'stat': 'waiting'}]}
         
@@ -479,106 +554,63 @@ class Game:
         
         return log
 
-#server communication functions-----------------------------------------------------------------------------
-
-    def play(self, pid):
-        p = self.get_player(pid)
-
-        cmd = 'play'
+#update info stuff---------------------------------------------------------------------------------------
+ 
+    def update_round(self):
+        text = f"round {self.round}/{self.get_setting('rounds')}"
         
-        p.update(cmd)
-        
-    def cancel(self, pid):
-        p = self.get_player(pid)
-        
-        cmd = 'cancel'
-        
-        p.update(cmd)
-        
-    def select(self, pid, uid):
-        p = self.get_player(pid)
-        
-        card = self.find_card(uid, pid)
-        
-        if self.phase == 'draft':
+        self.log.append({'t': 'ur', 's': text})
             
-            p.draft(card)
+    def new_status(self, stat):
+        self.status = stat
+        
+        self.log.append({'t': 'ns', 'stat': stat})
 
-            self.check_rotate()
+    def is_status(self, stat):
+        return self.status == stat
+
+    def update_player(self, pid, cmd=''):
+        p = self.get_player(pid)
+   
+        p.update(cmd)
+          
+    def main(self):
+        if self.status != 'waiting':
+
+            for p in self.players:
+            
+                if p.auto:
+                    
+                    p.auto_update()
+      
+        if not self.mode == 'turbo':
+                
+            self.update_game_logs()
             
         else:
             
-            p.update('select', card)
-        
-    def update_player(self, pid):
-        p = self.get_player(pid)
-        
-        if p:
+            self.master_log += self.log
+            self.log.clear()
             
-            p.update()
-
-    def flip(self, pid):
-        p = self.get_player(pid)
+        up = []
         
-        cmd = 'flip'
-        
-        p.update(cmd)
-        
-    def roll(self, pid):
-        p = self.get_player(pid)
-        
-        cmd = 'roll'
-        
-        p.update(cmd)
-        
-    def event_info(self):
-        return self.event.name if hasattr(self, 'event') else False
-        
-    def get_settings(self):
-        return self.settings.copy()
-        
-    def update_settings(self, setting):
-        key, val = setting[1:].split(',')
-
-        if val in (str(True), str(False)):
+        for p in self.players:
             
-            self.settings[key] = True if val == 'True' else False
+            up += p.played
+            
+        if up == self.mem:
+            
+            self.counter += 1
             
         else:
             
-            self.settings[key] = int(val)
+            self.mem = up
+            self.counter = 0
+ 
+        if (self.mode == 'turbo' and self.counter > 100) or (not self.mode != 'turbo' and self.counter > 9999):
             
-        if key == 'cpus' and self.mode == 'single':
-            
-            players = sorted(self.players, key=lambda p: p.pid, reverse=True)
-
-            dif = (len(self.players) - 1) - int(val)
-            
-            if dif > 0:
-                
-                for i in range(dif):
-                    
-                    p = players[i]
-                    self.remove_player(p.pid)
-                    
-            elif dif < 0:
-                
-                for p in self.players.copy():
-                    
-                    if p.auto:
-                        
-                        self.remove_player(p.pid)
-                        
-                self.add_cpus()
-
-    def get_shop(self):
-        return [(c.name, c.uid) for c in self.shop]
-        
-    def get_winners(self):
-        hs = max(self.players, key=lambda p: p.score).score
-            
-        return [p.pid for p in self.players if p.score == hs]
-        
+            raise InfiniteLoop
+          
     def send(self, data):
         reply = ''
         
@@ -596,7 +628,6 @@ class Game:
 
                 self.update_player(0)
                 self.main()
-                
                 reply = self.check_logs(0)
 
             elif data == 'info': #get update info
@@ -610,13 +641,11 @@ class Game:
             elif data == 'start': #start game
                 
                 self.start(0)
-                
                 reply = 1
                 
             elif data == 'reset': #reset game
                 
                 self.reset()
-                
                 reply = 1
                 
             elif data == 'continue': #continue to next game/round
@@ -635,400 +664,175 @@ class Game:
                 
             elif data == 'play': #play card
                 
-                if self.phase == 'play':
+                if self.status == 'playing':
                 
-                    self.play(0)
+                    self.update_player(0, 'play')
                     
                 reply = 1
                 
             elif data == 'cancel': #cancel selection
                 
-                if self.phase == 'play':
+                if self.status == 'playing':
                 
-                    self.cancel(0)
+                    self.update_player(0, 'cancel')
                     
                 reply = 1
                 
-            elif check_int(data):
-            
-                self.select(0, int(data))
-                    
-                reply = 1
-                
-            elif data == 'update':
+            elif data.isdigit():
 
-                self.update_player(0)
-                self.main()
-                    
+                self.update_player(0, f'select {data}')
                 reply = 1
-                
+
             elif data == 'flip':
                 
-                if self.phase == 'play':
+                if self.status == 'playing':
                 
-                    self.flip(0)
+                    self.update_player(0, 'flip')
                     
                 reply = 1
                 
             elif data == 'roll':
                 
-                if self.phase == 'play':
+                if self.status == 'playing':
                 
-                    self.roll(0)
+                    self.update_player(0, 'roll')
                     
                 reply = 1
 
-            elif data == 'settings': #get settings
+            elif data == 'settings':
                 
                 reply = self.get_settings()
-                
-            elif data.startswith('-s:'):
-            
-                reply = self.get_setting(data[3:])
-                
-            elif '~' == data[0]: #update settings
+                    
+            elif data == 'us':
                 
                 if self.status == 'waiting':
-                
-                    self.update_settings(data)
                     
+                    self.update_settings()
                     reply = 1
-                    
+                
                 else:
                     
                     reply = 0
 
         return reply
-        
-    def get_pid(self):
-        return 0
-        
-    def close(self):
-        self.running = False
-        
-    def main(self):
-        if not self.wait:
+                     
+#settings stuff---------------------------------------------------------------------------------------
 
-            for p in self.players:
-            
-                if p.auto:
-                    
-                    p.auto_update()
-                    
-            self.counter += 1
-      
-        if not self.mode == 'turbo':
-                
-            self.update_game_logs()
-            
+    def get_settings(self):
+        return self.settings.copy()
+        
+    def get_setting(self, setting):
+        return self.settings[setting]
+        
+    def update_settings(self):
+        self.settings = load_settings()   
+        self.balance_cpus()
+
 #turn stuff-----------------------------------------------------------------------------------------------
 
-    def new_status(self, stat):
-        self.status = stat
-        
-        self.log.append({'t': 'ns', 'stat': stat})
+    def rotate_cards(self):
+        selections = []
 
-    def check_rotate(self):
-        if not any(p.selecting for p in self.players):
-            
-            self.rotate_selection()
-
-    def rotate_selection(self):
-        if not any(p.selection for p in self.players):
-                                    
-            self.end_draft()
-            
-        else:
-    
-            selections = []
-            
-            for p in self.players:
-            
-                selections.append(p.selection)
-                
-            selections.append(selections.pop(0))
-                
-            for p, s in zip(self.players, selections):
-            
-                p.new_draft(s)
-                
-    def end_draft(self):
-        self.phase = 'play'
-        
-        self.new_status('playing')
-        
-        self.event.start(self)
-        self.fill_shop()
-
-        self.advance_turn()
-  
-    def end_round(self):
         for p in self.players:
-            
-            if not p.round_over:
-            
-                p.end_round()
         
-    def end_game(self):
-        for p in self.players:
+            selections.append(p.unplayed)
             
-            if not p.round_over:
+        selections.insert(0, selections.pop(-1))
             
-                p.end_round()
-                
-            if not p.game_over:
-            
-                p.end_game()
+        for p, s in zip(self.players, selections):
+        
+            p.new_deck('unplayed', s)
 
     def check_advance(self):
-        if self.phase == 'play':
+        if self.status == 'playing':
         
             if not self.done and self.main_p.finished:
                 
                 self.advance_turn()
-            
-    def finished_game(self):
-        return self.round + 1 > self.get_setting('rounds')
-        
-    def advance_turn(self):   
-        if all(p.check_end_game() for p in self.players) or (all(p.check_end_round() for p in self.players) and self.mode == 'turbo'):
-            
-            if not self.done:
-            
-                self.done = True
-
-                if self.round <= self.get_setting('rounds') - 1:
-                    
-                    self.new_status('next round')
-                    
-                else:
-                    
-                    self.new_status('new game')
-            
-                self.log.append({'t': 'fin', 'w': self.get_winners()})
-            
-        elif all(p.check_end_round() for p in self.players):
-            
-            #self.new_round()
-            self.new_status('next round')
-            
-            return
-            
-        if len(self.players) == 1 or self.done:
-
-            return
-            
-        if all(not (p.unplayed or p.requests) for p in self.players):
-
-            for p in self.players:
                 
-                p.end_round()
+    def advance_turn(self):
+        if self.status != 'playing':
+            
+            return 
+
+        if all(p.finished_game() for p in self.players):
+
+            if all(p.game_over for p in self.players):
+
+                if not self.done:
+                    
+                    if self.round <= self.get_setting('rounds') - 1:
+                        
+                        self.new_status('next round')
+                        
+                    else:
+                        
+                        self.new_status('new game')
+                        
+                    self.log.append({'t': 'fin', 'w': self.get_winners()})
+                    
+            else:
                 
-                if self.round == self.get_setting('rounds'):
-                
+                for p in self.players:
+                    
                     p.end_game()
-                
-            self.current_turn += 1
-                
-            return
+                    
+            return  
             
-        if not self.main_p.requests and any(p.unplayed for p in self.players):
+        elif self.main_p.finished_turn():
+
+            self.find_turn()
+            
+    def find_turn(self):
+        if any(p.unplayed for p in self.players):
             
             self.main_p.end_turn()
             
-            while True:
-
-                for p in self.players:
-                    
-                    if len(p.played) <= self.turn and p.unplayed:
-            
-                        self.current_player = self.players.index(p)
-
-                        break
-           
-                else:
-                    
-                    self.turn += 1
-                    self.current_player = 0
-                    
-                    continue
-                    
-                break
+            while True:  
                 
+                self.current_player = (self.current_player + 1) % len(self.players)
+                self.current_turn = (self.current_turn + 1) % len(self.players)
+                p = self.players[self.current_player]
+
+                if self.current_turn == 0:
+                    self.rotate_cards()
+                
+                if p.unplayed:
+                    break
+
             self.main_p = self.players[self.current_player]
             self.main_p.start_turn()
-            self.current_turn += 1
             
             self.log.append({'t': 'nt', 'pid': self.main_p.pid})
-        
-    
-        
-#player stuff-----------------------------------------------------------------------------------------------
-        
-    def draw_cards(self, deck='deck', num=1):
-        cards = []
-        
-        deck = getattr(self, deck)
+            
+            self.turn += 1
+            
+#ending stuff---------------------------------------------------------------------------------------
 
-        for _ in range(num):
-            
-            if deck:
-            
-                card = random.choice(deck)
-                
-                cards.append(card)
-                
-                deck.remove(card)
-                
-            else:
-            
-                break
+    def close(self):
+        self.running = False
 
-        return cards
-        
-    def check_last(self, player):
-        return all(len(p.played) > len(player.played) for p in [x for x in self.players if x.pid != player.pid]) or (self.players[-1] == player)
-        
-    def check_first(self, player):
-        return player.pid == self.players[0].pid and all(len(p.played) == self.turn for p in [x for x in self.players if x.pid != player.pid])
-        
-    def shift_up(self, player):
-        for i in range(len(self.players)):
+    def get_winners(self):
+        hs = max(self.players, key=lambda p: p.score).score
             
-            if self.players[i].pid == player.pid:
-                
-                self.players.insert(0, self.players.pop(i))
-                
-                self.advance_turn()
+        return [p.pid for p in self.players if p.score == hs]
 
-                break
-                
-        self.log.append({'t': 'su', 'pid': player.pid})
-        
-    def shift_down(self, player):
-        for i in range(len(self.players)):
-            
-            if self.players[i].pid == player.pid:
-                
-                self.players.append(self.players.pop(i))
-                
-                self.advance_turn()
-                
-                break
-                
-        self.log.append({'t': 'sd', 'pid': player.pid})
-        
-    def shuffle_players(self):
-        random.shuffle(self.players)
-        
-        self.log.append({'t': 'ord', 'ord': [p.pid for p in self.players]})
-               
-    def get_discarded_items(self):
-        return [c.copy() for c in self.discard if c.type in ('item', 'equipment')]
-        
-    def restore(self, c):
-        if c in self.discard:
-        
-            self.discard.remove(c)
-            
-    def get_last_item(self):
-        i = self.get_discarded_items()
-        
-        if not i:
-            
-            i = self.draw_cards('items')[0]
-            
-        else:
-            
-            i = i[0]
-            
-        return i.copy()
-        
-#card stuff---------------------------------------------------------------------------------------
-
-    def get_event(self):
-        return self.event.name if hasattr(self, 'event') else None
-
-    def get_player(self, pid):
-        return next((p for p in self.players if p.pid == pid), None)
-        
-    def get_current_turn(self):
-        return self.main_p
-        
-    def get_setting(self, setting):
-        return self.settings[setting]
-     
-    def find_card_deep(self, uid):
+    def end_round(self):
         for p in self.players:
+            if not p.round_over:
+                p.end_round()
         
-            for i, c in enumerate(p.unplayed):
-                if c.uid == uid:
-                    return (p, 'unplayed', i)
-                    
-            for i, c in enumerate(p.played):
-                if c.uid == uid:
-                    return (p, 'played', i)
-    
-            for i, c in enumerate(p.equipped):
-                if c.uid == uid:
-                    p.unequip(c)
-                    
-            for i, c in enumerate(p.items):
-                if c.uid == uid:
-                    return (p, 'items', i)
-                    
-            for i, c in enumerate(p.spells):
-                if c.uid == uid:
-                    return (p, 'spells', i)
-                    
-            for i, c in enumerate(p.get_spells()):
-                if c.uid == uid:
-                    return (p, 'ongoing', i)
-                    
-    def swap(self, c1, c2):
-        info1 = self.find_card_deep(c1.uid)
-        info2 = self.find_card_deep(c2.uid)
-        
-        if info1 and info2:
-            
-            p1, d1, i1 = info1
-            p2, d2, i2 = info2
-
-            getattr(p1, d1)[i1], getattr(p2, d2)[i2] = getattr(p2, d2)[i2], getattr(p1, d1)[i1]
-            
-            self.log.append({'t': 'sw', 'c1': c1, 'c2': c2})
-                 
-    def find_card(self, uid, pid=None):
-        if pid is None:
-        
-            mp = self.main_p
-            
-        else:
-            
-            mp = self.get_player(pid)
-            
+    def end_game(self):
         for p in self.players:
-        
-            if p.pid == mp.pid:
-            
-                for c in p.unplayed + p.played + p.items + p.treasure + p.spells + p.get_spells() + p.selection + p.equipped:
-                    if c.get_id() == uid:
-                        return c
-                        
-            else:
-                
-                for c in p.played:
-                    if c.get_id() == uid:
-                        return c
-                        
-            for c in self.shop:
-                
-                if c.uid == uid:
-                    
-                    return c
 
-    def find_owner(self, c):
-        return next((p for p in self.players if c in p.played), None)
+            if not p.round_over:
+                p.end_round()
+                
+            if not p.game_over:
+                p.end_game()
+                
+    def finished_game(self):
+        return self.round + 1 > self.get_setting('rounds')
 
     
             

@@ -1,0 +1,23 @@
+
+
+
+spell: all animal cards become fish
+shop ticket: reset the cards in the shop
+item: duplicate one card in your sequence
+item: get new landscape
+
+garden snake: roll for stealing points
+
+bathtub: remove spell from any player
+item leech: item is given to random player
+
+no rotate event
+
+card that does nothing
+
+soccosecc text
+lily misspelled
+reword sunglasses
+reword itemleech
+sunglasses -> every player gets second choice
+flu takes place at end of round
