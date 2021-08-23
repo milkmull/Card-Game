@@ -66,15 +66,15 @@ class Game:
         self.mem = []
         self.counter = 0
 
-        self.turn = 0 #turn of game
+        self.turn = 0
         self.current_turn = 0
         self.round = 0
 
-        self.event = None #impliment multiple
+        self.event = None
         
         self.players = []
-        self.current_player = 0 #index of player who is currently taking their turn
-        self.main_p = None #main player
+        self.current_player = 0
+        self.main_p = None
 
         self.mode = mode
         self.status = ''
@@ -123,7 +123,7 @@ class Game:
 
     def new_game(self):
         self.clear_logs()
-        self.log.append({'t': 'res'})
+        self.add_log({'t': 'res'})
         
         if self.mode == 'single':
             
@@ -162,14 +162,14 @@ class Game:
 
         self.event = self.draw_cards('events', 1)[0]
         self.event.start(self)
-        self.log.append({'t': 'se', 'c': self.event.copy()})
+        self.add_log({'t': 'se', 'c': self.event.copy()})
             
         self.main_p.start_turn()
-        self.log.append({'t': 'nt', 'pid': self.main_p.pid})
+        self.add_log({'t': 'nt', 'pid': self.main_p.pid})
 
     def new_round(self):
         self.clear_logs()
-        self.log.append({'t': 'nr'})
+        self.add_log({'t': 'nr'})
         
         self.shuffle_players() 
         self.current_player = 0
@@ -190,10 +190,10 @@ class Game:
 
         self.event = self.draw_cards('events', 1)[0]
         self.event.start(self)
-        self.log.append({'t': 'se', 'c': self.event.copy()})
+        self.add_log({'t': 'se', 'c': self.event.copy()})
             
         self.main_p.start_turn()
-        self.log.append({'t': 'nt', 'pid': self.main_p.pid})
+        self.add_log({'t': 'nt', 'pid': self.main_p.pid})
  
     def reset(self):
         self.new_status('waiting')
@@ -202,7 +202,7 @@ class Game:
             
             p.reset()
             
-        self.log.append({'t': 'res'})
+        self.add_log({'t': 'res'})
  
     def start(self, pid):
         if (pid == 0 and len(self.players) > 1) or self.mode == 'single':
@@ -221,13 +221,12 @@ class Game:
             
             p = Player(self, self.pid, self.get_setting('ss'), auto=True)
             self.players.append(p)      
-            self.logs[0][p.pid] = []
             
-            self.log.append({'t': 'add', 'pid': p.pid})
+            self.add_log({'t': 'add', 'pid': p.pid})
 
             self.pid += 1
             
-    def new_player(self, pid): #add player to game
+    def new_player(self, pid):
         if self.status == 'waiting':
 
             p = Player(self, pid, self.settings['ss'])
@@ -238,13 +237,9 @@ class Game:
                 
             self.pid += 1
             
-            self.log.append({'t': 'add', 'pid': pid})
+            self.add_log({'t': 'add', 'pid': pid})
             self.logs[pid] = self.get_startup_log()
-            
-            for p in self.players:
-                if p.pid != pid:
-                    self.logs[p.pid][pid] = []
-                    
+
             if len(self.players) > 1:
                 self.new_status('start')
 
@@ -258,15 +253,12 @@ class Game:
         p = self.get_player(pid)
         
         if p:
-            
-            for key in self.logs:
-                del self.logs[key][p.pid]
-                
+
             if p.pid in self.logs:
                 del self.logs[p.pid]
             
             self.players.remove(p)
-            self.log.append({'t': 'del', 'pid': p.pid})
+            self.add_log({'t': 'del', 'pid': p.pid})
             
             if self.mode == 'online':
                 if self.status == 'playing':
@@ -310,19 +302,19 @@ class Game:
         self.players.insert(0, player)
         self.current_player = self.players.index(self.main_p)
                 
-        self.log.append({'t': 'ord', 'ord': [p.pid for p in self.players]})
+        self.add_log({'t': 'ord', 'ord': [p.pid for p in self.players]})
         
     def shift_down(self, player):
         self.players.remove(player)
         self.players.append(player)
         self.current_player = self.players.index(self.main_p)
                 
-        self.log.append({'t': 'ord', 'ord': [p.pid for p in self.players]})
+        self.add_log({'t': 'ord', 'ord': [p.pid for p in self.players]})
         
     def shuffle_players(self):
         random.shuffle(self.players)
         
-        self.log.append({'t': 'ord', 'ord': [p.pid for p in self.players]})
+        self.add_log({'t': 'ord', 'ord': [p.pid for p in self.players]})
 
 #card stuff---------------------------------------------------------------------------------------
      
@@ -370,7 +362,7 @@ class Game:
 
                 owner, attr, i = info
                 getattr(owner, attr)[i] = new_card
-                self.log.append({'t': 'tf', 'c': old_card, 'name': new_card.name})
+                self.add_log({'t': 'tf', 'c': old_card, 'name': new_card.name})
 
                 return self.transform(old_card, const)
                 
@@ -441,12 +433,9 @@ class Game:
     def get_last_item(self):
         i = self.get_discarded_items()
         
-        if not i:
-            
-            i = self.draw_cards('items')[0]
-            
+        if not i: 
+            i = self.draw_cards('items')[0]   
         else:
-            
             i = i[0]
             
         return i.copy()
@@ -469,7 +458,7 @@ class Game:
             
         self.shop += cards
         
-        self.log.append({'t': 'fill', 'cards': self.shop.copy()})
+        self.add_log({'t': 'fill', 'cards': self.shop.copy()})
 
     def restock_shop(self):
         self.shop.clear()
@@ -487,40 +476,40 @@ class Game:
                 
 #log stuff--------------------------------------------------------------------------------------------------
 
+    def get_scores(self):
+        return {p.pid: p.score for p in self.players}
+
+    def add_log(self, log):
+        log['u'] = 'g'
+        self.log.append(log)
+
     def clear_logs(self):
         for key in self.logs:
-            
-            for sublog in self.logs[key].values():
-                
-                sublog.clear()
+            self.logs[key].clear()
                 
         self.log.clear()
         self.master_log.clear()
 
     def get_info(self, pid):
         p = self.get_player(pid)
-
-        info = {}
         
-        sublog = self.logs[pid]
+        logs = self.logs[pid]
         
-        for key in sublog:
+        if logs:
+            info = pack_log(logs)
+            self.logs[pid].clear()
+        else:
+            info = logs
             
-            log = sublog[key]
-            
-            if log:
-            
-                info[key] = pack_log(log)
-                sublog[key].clear()
+        scores = self.get_scores()
 
-        return info
+        return (scores, info)
                 
     def update_game_logs(self):
         for key in self.logs:
             
             sublog = self.logs[key]           
-            log = sublog.get('g')
-            log += self.log
+            sublog += self.log
             
         self.master_log += self.log
         self.log.clear()
@@ -531,8 +520,7 @@ class Game:
         for key in self.logs:
             
             sublog = self.logs[key]
-            log = sublog.get(pid)
-            log += p.log
+            sublog += p.log
             
         p.log.clear()
 
@@ -541,30 +529,31 @@ class Game:
         
         scores = {p.pid: p.score for p in self.players}
         
-        return (any(log for log in sublog.values()), scores)
+        return (len(sublog), scores)
         
     def get_startup_log(self):
-        log = {'g': [{'t': 'ns', 'stat': 'waiting'}]}
+        logs = []
+        logs.append({'u': 'g', 't': 'ns', 'stat': 'waiting'})
         
         for p in self.players:
+            logs.append({'u': p.pid, 't': 'add', 'pid': p.pid})
+            logs.append({'u': p.pid, 't': 'cn', 'pid': p.pid, 'name': p.name})
             
-            log[p.pid] = [{'t': 'add', 'pid': p.pid}, {'t': 'cn', 'pid': p.pid, 'name': p.name}]
-            
-        log['g'].append({'t': 'ord', 'ord': [p.pid for p in self.players]})
-        
-        return log
+        logs.append({'u': 'g', 't': 'ord', 'ord': [p.pid for p in self.players]})
+
+        return logs
 
 #update info stuff---------------------------------------------------------------------------------------
  
     def update_round(self):
         text = f"round {self.round}/{self.get_setting('rounds')}"
         
-        self.log.append({'t': 'ur', 's': text})
+        self.add_log({'t': 'ur', 's': text})
             
     def new_status(self, stat):
         self.status = stat
         
-        self.log.append({'t': 'ns', 'stat': stat})
+        self.add_log({'t': 'ns', 'stat': stat})
 
     def is_status(self, stat):
         return self.status == stat
@@ -624,14 +613,10 @@ class Game:
                 
                 return
 
-            elif data == 'u': #check if there are any updates
-
-                self.update_player(0)
-                self.main()
-                reply = self.check_logs(0)
-
             elif data == 'info': #get update info
             
+                self.update_player(0)
+                self.main()
                 reply = self.get_info(0)
                 
             elif data.startswith('name'): #set player name
@@ -769,7 +754,7 @@ class Game:
                         
                         self.new_status('new game')
                         
-                    self.log.append({'t': 'fin', 'w': self.get_winners()})
+                    self.add_log({'t': 'fin', 'w': self.get_winners()})
                     
             else:
                 
@@ -803,7 +788,7 @@ class Game:
             self.main_p = self.players[self.current_player]
             self.main_p.start_turn()
             
-            self.log.append({'t': 'nt', 'pid': self.main_p.pid})
+            self.add_log({'t': 'nt', 'pid': self.main_p.pid})
             
             self.turn += 1
             

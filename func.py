@@ -2042,11 +2042,8 @@ class TumbleWeed(Card):
 
     def start(self, player):
         if any('human' in c.tags for c in player.played):
-            
             player.lose(self, 10)
-            
         else:
-            
             player.gain(self, 5)
             
 class WindGust(Card):
@@ -2054,13 +2051,11 @@ class WindGust(Card):
         super().__init__(game, uid, 'wind gust', ['event'])
         
     def start(self, game):
-        for p in game.players:
-            
+        for p in game.players: 
             p.ongoing.append(self)
         
     def ongoing(self, player):
         if player.check_log('play'):
-        
             self.game.restock_shop()
             
 class Sunglasses(Card):

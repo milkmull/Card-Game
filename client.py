@@ -20,7 +20,14 @@ def get_local_ip():
     return socket.gethostbyname(socket.gethostname())
     
 def get_public_ip():
-    return urllib.request.urlopen('https://api.ipify.org').read().decode()
+    ip = 'no internet connection'
+    
+    try:
+        ip = urllib.request.urlopen('https://api.ipify.org').read().decode()
+    except urllib.error.URLError:
+        pass
+        
+    return ip
 
 def gen_colors(num):
     golden = (1 + 5 ** 0.5) / 2
@@ -108,24 +115,33 @@ def center_buttons_x(btns):
         
     return r
 
-def mini_loop(btns, input=[]):
+#menu mechanics------------------------------------------------------------------------
+
+def mini_loop(elements, input=[]):
     global win
+
+    for e in elements:
+
+        is_button = isinstance(e, Button)
     
+        if hasattr(e, 'events'):
+            e.events(input)
+                
+        if isinstance(e, Button):
+            if e.get_state():
+                break
+                
+    for e in elements:
+            
+        if hasattr(e, 'update'):
+            e.update()
+            
     win.fill((0, 0, 0))
-    
-    for b in btns:
-        
-        if hasattr(b, 'events'):
-        
-            b.events(input)
             
-        if hasattr(b, 'update'):
+    for e in elements:
         
-            b.update()
-        
-        if hasattr(b, 'draw'):
-            
-            b.draw(win)
+        if hasattr(e, 'draw'):
+            e.draw(win)
 
     pg.display.flip()
     
@@ -142,6 +158,88 @@ def check_break(elements):
                 
     return False
 
+def get_return(elements):
+    for e in elements:
+    
+        if isinstance(e, Button):
+            
+            if e.get_tag() == 'return':
+                
+                return e.get_return()
+
+def check_refresh(elements, mode, args):
+    for e in elements:
+    
+        if isinstance(e, Button):
+            
+            if e.get_tag() == 'refresh':
+                
+                if e.get_state():
+
+                    return (set_screen(mode, args=args), True)
+                
+    return (elements, False)
+
+def menu(mode='', args=[]):
+    global win
+    
+    elements = set_screen(mode, args=args)
+    skip = False
+    input = []
+    
+    while True:
+        clock.tick(30)
+        p = pg.mouse.get_pos()
+        
+        input = pg.event.get()
+        
+        for e in input:
+               
+            if e.type == pg.QUIT:
+                exit()
+                
+            elif e.type == pg.KEYDOWN:
+            
+                if e.key == pg.K_ESCAPE:
+                    exit()
+                    
+        for e in elements:
+            
+            is_button = isinstance(e, Button)
+            if is_button:
+                if e.get_state():
+                    e.reset()
+                    
+            if hasattr(e, 'events'):
+                e.events(input)
+                
+            if is_button:
+                if e.get_state():
+                    break
+                    
+        elements, skip = check_refresh(elements, mode, args)
+        
+        if not skip:
+            if check_break(elements):
+                break
+            skip = False
+
+        r = get_return(elements)
+        if r is not None:
+            return r
+                    
+        for e in elements:
+            if hasattr(e, 'update'):
+                e.update()
+                
+        win.fill((0, 0, 0))
+                
+        for e in elements:
+            if hasattr(e, 'draw'):
+                e.draw(win)
+                
+        pg.display.flip()
+
 #button functions------------------------------------------------------------------
 
 def run_builder():
@@ -149,44 +247,43 @@ def run_builder():
     b.run()
     b.cam.close()
 
-def save_settings(client, counters):
-    new_message('saving...', 500)
+def save_game_settings(client, counters):
     settings = {c.tag: c.get_current_option() for c in counters}  
     set_data('settings', settings)
     client.update_settings()
 
-#main------------------------------------------------------------------------------
-
-def main():
-    running = True
+def save_user_settings(username_field, port_field):
+    username = username_field.get_message()
+    port = int(port_field.get_message())
     
-    while running:
+    set_username(username)
+    
+    if port > 1023:
+
+        if port <= 65535:
         
-        mode = main_menu()
+            set_port(port)
+            new_message('changes saved', 1500)
+            
+            return
+            
+        else:
+            
+            new_message('port value is too high', 2000)
+            
+    else:
         
-        if mode == 'settings':
-            user_settings()
-        
-        elif mode == 'find online game':
-            
-            addr = choose_host()
-            
-            if addr:
-                
-                ip, port = addr
-                connect(ip, port)
-                
-        elif mode == 'find local game': 
-            connect('', get_data('port'))
-                
-        elif mode == 'host game':
-            start_game()
-            
-        elif mode == 'single player':
-            single_player()
-                
-        elif mode == 'quit':
-            exit()
+        new_message('port value too small', 2000)
+ 
+def join_game(ip, field):
+    port = int(field.get_message())
+    connect(ip, port)
+
+def new_entry(name_field, ip_field):
+    name = name_field.get_message()
+    ip = ip_field.get_message()
+
+    update_ips({'name': name, 'ip': ip})
 
 #menu stuff------------------------------------------------------------------------
 
@@ -195,27 +292,27 @@ def set_screen(mode, args=[], wait=0):
     
     if mode == 'main':
     
-        btn = Button((200, 30), 'single player', (0, 0, 0), (100, 100, 100))
+        btn = Button((200, 30), 'single player', (0, 0, 0), (100, 100, 100), func=single_player)
         btn.rect.center = (width // 2, height // 2)
         btn.rect.midbottom = btn.rect.midtop
         screen.append(btn)
         
-        btn = Button((200, 30), 'host game', (0, 0, 0), (100, 100, 100))
+        btn = Button((200, 30), 'host game', (0, 0, 0), (100, 100, 100), func=start_game)
         btn.rect.midtop = screen[-1].rect.midbottom
         btn.rect.y += 5
         screen.append(btn)
         
-        btn = Button((200, 30), 'find online game', (0, 0, 0), (100, 100, 100))
+        btn = Button((200, 30), 'find online game', (0, 0, 0), (100, 100, 100), func=menu, kwargs={'mode': 'choose host'})
         btn.rect.midtop = screen[-1].rect.midbottom
         btn.rect.y += 5
         screen.append(btn)
         
-        btn = Button((200, 30), 'find local game', (0, 0, 0), (100, 100, 100))
+        btn = Button((200, 30), 'find local game', (0, 0, 0), (100, 100, 100), func=connect, args=['', get_data('port')])
         btn.rect.midtop = screen[-1].rect.midbottom
         btn.rect.y += 5
         screen.append(btn)
         
-        btn = Button((200, 30), 'settings', (0, 0, 0), (100, 100, 100))
+        btn = Button((200, 30), 'settings', (0, 0, 0), (100, 100, 100), func=menu, kwargs={'mode': 'user settings'})
         btn.rect.midtop = screen[-1].rect.midbottom
         btn.rect.y += 5
         screen.append(btn)
@@ -239,7 +336,8 @@ def set_screen(mode, args=[], wait=0):
         text.rect.y = screen[-1].rect.bottom + 5
         screen.append(text)
         
-        text = Input((200, 30), str(get_data('port')), color=(0, 0, 0), tcolor=(255, 255, 255), check=lambda char: char.isnumeric())
+        text = Input((200, 30), str(get_data('port')), color=(0, 0, 0), tcolor=(255, 255, 255), 
+                                                       check=lambda char: char.isnumeric())
         text.rect.midleft = screen[-1].rect.midright
         screen.append(text)
         
@@ -248,24 +346,35 @@ def set_screen(mode, args=[], wait=0):
         btn.rect.y = screen[-1].rect.bottom + btn.rect.height
         screen.append(btn)
         
-        btn = Button((200, 30), 'save', (0, 0, 0), (100, 100, 100))
+        btn = Button((200, 30), 'save', (0, 0, 0), (100, 100, 100), func=save_user_settings, 
+                                                   args=[screen[1], screen[3]], tag='break')
         btn.rect.centerx = width // 2
         btn.rect.y = screen[-1].rect.bottom + btn.rect.height
         screen.append(btn)
         
-        btn = Button((200, 30), 'cancel', (0, 0, 0), (100, 100, 100))
+        btn = Button((200, 30), 'cancel', (0, 0, 0), (100, 100, 100), tag='break')
         btn.rect.midtop = screen[-1].rect.midbottom
         screen.append(btn)
 
     elif mode == 'choose host':
-        
-        for entry in get_data('ips'):
-        
-            btn = Button((200, 30), entry['name'] + ': ' + entry['ip'], (0, 0, 0), (100, 100, 100))
-            btn.rect.centerx = width // 2
-            screen.append(btn)
+    
+        y = 0
 
-        btn = Button((200, 30), 'new entry', (0, 0, 0), (100, 100, 100))
+        for entry in get_data('ips'):
+
+            btn = Button((200, 30), entry['name'] + ': ' + entry['ip'], (0, 0, 0), (100, 100, 100), func=menu,
+                            kwargs={'mode': 'join game', 'args': [entry['name'], entry['ip']]}, tag='refresh')
+            btn.rect.centerx = width // 2
+            btn.rect.y = y
+            screen.append(btn)
+            
+            y += btn.rect.height + 5
+            
+        if screen:  
+            center_buttons_y(screen)
+
+        btn = Button((200, 30), 'new entry', (0, 0, 0), (100, 100, 100), func=menu,
+                                       kwargs={'mode': 'new entry'}, tag='refresh')
         if screen:
             btn.rect.midtop = screen[-1].rect.midbottom   
         else:
@@ -273,11 +382,11 @@ def set_screen(mode, args=[], wait=0):
         btn.rect.y += 20
         screen.append(btn)
         
-        btn = Button((200, 30), 'view my ip', (0, 0, 0), (100, 100, 100))
+        btn = Button((200, 30), 'view my ip', (0, 0, 0), (100, 100, 100), func=menu, kwargs={'mode': 'view ip'})
         btn.rect.midtop = screen[-1].rect.midbottom
         screen.append(btn)
             
-        btn = Button((200, 30), 'back', (0, 0, 0), (100, 100, 100))
+        btn = Button((200, 30), 'back', (0, 0, 0), (100, 100, 100), tag='break')
         btn.rect.midtop = screen[-1].rect.midbottom
         btn.rect.y += btn.rect.height
         screen.append(btn)
@@ -309,18 +418,18 @@ def set_screen(mode, args=[], wait=0):
         
         center_buttons_x(screen[-2:])
 
-        btn = Button((200, 30), 'join game', (0, 0, 0), (0, 255, 0))
+        btn = Button((200, 30), 'join game', (0, 0, 0), (0, 255, 0), func=join_game, args=[ip, screen[-1]])
         btn.rect.top = screen[-1].rect.bottom
         btn.rect.y += btn.rect.height
         btn.rect.centerx = width // 2
         screen.append(btn)
         
-        btn = Button((200, 30), 'delete', (0, 0, 0), (255, 0, 0))
+        btn = Button((200, 30), 'delete', (0, 0, 0), (255, 0, 0), func=del_ips, args=[name, ip], tag='break')
         btn.rect.midtop = screen[-1].rect.midbottom
         btn.rect.y += 5
         screen.append(btn)
         
-        btn = Button((200, 30), 'back', (0, 0, 0), (255, 0, 0))
+        btn = Button((200, 30), 'back', (0, 0, 0), (255, 0, 0), tag='break')
         btn.rect.midtop = screen[-1].rect.midbottom
         btn.rect.y += 5
         screen.append(btn)
@@ -351,12 +460,13 @@ def set_screen(mode, args=[], wait=0):
         
         center_buttons_x(screen[-2:])
         
-        btn = Button((200, 30), 'save', (0, 0, 0), (100, 100, 100))
+        btn = Button((200, 30), 'save', (0, 0, 0), (100, 100, 100), func=new_entry,
+                                              args=[screen[1], screen[3]], tag='break')
         btn.rect.centerx = width // 2
         btn.rect.y = screen[-1].rect.bottom + (btn.rect.height * 2)
         screen.append(btn)
         
-        btn = Button((200, 30), 'cancel', (0, 0, 0), (100, 100, 100))
+        btn = Button((200, 30), 'cancel', (0, 0, 0), (100, 100, 100), tag='break')
         btn.rect.centerx = width // 2
         btn.rect.y = screen[-1].rect.bottom + 5
         screen.append(btn)
@@ -384,27 +494,34 @@ def set_screen(mode, args=[], wait=0):
         screen.append(btn)
         
     elif mode == 'view ip':
+        
+        public_ip = get_public_ip()
+        local_ip = get_local_ip()
 
-        text = Textbox(f'your online IP:  {get_public_ip()}', 20)
+        text = Textbox(f'your online IP:  {public_ip}', 20)
         text.rect.midbottom = (width // 2, height // 2)
         screen.append(text)
         
         btn = Button((200, 30), 'copy online IP to clipboard', tcolor=(255, 255, 0))
+        btn.set_func(copy_to_clipboard, args=[public_ip])
+        btn.set_timer_rule(125, 'coppied')
         btn.rect.midtop = screen[-1].rect.midbottom
         btn.rect.y += 5
         screen.append(btn)
         
-        text = Textbox(f'your local IP: {get_local_ip()}', 20)
+        text = Textbox(f'your local IP: {local_ip}', 20)
         text.rect.midtop = screen[-1].rect.midbottom
         text.rect.y += 5
         screen.append(text)
         
         btn = Button((200, 30), 'copy local IP to clipboard', tcolor=(255, 255, 0))
+        btn.set_func(copy_to_clipboard, args=[local_ip])
+        btn.set_timer_rule(125, 'coppied')
         btn.rect.midtop = screen[-1].rect.midbottom
         btn.rect.y += 5
         screen.append(btn)
         
-        btn = Button((200, 30), 'back')
+        btn = Button((200, 30), 'back', tag='break')
         btn.rect.midtop = screen[-1].rect.midbottom
         btn.rect.y += btn.rect.height
         screen.append(btn)
@@ -419,7 +536,8 @@ def set_screen(mode, args=[], wait=0):
         btn.rect.midtop = (width // 2, height // 2)
         screen.append(btn)
         
-        btn = Button((200, 30), 'game settings', func=settings_menu, args=[client, client.get_settings()])
+        btn = Button((200, 30), 'game settings', func=menu, kwargs={'mode': 'game settings', 
+                                                                    'args': [client, client.get_settings()]})
         btn.rect.midtop = screen[-1].rect.midbottom
         screen.append(btn)
         
@@ -442,6 +560,7 @@ def set_screen(mode, args=[], wait=0):
         if client.is_host():
         
             sep = 15
+            off = 3
             
             t = Textbox('rounds: ', tsize=20)
             t.rect.centerx = width // 2
@@ -449,7 +568,7 @@ def set_screen(mode, args=[], wait=0):
             
             c = Counter(range(1, 6), option=settings['rounds'], tsize=30, tag='rounds')
             c.rect.bottomleft = screen[-1].rect.bottomright
-            c.rect.y -= 3
+            c.rect.y += off
             screen.append(c)
             
             center_buttons_x(screen[-2:])
@@ -461,7 +580,7 @@ def set_screen(mode, args=[], wait=0):
             
             c = Counter(range(5, 51), option=settings['ss'], tsize=30, tag='ss')
             c.rect.bottomleft = screen[-1].rect.bottomright
-            c.rect.y -= 3
+            c.rect.y += off
             screen.append(c)
             
             center_buttons_x(screen[-2:])
@@ -473,7 +592,7 @@ def set_screen(mode, args=[], wait=0):
             
             c = Counter(range(1, 11), option=settings['cards'], tsize=30, tag='cards')
             c.rect.bottomleft = screen[-1].rect.bottomright
-            c.rect.y -= 3
+            c.rect.y += off
             screen.append(c)
             
             center_buttons_x(screen[-2:])
@@ -485,7 +604,7 @@ def set_screen(mode, args=[], wait=0):
             
             c = Counter(range(0, 6), option=settings['items'], tsize=30, tag='items')
             c.rect.bottomleft = screen[-1].rect.bottomright
-            c.rect.y -= 3
+            c.rect.y += off
             screen.append(c)
             
             center_buttons_x(screen[-2:])
@@ -497,7 +616,7 @@ def set_screen(mode, args=[], wait=0):
             
             c = Counter(range(0, 4), option=settings['spells'], tsize=30, tag='spells')
             c.rect.bottomleft = screen[-1].rect.bottomright
-            c.rect.y -= 3
+            c.rect.y += off
             screen.append(c)
             
             center_buttons_x(screen[-2:])
@@ -509,7 +628,7 @@ def set_screen(mode, args=[], wait=0):
             
             c = Counter(range(1, 15), option=settings['cpus'], tsize=30, tag='cpus')
             c.rect.bottomleft = screen[-1].rect.bottomright
-            c.rect.y -= 3
+            c.rect.y += off
             screen.append(c)
             
             center_buttons_x(screen[-2:])
@@ -521,22 +640,21 @@ def set_screen(mode, args=[], wait=0):
             
             c = Counter(range(0, 5), option=settings['diff'], tsize=30, tag='diff')
             c.rect.bottomleft = screen[-1].rect.bottomright
-            c.rect.y -= 3
+            c.rect.y += off
             screen.append(c)
             
             center_buttons_x(screen[-2:])
             
             counters = [c for c in screen if isinstance(c, Counter)]
             
-            b = Button((200, 30), 'save', func=save_settings, args=(client, counters))
+            b = Button((200, 30), 'save', func=save_game_settings, args=[client, counters], tag='break')
             b.rect.midtop = screen[-1].rect.midbottom
             b.rect.y += b.rect.height
             b.rect.centerx = width // 2
             screen.append(b)
                 
-            b = Button((200, 30), 'cancel', tag='break')
+            b = Button((200, 30), 'back', tag='break')
             b.rect.midtop = screen[-1].rect.midbottom
-            b.rect.y += b.rect.height
             b.rect.centerx = width // 2
             screen.append(b)
             
@@ -588,521 +706,76 @@ def set_screen(mode, args=[], wait=0):
 
     return screen
 
-def main_menu():
-    elements = set_screen('main')
-    input = []
-    
-    mode = None
-
-    while mode is None:
-        
-        clock.tick(30)
-        p = pg.mouse.get_pos()
-        input = pg.event.get()
-
-        for e in input:
-                
-            if e.type == pg.QUIT:
-            
-                mode = 'quit'
-                
-            elif e.type == pg.KEYDOWN:
-            
-                if e.key == pg.K_ESCAPE:
-                
-                    mode = 'quit'
-                    
-            elif e.type == pg.MOUSEBUTTONDOWN:
-
-                for b in elements:
-                    
-                    if b.rect.collidepoint(p):
-                        
-                        mode = b.get_message()
-                            
-                        break
-                        
-        mini_loop(elements, input)
-        
-    return mode
-    
-def user_settings():
-    elements = set_screen('user settings')
-    btns = elements[-2:]
-    username_field, port_field = btns
-    input = []
-
-    running = True
-    
-    while running:
-        
-        clock.tick(30)
-        p = pg.mouse.get_pos()
-        
-        input = pg.event.get()
-        
-        for e in input:
-               
-            if e.type == pg.QUIT:
-            
-                exit()
-                
-            elif e.type == pg.KEYDOWN:
-            
-                if e.key == pg.K_ESCAPE:
-                
-                    exit()
-
-            elif e.type == pg.MOUSEBUTTONDOWN:
-
-                for b in btns:
-                    
-                    if b.rect.collidepoint(p):
-                            
-                        if b.get_message() == 'save':
-                            
-                            username = elements[1].get_message()
-                            port = int(elements[3].get_message())
-                            
-                            set_username(username)
-                            
-                            if port > 1023:
-        
-                                if port <= 65535:
-                                
-                                    set_port(port)
-                                    new_message('changes saved', 1500)
-                                    
-                                    return
-                                    
-                                else:
-                                    
-                                    new_message('port value is too high', 2000)
-                                    
-                            else:
-                                
-                                new_message('port value too small', 2000)
-
-                        elif b.get_message() == 'cancel':
-                        
-                            return
-                            
-                        break
-                        
-        mini_loop(elements, input)
-
-def choose_host():
-    elements = set_screen('choose host')
-    btns = [b for b in elements if isinstance(b, Button)]
-    options = elements[-3:]
-     
-    input = []
-     
-    name = ''
-    ip = ''
-
-    running = True
-    
-    while running:
-
-        clock.tick(30)
-        p = pg.mouse.get_pos()
-        input = pg.event.get()
-        
-        for e in input:
-               
-            if e.type == pg.QUIT:
-            
-                exit()
-                
-            elif e.type == pg.KEYDOWN:
-
-                if e.key == pg.K_ESCAPE:
-                
-                    exit()
-                    
-            elif e.type == pg.MOUSEBUTTONDOWN:
-
-                for b in btns:
-                    
-                    if b.rect.collidepoint(p):
-
-                        if b.get_message() == 'back':
-                            
-                            return
-                            
-                        elif b.get_message() == 'new entry':
-                        
-                            tup = new_entry()
-                            
-                            if tup is not None:
-                            
-                                name, ip = tup
-                                update_ips({'name': name, 'ip': ip})
-                                
-                                elements = set_screen('choose host')
-                                btns = [b for b in elements if isinstance(b, Button)]
-                                options = elements[-3:]
-                                
-                            break
-                            
-                        elif b.get_message() == 'view my ip':
-                            
-                            try:
-                            
-                                view_ip()
-                                
-                            except urllib.error.URLError:
-                                
-                                new_message('connection could not be found', 2000)
-                            
-                            break
-
-                        elif ip and 'delete' in b.get_message():
-                            
-                            del_ips(name, ip)
-                            
-                            btns = set_screen('choose host')
-                            options = get_options()
-                            
-                            break
-                            
-                        elif ':' in b.get_message():
-                            
-                            name, ip = b.get_message().split(': ')
-                            port = join_game(name, ip)
-                            
-                            if port:
-                            
-                                return (ip, port)
-                                
-                            else:
-                                
-                                elements = set_screen('choose host')
-                                btns = [b for b in elements if isinstance(b, Button)]
-                                options = elements[-3:]
-                            
-                else:
-                
-                    name = ''
-                    ip = ''
-                    
-        mini_loop(elements, input)
-        
-def join_game(name, ip):
-    elements = set_screen('join game', args=(name, ip))
-    btns = [b for b in elements if isinstance(b, Button)]
-    input = []
-
-    running = True
-    
-    while running:
-
-        clock.tick(30)
-        p = pg.mouse.get_pos()
-        input = pg.event.get()
-        
-        for e in input:
-               
-            if e.type == pg.QUIT:
-            
-                exit()
-                
-            elif e.type == pg.KEYDOWN:
-
-                if e.key == pg.K_ESCAPE:
-                
-                    exit()
-                    
-            elif e.type == pg.MOUSEBUTTONDOWN:
-                
-                for b in btns:
-                    
-                    if b.rect.collidepoint(p):
-                        
-                        if 'join' in b.get_message():
-                            
-                            return int(elements[3].get_message())
-                        
-                        if 'delete' in b.get_message():
-                            
-                            del_ips(name, ip)
-                            
-                            return
-                            
-                        elif 'back' in b.get_message():
-                            
-                            return
-                    
-        mini_loop(elements, input)
-
-def new_entry():
-    elements = set_screen('new entry')
-    btns = [b for b in elements if isinstance(b, Button)]
-    input = []
-
-    running = True
-
-    while running:
-        
-        clock.tick(30)
-        p = pg.mouse.get_pos()
-        input = pg.event.get()
-
-        for e in input:
-               
-            if e.type == pg.QUIT:
-            
-                exit()
-                
-            elif e.type == pg.KEYDOWN:
-            
-                if e.key == pg.K_ESCAPE:
-                
-                    exit()
-
-            elif e.type == pg.MOUSEBUTTONDOWN:
-
-                for b in btns:
-                    
-                    if b.rect.collidepoint(p):
-
-                        if b.get_message() == 'cancel':
-                        
-                            return
-                            
-                        elif b.get_message() == 'save':
-                            
-                            return (elements[1].get_message(), elements[3].get_message())
-                            
-                        break
-                        
-        mini_loop(elements, input)
-
-def view_ip():
-    elements = set_screen('view ip')
-    btns = [b for b in elements if isinstance(b, Button)]
-    input = []
-    
-    timer1 = 0
-    timer2 = 0
-
-    running = True
-    
-    while running:
-        
-        clock.tick(30)
-        p = pg.mouse.get_pos()
-        input = pg.event.get()
-
-        for e in input:
-               
-            if e.type == pg.QUIT:
-            
-                exit()
-                
-            elif e.type == pg.KEYDOWN:
-            
-                if e.key == pg.K_ESCAPE:
-                
-                    exit()
-
-            elif e.type == pg.MOUSEBUTTONDOWN:
-
-                for b in btns:
-                    
-                    if b.rect.collidepoint(p):
-                    
-                        if b.get_message() == 'back':
-                            
-                            return
-                            
-                        elif 'online' in b.get_message():
-                            
-                            copy_to_clipboard(get_public_ip())
-                            elements[1].update_message('coppied')
-                            timer1 = 125
-                            
-                        elif 'local' in b.get_message():
-                            
-                            copy_to_clipboard(get_local_ip())
-                            elements[3].update_message('coppied')
-                            timer2 = 125
-      
-        timer1 -= 1
-        timer2 -= 1
-        
-        if timer1 == 0:
-            
-            elements[1].update_message('copy online IP to clipboard')
-            
-        if timer2 == 0:
-            
-            elements[3].update_message('copy local IP to clipboard')
-            
-        mini_loop(elements, input)
-  
-#in game menus------------------------------------------------------------------------------
- 
-def game_menu(client):
-    elements = set_screen('game options', args=[client])
-    input = []
-
-    while not check_break(elements):
-        
-        client.clock.tick(30)
-        p = pg.mouse.get_pos()
-        input = pg.event.get()
-
-        for e in input:
-                
-            if e.type == pg.QUIT:
-            
-                client.quit()
-                
-            elif e.type == pg.KEYDOWN:
-            
-                if e.key == pg.K_ESCAPE:
-                
-                    return
-                            
-        mini_loop(elements, input)
-                            
-def settings_menu(client, settings):
-    elements = set_screen('game settings', args=(client, settings))
-    btns = [e for e in elements if isinstance(e, Button)]
-    input = []
-
-    while not check_break(elements):
-    
-        client.clock.tick(30)
-        p = pg.mouse.get_pos()
-        input = pg.event.get()
-
-        for e in input:
-                
-            if e.type == pg.QUIT:
-            
-                return
-                
-            elif e.type == pg.KEYDOWN:
-            
-                if e.key == pg.K_ESCAPE:
-                
-                    return
-      
-        mini_loop(elements, input)
-                                
-def name_entry(id, color):
-    elements = set_screen('name')
-    btns = [b for b in elements if isinstance(b, Button)]
-    input = []
-
-    field = elements[1]
-    field.update_message(field.message, tcolor=color)
-    
-    running = True
-    
-    while running:
-        
-        clock.tick(30)
-        p = pg.mouse.get_pos()
-        input = pg.event.get()
-        
-        name = field.get_message()
-
-        for e in input:
-               
-            if e.type == pg.QUIT:
-            
-                return
-                
-            elif e.type == pg.KEYDOWN:
-            
-                if e.key == pg.K_ESCAPE:
-                
-                    return
-                    
-                elif e.key == pg.K_RETURN and name:
-                    
-                    return name
-
-            elif e.type == pg.MOUSEBUTTONDOWN:
-
-                for b in btns:
-                    
-                    if b.rect.collidepoint(p):
-
-                        if b.get_message() == 'OK' and name:
-                            
-                            return name
-                            
-                        elif b.get_message() == 'back':
-                            
-                            return
-                            
-        mini_loop(elements, input)
-
 #new game stuff-------------------------------------------------------------------------
 
 def connect(ip, port):
     new_message('searching for game...', 500)
 
-    try:
-             
+    try:       
         net = Network(ip, port)
-        c = Client(win, net, 'online')
+        c = Client(win, net, 'online') 
+        c.run()
         
     except InvalidIP:
+        new_message('invalid IP address', 2000) 
         
-        new_message('invalid IP address', 2000)
-        
-    except NoGamesFound:
-        
+    except NoGamesFound:  
         new_message('no games could be found', 2000)
         
     except EOFError as e:
-    
         print(e)
-        new_message('disconnecting...', 1000)
+        new_message('disconnecting...', 1000)  
         
-    except Exception as e:
-        
+    except Exception as e: 
         print(e, 'c1')
         new_message('an error occurred', 2000)
+        
+    finally:
+        if 'c' in locals():
+            c.exit()
         
 def start_game():
     new_message('starting game...', 500)
 
     try:
-        
         subprocess.Popen([sys.executable, 'server.py'])
         net = Network(get_local_ip(), get_data('port'))
         c = Client(win, net, 'online')
+        c.run()
         
     except EOFError as e:
-        
         print(e)
         new_message('diconnected', 1000)
         
     except NoGamesFound:
-        
         new_message('game could not be started', 2000)
         
     except Exception as e:
-    
         print(e, 'c2')
         new_message('an error occurred', 2000)
+        
+    finally:
+        if 'c' in locals():
+            c.exit()
         
 def single_player():
     new_message('starting game...', 500)
 
     g = Game('single')
-    Client(win, g, 'single')
+    c = Client(win, g, 'single')
+    c.run()
     
-    new_message('returning to main menu...', 1000) #if any errors occur or player leaves game, retrun to main menu
+    new_message('returning to main menu...', 1000)
 
 #-----------------------------------------------------------------------------------
+
+def sort_logs(log):
+    u = log.get('u')
+    
+    if u == 'g':
+        return -1
+    else:
+        return u
 
 class Player:
     def __init__(self, client, pid, name=None):
@@ -1114,8 +787,11 @@ class Player:
         
         self.target = pg.Rect(0, 0, 20, 20)
         self.view_card_rect = pg.Rect(0, 0, card_width // 2, card_height // 2)
+        self.card_rect = pg.Rect(0, 0, cw, ch)
 
-        self.score = 0
+        self.score = -1
+        self.score_card = Textbox('', tsize=20, tcolor=self.color)
+        self.update_score(0)
         
         self.coin = None
         self.dice = None
@@ -1150,6 +826,15 @@ class Player:
     def is_host(self):
         return self.pid == 0
         
+    def update_score(self, score):
+        if self.score != score:
+            self.score = score
+            self.score_card.update_message(f'{self.name}: {self.score}')
+            self.score_card.fit_text(pg.Rect(0, 0, self.client.elements['scores'].rect.width, self.score_card.rect.height))
+            return True
+            
+        return False
+ 
     def update(self):
         if self.flipping and not self.frt % 2:   
             self.coin = random.choice((0, 1))
@@ -1177,7 +862,7 @@ class Player:
             self.dice = None
         
     def reset(self):
-        self.score = 0
+        self.update_score(0)
 
         self.coin = None
         self.dice = None
@@ -1221,7 +906,7 @@ class Player:
             if c.uid == uid:
                 
                 self.unplayed.remove(c)
-                self.client.add_moving_card(self, c)
+                self.client.add_moving_card(self, original=c)
                 self.played.append(c)
                 
                 break
@@ -1322,7 +1007,7 @@ class Player:
 
     def update_name(self, name):
         self.name = name
-    
+
     def new_ac(self, c, wait, cancel):
         self.active_card = c
         
@@ -1359,6 +1044,11 @@ class Player:
         
         self.timer = timer
 
+    def draw(self, deck, num):
+        for _ in range(num):
+            
+            self.client.add_moving_card(self, type='back')
+
 class Card(Mover):
     def __init__(self, name, uid=None, color=None):
         self.name = name
@@ -1377,7 +1067,6 @@ class Card(Mover):
     def copy(self):
         c = Card(self.name, uid=self.uid, color=self.color)
         c.rect = self.rect.copy()
-        
         return c
         
     def get_image(self, outline=False, scale=(cw, ch)):
@@ -1409,6 +1098,7 @@ class PlayerSpot:
         self.elements.append(self.active_card)
         self.target = None
         self.view_card_rect = None
+        self.card_rect = None
         
         w = self.ongoing.rect.width + 5 + self.played.rect.width + 5 + self.active_card.rect.width
         h = height
@@ -1434,6 +1124,7 @@ class PlayerSpot:
         self.label.update_all(message=self.player.name, tcolor=self.player.color)
         self.target = player.target
         self.view_card_rect = player.view_card_rect
+        self.card_rect = player.card_rect
         
     def clear(self):
         for p in self.panes: 
@@ -1474,6 +1165,7 @@ class PlayerSpot:
         self.label.rect.midbottom = self.played.rect.midtop
         self.target.midleft = self.label.rect.midright
         self.view_card_rect.midtop = self.label.rect.midbottom
+        self.card_rect.midtop = self.view_card_rect.midtop
         
         for e in self.elements:
             e.update()
@@ -1504,7 +1196,7 @@ class PlayerSpot:
             r = img.get_rect()
             r.center = c
             win.blit(img, r)
-            
+    
 class Client:
     def __init__(self, screen, connection, mode):
         self.screen = screen
@@ -1522,6 +1214,7 @@ class Client:
         self.n = connection
         self.playing = True
         self.logs = {}
+        self.log_queue = []
 
         self.pid = self.n.get_pid()
         self.colors = gen_colors(20)
@@ -1555,8 +1248,6 @@ class Client:
         self.main_p = self.get_main_p()
         
         self.set_name()
-        
-        self.run()
         
     def is_host(self):
         return self.pid == 0
@@ -1608,7 +1299,7 @@ class Client:
         self.view_card_rect = pg.Rect(0, 0, 375, 525)
         self.view_card_rect.center = (width // 2, height // 2)
         
-        btn = Button((100, 30), 'options', func=game_menu, args=[self])
+        btn = Button((100, 30), 'options', func=menu, kwargs={'mode': 'game options', 'args': [self]})
         btn.rect.topright = (width, 0)
         btn.rect.y += 30
         btn.rect.x -= 30
@@ -1723,30 +1414,25 @@ class Client:
 
             ps.update_info(p)
       
-    def update_scores(self, scores):
-        counter = 0
+    def update_player_scores(self, scores):
+        checks = []
+        pids = []
         
         for pid, score in scores.items():
             
-            p = self.get_player_by_pid(int(pid))
-                
-            if p:
-                
-                if p.score == score:
-                    
-                    counter += 1
-                    
-                else:
-                
-                    p.score = score
-                    
-        if counter != len(self.players):
-    
-            pane = self.elements['scores']
+            p = self.get_player_by_pid(pid)
+            if p is not None:
+                check = p.update_score(score)
+            else:
+                check = True
+            checks.append(check)
+            pids.append(int(pid))
+            
+        if any(checks) or len(pids) != len(self.players):
 
-            players = sorted(self.players, key=lambda p: p.score, reverse=True)
-            text = [Image(fit_text(pg.Rect(0, 0, pane.rect.width, 15), f'{p.name}: {p.score}', tcolor=p.color)) for p in players]
-            pane.join_objects(text)
+            players = sorted([p for p in self.players if p.pid in pids], key=lambda p: p.score, reverse=True)
+            objects = [p.score_card for p in players]
+            self.elements['scores'].join_objects(objects, force=True)
 
     def update_panes(self):
         self.cards.clear()
@@ -1777,7 +1463,7 @@ class Client:
                 self.elements['sequence'].join_objects(p.unplayed.copy())
                 self.cards += self.elements['sequence'].get_visible()
                 
-                self.elements['extra cards'].join_objects(p.items + p.equipped + p.spells + p.treasure, dir='x', pack=True)
+                self.elements['extra cards'].join_objects(p.items + p.equipped + p.spells + p.treasure, dir='x', pack=True, move=True)
                 self.cards += self.elements['extra cards'].get_visible()
 
                 self.elements['selection'].join_objects(p.selection.copy(), dir='y')
@@ -1803,16 +1489,22 @@ class Client:
                 
                 return ps
 
-    def add_moving_card(self, player, original, type='zoom'):
-        c = original.copy()
-        
+    def add_moving_card(self, player, original=None, type='zoom'):
         if type == 'zoom':
+            
+            c = original.copy()
 
             sequence = [{'target': self.get_spot(player).view_card_rect, 'v': 100, 'timer2': 30, 'scale': True},
                         {'target': original.rect, 'v': 50, 'scale': True}]
                        
             c.set_sequence(sequence, start=True)
             c.color = player.color
+            
+        elif type == 'back':
+            
+            c = Card('back')
+            c.rect.bottomright = (width, height)
+            c.set_target(player.card_rect, v=30)
 
         self.moving_cards.append(c)
 
@@ -1858,7 +1550,6 @@ class Client:
                 
             if option == 'select' and mp.can_cancel:
                 c.rect.topleft = b.rect.topright
-                c.rect.x += c.rect.width
             else:
                 c.rect.center = (-50, -50)
         
@@ -1924,8 +1615,6 @@ class Client:
             self.players.append(p)
             self.players.sort(key=lambda p: p.pid)
             self.add_panes()
-            
-            self.spritesheet.add_player_card(p.name, p.color)
 
             return p
         
@@ -1933,9 +1622,6 @@ class Client:
         if any(p.pid == pid for p in self.players):
             
             p = self.get_player_by_pid(pid)
-
-            if p.pid in self.logs:
-                del self.logs[p.pid]
 
             self.players.remove(p)
             self.add_panes()
@@ -1991,20 +1677,10 @@ class Client:
     def exit(self):
         self.n.close()
         self.playing = False   
-
-    def send(self, data):
-        if self.playing:
-        
-            reply = self.n.send(data)
-            
-            if reply is None:
-                self.playing = False 
-            else:
-                return reply
-                
+  
     def set_name(self):
         name = get_data('username')
-        self.main_p.name = name
+        self.main_p.update_name(name)
         self.send(f'name,{name}')
             
 #main loop-----------------------------------------------------------------------------
@@ -2208,7 +1884,17 @@ class Client:
         pg.display.flip()
        
 #server stuff-----------------------------------------------------------------------------
+  
+    def send(self, data):
+        if self.playing:
         
+            reply = self.n.send(data)
+            
+            if reply is None:
+                self.playing = False 
+            else:
+                return reply
+
     def get_settings(self):
         return self.send('settings')
         
@@ -2225,52 +1911,25 @@ class Client:
         self.exit()
         
     def get_info(self):
-        u, scores = self.send('u')
-        self.update_scores(scores)
+        scores, info = self.send('info')
         
-        if u:
-            
-            info = self.send('info')
+        self.update_player_scores(scores)
+        
+        if info:
 
-            for key in info:
-                
-                if key in self.logs:
-                    
-                    self.logs[key] += info[key]
-                    
-                else:
-                    
-                    self.logs[key] = info[key]
+            self.log_queue += info
+            self.log_queue.sort(key=sort_logs)
 
     def update_info(self):
-        glogs = self.logs.get('g')
-        
-        if glogs:
-
-            self.parse_logs('g', glogs[:15])
-            self.logs['g'] = self.logs['g'][15:]
+        self.parse_logs(self.log_queue[:15])
+        self.log_queue = self.log_queue[15:]
             
-        else:
-            
-            for key, logs in self.logs.items():
-                
-                if key != 'g' and logs:
-                    
-                    pid = int(key)
-                    
-                    #if not self.get_player_by_pid(pid):
-                    #    
-                    #    self.add_player(pid)
-
-                    self.parse_logs(pid, logs[:15])
-                    self.logs[key] = self.logs[key][15:]
-                    
-                    break
-            
-    def parse_logs(self, pid, logs):
+    def parse_logs(self, logs):
         points = []
             
         for log in logs:
+            
+            pid = log.get('u')
         
             type = log.get('t')
             if 'c' in log:
@@ -2353,6 +2012,9 @@ class Client:
                     
                 elif type == 'dre':
                     p.end_roll(log.get('dice'), log.get('rt'))
+                    
+                elif type == 'draw':
+                    p.draw(log.get('deck'), log.get('num'))
                       
     def unpack_points(self):
         for info in self.points_queue.copy():
@@ -2550,7 +2212,13 @@ class Client:
 
 #-------------------------------------------------------------------------------------------
 
+    def get_scores(self):
+        return {p.pid: p.score for p in self.players}
+
     def get_player_by_pid(self, pid):
+        if type(pid) == str:
+            if pid.isnumeric():
+                pid = int(pid)
         return next((p for p in self.players if p.pid == pid), None)
 
     def find_local_card(self, card):
@@ -2609,7 +2277,7 @@ if __name__ == '__main__':
 
     spritesheet = Spritesheet()
   
-    main()
+    menu(mode='main')
         
     pg.quit()
         

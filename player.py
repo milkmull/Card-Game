@@ -109,8 +109,17 @@ class Player:
         return self.name
 
     def set_name(self, name):
+        while True:
+            c = len(name) + 2
+            
+            if any(p is not self and p.name == name for p in self.game.players):
+                name = name.center(c)
+                c += 2
+            else:
+                break
+
         self.name = name
-        self.log.append({'t': 'cn', 'pid': self.pid, 'name': name})
+        self.add_log({'t': 'cn', 'pid': self.pid, 'name': name})
         return True
 
 #starting stuff--------------------------------------------------------------------------------------------                
@@ -193,11 +202,9 @@ class Player:
 
     def draw_cards(self, pdeck, num=1):
         if pdeck in ('played', 'unplayed'):
-            
             gdeck = 'play'
             
         elif pdeck in ('items', 'spells', 'treasure', 'landscapes'):
-            
             gdeck = pdeck
             
         cards = self.game.draw_cards(gdeck, num)
@@ -209,9 +216,10 @@ class Player:
                 
                 self.ongoing.append(c)
                 
-        if len(cards) == 1:
-                
-            self.log.append({'t': f'd{pdeck[0]}', 'c': cards[0]})
+        if len(cards) == 1:     
+            self.add_log({'t': f'd{pdeck[0]}', 'c': cards[0]})
+            
+        self.add_log({'t': 'draw', 'deck': pdeck, 'num': len(cards)})
                 
         return cards
    
@@ -227,25 +235,20 @@ class Player:
    
     def play_card(self, c=None, d=False):
         if c is None and self.unplayed:
-            
             c = self.unplayed[0]
             
         if c:
-            
             self.cancel_request()
 
             if c in self.unplayed:
-                
                 self.unplayed.remove(c)
 
-            self.log.append({'t': 'play', 'c': c.copy(), 'd': d})
+            self.add_log({'t': 'play', 'c': c.copy(), 'd': d})
             
             c.start(self)
 
             if c not in self.played and not d:
-            
                 self.played.append(c.copy())
-                
                 self.gone = True
                 
     def can_cancel(self):
@@ -253,67 +256,55 @@ class Player:
         return c.wait == 'cast' or (c.wait == 'select' and c in self.items) or c.name == 'gold coins'
 
     def cancel(self):
-        if self.requests:
-                
+        if self.requests:   
             c = self.requests[0]
             
             if self.can_cancel():
-                
                 self.requests.pop(0)
                 self.cancel_request()
                 
     def new_deck(self, deck, cards):
         setattr(self, deck, cards)
-        self.log.append({'t': 'nd', 'deck': deck, 'cards': cards.copy()})
+        self.add_log({'t': 'nd', 'deck': deck, 'cards': cards.copy()})
 
     def discard_card(self, c, d=False, ogd=False):
         deck = ''
         
         if c in self.equipped:
-            
             self.unequip(c)
             
         if c in self.items:
-            
             self.items.remove(c)
             deck = 'items'
-            self.log.append({'t': 'ui', 'c': c.copy(), 'd': d})
+            self.add_log({'t': 'ui', 'c': c.copy(), 'd': d})
             
         if ogd:
-
             self.remove_og(c)
             
         if c in self.unplayed:
-            
             self.unplayed.remove(c)
             deck = 'unplayed'
             
-        if c in self.played:
-            
+        if c in self.played: 
             self.played.remove(c)
             deck = 'played'
             
         if c in self.treasure:
-        
             self.treasure.remove(c)
             deck = 'treasure'
             
         if c in self.landscapes:
-        
             self.landscapes.remove(c)
             deck = 'landscapes'
             
         if c in self.spells:
-        
             self.spells.remove(c)
             deck = 'spells'
         
         if not d:
-            
             self.game.discard.append(c)
             
         if deck:
-        
             self.new_deck(deck, getattr(self, deck))
 
     def has_landscape(self, ls):
@@ -336,9 +327,7 @@ class Player:
         
     def steal_card(self, c, target):
         deck = get_deck(c)
-        
         self.discard_card(c, d=True)
-        
         target.add_card(c, deck)
         
     def steal_random_card(self, pdeck, target):
@@ -348,13 +337,11 @@ class Player:
             
             c = random.choice(deck)
             target.discard_card(c, d=True)
-            
             self.add_card(c, pdeck)
             
         else:
             
             if pdeck == 'treasure':
-                
                 self.draw_cards('treasure')
 
 #equipment stuff------------------------------------------------------------------------------------
@@ -401,7 +388,7 @@ class Player:
             
             self.add_card(c, deck)
             
-            self.log.append({'t': 'buy', 'c': c})
+            self.add_log({'t': 'buy', 'c': c})
                 
         return c
     
@@ -459,7 +446,7 @@ class Player:
         
             self.cancel_request()
             self.active_card = c
-            self.log.append({'t': 'aac', 'c': self.active_card, 'w': self.active_card.wait, 'cancel': self.can_cancel()})
+            self.add_log({'t': 'aac', 'c': self.active_card, 'w': self.active_card.wait, 'cancel': self.can_cancel()})
             self.start_request(c)
             
         confirm = False
@@ -550,7 +537,7 @@ class Player:
         
             self.active_card.mode = 0
             self.active_card = None
-            self.log.append({'t': 'rac'})
+            self.add_log({'t': 'rac'})
  
     def select(self, card):
         if self.selection:
@@ -622,7 +609,7 @@ class Player:
                 if self.timer != 30:
                     return
                 
-                self.log.append({'t': 'cfs'})
+                self.add_log({'t': 'cfs'})
     
         if self.flipping and self.ft > 0:
                 
@@ -630,7 +617,7 @@ class Player:
             
                 if self.ft == self.max / 2:
                 
-                    self.log.append({'t': 'cfe', 'coin': self.coin, 'ft': self.ft - 2, 'd': False})
+                    self.add_log({'t': 'cfe', 'coin': self.coin, 'ft': self.ft - 2, 'd': False})
                 
             else:
                 
@@ -651,7 +638,7 @@ class Player:
                 if self.timer != 30:
                     return
                 
-                self.log.append({'t': 'drs'})
+                self.add_log({'t': 'drs'})
                 
         if self.rolling and self.rt > 0:
                 
@@ -659,7 +646,7 @@ class Player:
             
                 if self.rt == self.max / 2:
             
-                    self.log.append({'t': 'dre', 'dice': self.dice, 'rt': self.rt - 2, 'd': False})
+                    self.add_log({'t': 'dre', 'dice': self.dice, 'rt': self.rt - 2, 'd': False})
                 
             else:
                 
@@ -684,7 +671,7 @@ class Player:
         if hasattr(c, 'start'):
             c.start(target)
         
-        self.log.append({'t': 'cast', 'c': c.copy(), 'target': target, 'd': False})
+        self.add_log({'t': 'cast', 'c': c.copy(), 'target': target, 'd': False})
     
     def can_cast(self, s):
         return not any(s.name == c.name and not c.mult for c in self.get_spells())
@@ -722,9 +709,13 @@ class Player:
             self.ongoing.remove(c)
             
         if 'spell' in c.tags:
-            self.log.append({'t': 'rs', 'c': c})
+            self.add_log({'t': 'rs', 'c': c})
        
 #log stuff------------------------------------------------------------------------------------------
+
+    def add_log(self, log):
+        log['u'] = self.pid
+        self.log.append(log)
 
     def update_logs(self):
         self.master_log += self.log
@@ -793,7 +784,7 @@ class Player:
             
             if self.coin == -1:
                 
-                self.log.append({'t': 'cfs'})
+                self.add_log({'t': 'cfs'})
                 self.flipping = True
                 
             self.flip()
@@ -802,7 +793,7 @@ class Player:
             
             if self.dice == -1:
                 
-                self.log.append({'t': 'drs'})
+                self.add_log({'t': 'drs'})
                 self.rolling = True
             
             self.roll()
@@ -1082,7 +1073,7 @@ class Player:
                     
                 else:
                     
-                    self.log.append({'t': 'wait'})
+                    self.add_log({'t': 'wait'})
                             
     def auto_select(self):
         s = None
@@ -1113,7 +1104,7 @@ class Player:
           
         if s is not None:
 
-            self.log.append({'t': 'select', 's': s})
+            self.add_log({'t': 'select', 's': s})
             self.reset_brain()
                 
         return s
@@ -1170,7 +1161,7 @@ class Player:
         
         if sp:
             
-            self.log.append({'t': 'sp', 'c': c.copy(), 'target': target, 'sp': sp, 'd': d})
+            self.add_log({'t': 'sp', 'c': c.copy(), 'target': target, 'sp': sp, 'd': d})
             
         return sp
             
@@ -1179,14 +1170,14 @@ class Player:
         
         if self.invincible:
             
-            self.log.append({'t': 'iv', 'c': c})
+            self.add_log({'t': 'iv', 'c': c})
             rp = 0
 
         self.score -= rp
         
         if rp:
             
-            self.log.append({'t': 'rp', 'c': c.copy(), 'robber': robber, 'rp': rp, 'd': d})
+            self.add_log({'t': 'rp', 'c': c.copy(), 'robber': robber, 'rp': rp, 'd': d})
         
         return rp
         
@@ -1195,7 +1186,7 @@ class Player:
         
         if gp:
         
-            self.log.append({'t': 'gp', 'c': c.copy(), 'gp': gp, 'd': d})
+            self.add_log({'t': 'gp', 'c': c.copy(), 'gp': gp, 'd': d})
             
         return gp
         
@@ -1206,7 +1197,7 @@ class Player:
         
         if lp:
 
-            self.log.append({'t': 'lp', 'c': c.copy(), 'lp': lp, 'd': d})
+            self.add_log({'t': 'lp', 'c': c.copy(), 'lp': lp, 'd': d})
             
         return lp
         
@@ -1219,7 +1210,7 @@ class Player:
         
         if gp:
 
-            self.log.append({'t': 'give', 'c': c.copy(), 'target': target, 'gp': -gp, 'd': d})
+            self.add_log({'t': 'give', 'c': c.copy(), 'target': target, 'gp': -gp, 'd': d})
             
         return gp
         

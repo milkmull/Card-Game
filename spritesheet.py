@@ -20,12 +20,10 @@ class Spritesheet:
                       ('flower pot', 'farm', 'forest', 'water', 'sky', 'office fern', 'parade', 'camel', 'rattle snake'),
                       ('tumble weed', 'watering can', 'magic bean', 'the void', 'bug net', 'big sand worm', 'lost palm tree', 'seaweed', 'scuba baby')
                        )
-                       
-        self.ids = self.make_ids()
-                             
+               
         self.sheet, self.images = self.load_cards()
-        
-        self.extras = {}
+
+        self.extras = {'back': pg.image.load('img/back.png').convert()}
         
     def add_extra(self, name):
         self.extras[name] = create_text(name)
@@ -44,9 +42,11 @@ class Spritesheet:
         self.extras[name] = img
         
     def remove_player_card(self, name):
-        del self.extras[name]
+        if name in self.extras:
+            del self.extras[name]
         
     def get_image(self, c, outline, scale=(cw, ch)):
+        print(self.extras)
         name = c.name
         
         scale = [int(s) for s in scale]
@@ -89,11 +89,9 @@ class Spritesheet:
         
     def load_cards(self):
         f = 'img/spritesheet.png'
-        
         images = {}
         
         sheet = pg.image.load(f).convert()
-        
         size = sheet.get_size()
         
         row = 0
@@ -115,23 +113,6 @@ class Spritesheet:
             row += 1
             
         return (sheet, images)
-        
-    def make_ids(self):
-        ids = {}
-        
-        i = 0
-        
-        for row in self.names:
-            
-            for name in row:
-                
-                if name:
-                    
-                    ids[i] = name
-                    
-                    i += 1
-                    
-        return ids
         
         
         

@@ -1,7 +1,6 @@
 import socket
 from _thread import start_new_thread
 import json
-import sys
 from game import Game
 
 confirmation_code = 'thisisthecardgameserver'
@@ -55,7 +54,7 @@ class Server:
                 
                 try:
                 
-                    data = conn.recv(4096).decode() #might need to increase
+                    data = conn.recv(4096).decode()
 
                     if data is None:
                         
@@ -71,14 +70,10 @@ class Server:
                             
                             connected = False
 
-                        elif data == 'u': #check if there are any updates
-
+                        elif data == 'info': #get update info
+                            
                             self.game.update_player(id)
                             self.game.main()
-                            reply = self.game.check_logs(id)
-                            
-                        elif data == 'info': #get update info
-                        
                             reply = self.game.get_info(id)
                             
                         elif data.startswith('name'): #set player name
@@ -236,7 +231,6 @@ class Server:
         s.close()
 
         print('server closed')
-
 
 s = Server()
 s.start()

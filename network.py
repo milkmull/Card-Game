@@ -13,8 +13,7 @@ class NoGamesFound(Exception):
  
 def find_connections():
     out = subprocess.check_output(['arp', '-a']).decode().split()
-    ips = [s for s in out if s.startswith('192.168') and not s.endswith(('.1', '.255'))]
-    
+    ips = [s for s in out if s.startswith(('10.166', '192.168')) and not s.endswith(('.1', '.255'))]
     return ips
 
 class Network:
@@ -23,8 +22,10 @@ class Network:
         self.client = self.init_client(server)
         self.addr = (self.server, self.port)
         
-        self.pid = self.send('pid')
+        self.requests = {}
         
+        self.pid = self.send('pid')
+
     def set_server(self, server):
         self.server = server
         
@@ -34,11 +35,9 @@ class Network:
         found_game = False
         
         if server:
-            
             self.verify_connection(server, connections)
             
         else:
-            
             threads = []
             
             for server in find_connections()[::-1]:
@@ -48,25 +47,21 @@ class Network:
                 threads.append(t)
                 
             while any(t.is_alive() for t in threads):
-                
                 continue
        
         for server in connections:
             
             sock, res = connections[server]
 
-            if res and not found_game:
-                
+            if res and not found_game: 
                 self.set_server(server)
                 client = sock
                 found_game = True
                 
             else:
-                
                 sock.close()
                 
         if client is None:
-            
             raise NoGamesFound
                 
         return client
@@ -77,41 +72,52 @@ class Network:
         res = False
         
         try:
-        
             sock.connect((server, self.port))
             code = sock.recv(4096).decode()
             
             if code == confirmation_code:
-
                 res = True
                 
         except socket.error:
-            
             pass
             
         connections[server] = (sock, res)
 
     def get_pid(self):
         return self.pid
+        
+    def threaded_send(self, data):
+        if data not in self.requests:
+            t = Thread(target=self.send, args=(data,))
+            t.start()
+            self.requests[data] = t
+            reply = 1
             
+        else:
+            
+            t = self.requests[data]
+            
+            if isinstance(t, Thread):
+                reply = 1   
+            else:
+                reply = self.requests[data]
+                del self.requests[data]
+                
+        return reply
+
     def send(self, data):
         try:
             
-            self.client.send(str.encode(data)) #dumps object into byte data and sends info
+            self.client.send(str.encode(data))
+            reply = json.loads(self.client.recv(4096))
+            self.requests[data] = reply
             
-            return json.loads(self.client.recv(4096)) #recieves info from client
+            return reply
             
         except socket.error as e:
-            
-            print(e, 'n')
-            
+
             return
             
     def close(self):
         self.send('disconnect')
         self.client.close()
-        
-    def close_error(self, error):
-        self.close()
-        
-        raise error

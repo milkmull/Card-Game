@@ -9,7 +9,7 @@ def get_clip():
     try:
         text = Tk().clipboard_get()    
     except:
-        text = None
+        text = ''
         
     return text
 
@@ -520,6 +520,7 @@ class FreeImage:
 class Textbox(Mover):
     def __init__(self, message, tsize=10, tcolor=(255, 255, 255), bgcolor=None, olcolor=None, r=2, anchor='center', font='freesansbold.ttf'):
         self.message = message
+        self.original_message = message
         
         self.font = font
         self.text_font = pg.font.Font(font, tsize)
@@ -543,6 +544,9 @@ class Textbox(Mover):
         
     def __repr__(self):
         return self.get_message()
+        
+    def __eq__(self, other):
+        return self.message == other.message and self.tcolor == other.tcolor
 
     def outline_points(self, r):
         if r in self.olcache:
@@ -669,6 +673,9 @@ class Textbox(Mover):
         self.anchor = anchor
 
     def fit_text(self, rect):
+        if self.rect.size == rect.size:
+            return 
+            
         surf = pg.Surface(rect.size).convert_alpha()
         
         if self.bgcolor is not None:
@@ -678,19 +685,18 @@ class Textbox(Mover):
 
         rect = surf.get_rect()
         text = self.message
-        tsize = self.tsize
+        tsize = rect.height
         
         if text.strip():
         
             text = text.split()
             
             if len(text) > 1:
-                
-                for i in range(1, len(text)):
-                    
+                for i in range(1, len(text)):  
                     text[i] = ' ' + text[i]
 
             tsize = rect.height
+            self.update_font(tsize=tsize)
             i = 0
             
             while i < len(text):
@@ -721,7 +727,8 @@ class Textbox(Mover):
 
                     if not rect.contains(r):
                         
-                        self.update_font(tsize=self.tsize - 1)
+                        tsize -= 1
+                        self.update_font(tsize=tsize)
 
                         break
                         
@@ -859,13 +866,18 @@ class Textbox(Mover):
         win.blit(self.get_image(), self.rect)
        
 class Button:
-    def __init__(self, size, message, color1=(0, 0, 0), color2=(100, 100, 100), tcolor=(255, 255, 255), border_radius=10, tag='', func=lambda: None, args=[]):
+    def __init__(self, size, message, color1=(0, 0, 0), color2=(100, 100, 100), tcolor=(255, 255, 255), border_radius=10, tag='', func=lambda: None, args=[], kwargs={}):
         self.rect = pg.Rect(0, 0, size[0], size[1])
         r = self.rect.copy()
         r.width -= 5
         r.height -= 5
+        self.text_rect = r
         self.textbox = Textbox(message, tsize=r.height, tcolor=tcolor)
         self.textbox.fit_text(r)
+        
+        self.max_timer = 0
+        self.timer = 0
+        self.tmessage = ''
 
         self.color1 = color1
         self.color2 = color2
@@ -876,12 +888,20 @@ class Button:
         
         self.func = func
         self.args = args
-        self.return_val = []
+        self.kwargs = kwargs
+        self.return_val = None
         
         self.active = False
         self.pressed = False
         
         self.disabled = False
+        
+    def set_timer_rule(self, timer, message):
+        self.max_timer = timer
+        self.tmessage = message
+        
+    def set_tag(self, tag):
+        self.tag = tag
         
     def get_tag(self):
         return self.tag
@@ -897,14 +917,31 @@ class Button:
     def enable(self):
         self.disabled = False
         
-    def get_return(self):
-        return self.return_val
+    def get_return(self, reset=True):
+        r = self.return_val
+        if reset:
+            self.return_val = None
+        return r
         
-    def set_args(self, args):
-        self.args = args
+    def set_func(self, func, args=None, kwargs=None):
+        self.func = func
+        if args is not None:
+            self.args = args
+        if kwargs is not None:
+            self.kwargs = kwargs
+        
+    def set_args(self, args=None, kwargs=None):
+        if args is not None:
+            self.args = args
+        if kwargs is not None:
+            self.kwargs = kwargs
         
     def clear_args(self):
         self.args.clear()
+        self.kwargs.clear()
+        
+    def reset(self):
+        self.pressed = False
         
     def events(self, input):
         p = pg.mouse.get_pos()
@@ -925,7 +962,11 @@ class Button:
                         if self.active:
                             
                             self.pressed = True
-                            self.return_val = self.func(*self.args)
+                            self.return_val = self.func(*self.args, **self.kwargs)
+                            
+                            if self.max_timer:
+                                self.update_message(self.tmessage)
+                                self.timer = self.max_timer
                             
                 elif e.type == pg.MOUSEBUTTONUP:
                     
@@ -943,6 +984,11 @@ class Button:
                 self.current_color = self.color2       
             elif not self.active and self.current_color != self.color1:
                 self.current_color = self.color1   
+                
+        if self.timer > 0:
+            self.timer -= 1
+            if self.timer == 0:
+                self.update_message(self.textbox.original_message)
   
     def draw(self, win):
         pg.draw.rect(win, self.current_color, self.rect, border_radius=self.border_radius)
@@ -955,8 +1001,9 @@ class Button:
         self.textbox.update_message(message)
         if tcolor is not None:
             self.textbox.set_color(tcolor)
-        
- 
+            
+        self.textbox.fit_text(self.text_rect)
+
 class Input(Textbox):
     def __init__(self, size, message='', color=(0, 0, 0), tsize=None, tcolor=(255, 255, 255), length=99, check=lambda char: True, fitted=False):
         self.size = size
@@ -1024,7 +1071,7 @@ class Input(Textbox):
         
             if e.type == pg.MOUSEBUTTONDOWN:
                 
-                if self.rect.collidepoint(p):
+                if self.rect.collidepoint(p) or self.textbox.rect.collidepoint(p):
                     
                     self.active = True
                     
@@ -1281,13 +1328,18 @@ class Pane:
                 
     def is_same(self, objects):
         if len(objects) == len(self.objects):
-            return all(objects[i] is self.objects[i] for i in range(len(objects)))
+            return all(objects[i] == self.objects[i] for i in range(len(objects)))
         else:
             return False
   
-    def join_objects(self, objects, xpad=5, ypad=5, dir='y', pack=False, force=False, scroll=False):
-        if not self.is_same(objects) or force:
-            
+    def join_objects(self, objects, xpad=5, ypad=5, dir='y', pack=False, force=False, scroll=False, move=False, key=None):
+        if key is None:
+            same = self.is_same(objects)
+        else:
+            same = key(objects, self.objects)
+
+        if not same or force:
+
             x = 0
             y = 0
             
@@ -1335,6 +1387,11 @@ class Pane:
             
             if scroll:
                 self.go_to_bottom()
+                
+        elif same and move:
+            
+            for i in range(len(self.objects)):
+                objects[i].rect = self.objects[i].rect.copy()
             
     def add_object(self, object, xpad=None, ypad=None, dir=None, pack=None):
         if xpad is None:
