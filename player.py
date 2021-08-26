@@ -109,10 +109,12 @@ class Player:
         return self.name
 
     def set_name(self, name):
+        names = self.game.get_active_names()
+        
         while True:
             c = len(name) + 2
             
-            if any(p is not self and p.name == name for p in self.game.players):
+            if any(name == n for n in names):
                 name = name.center(c)
                 c += 2
             else:
@@ -962,8 +964,7 @@ class Player:
         
         t = time.time()
 
-        while not (g.done or time.time() - t > self.sim_timer):
-            
+        while not (g.done() or time.time() - t > self.sim_timer):
             g.main()
 
         self.unpack_log(g)
@@ -1030,7 +1031,7 @@ class Player:
         return cards
 
     def set_cmd(self):
-        if self.game.done:  
+        if self.game.done():  
             return
             
         if not self.turbo and self.max_stable > 0:

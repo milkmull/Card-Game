@@ -10,6 +10,7 @@ from network import Network, InvalidIP, NoGamesFound
 from spritesheet import Spritesheet
 from game import Game
 from save import *
+
 #---------------------------------------------------------------------------------------------------------------
 
 def exit():
@@ -245,7 +246,7 @@ def menu(mode='', args=[]):
 def run_builder():
     b = Builder(win)  
     b.run()
-    b.cam.close()
+    b.close()
 
 def save_game_settings(client, counters):
     settings = {c.tag: c.get_current_option() for c in counters}  
@@ -312,6 +313,11 @@ def set_screen(mode, args=[], wait=0):
         btn.rect.y += 5
         screen.append(btn)
         
+        btn = Button((200, 30), 'card builder', (0, 0, 0), (100, 100, 100), func=run_builder)
+        btn.rect.midtop = screen[-1].rect.midbottom
+        btn.rect.y += 5
+        screen.append(btn)
+        
         btn = Button((200, 30), 'settings', (0, 0, 0), (100, 100, 100), func=menu, kwargs={'mode': 'user settings'})
         btn.rect.midtop = screen[-1].rect.midbottom
         btn.rect.y += 5
@@ -340,11 +346,16 @@ def set_screen(mode, args=[], wait=0):
                                                        check=lambda char: char.isnumeric())
         text.rect.midleft = screen[-1].rect.midright
         screen.append(text)
-        
+
         btn = Button((200, 30), 'edit profile card', func=run_builder)
         btn.rect.centerx = width // 2
         btn.rect.y = screen[-1].rect.bottom + btn.rect.height
         screen.append(btn)
+        
+        b = Button((200, 30), 'reset save data', func=refresh_save, tag='refresh')
+        b.rect.midtop = screen[-1].rect.midbottom
+        b.rect.y += 5
+        screen.append(b)
         
         btn = Button((200, 30), 'save', (0, 0, 0), (100, 100, 100), func=save_user_settings, 
                                                    args=[screen[1], screen[3]], tag='break')
@@ -392,7 +403,77 @@ def set_screen(mode, args=[], wait=0):
         screen.append(btn)
 
         center_buttons_y(screen)
- 
+  
+    elif mode == 'view ip':
+        
+        public_ip = get_public_ip()
+        local_ip = get_local_ip()
+
+        text = Textbox(f'your online IP:  {public_ip}', 20)
+        text.rect.midbottom = (width // 2, height // 2)
+        screen.append(text)
+        
+        btn = Button((200, 30), 'copy online IP to clipboard', tcolor=(255, 255, 0))
+        btn.set_func(copy_to_clipboard, args=[public_ip])
+        btn.set_timer_rule(125, 'coppied')
+        btn.rect.midtop = screen[-1].rect.midbottom
+        btn.rect.y += 5
+        screen.append(btn)
+        
+        text = Textbox(f'your local IP: {local_ip}', 20)
+        text.rect.midtop = screen[-1].rect.midbottom
+        text.rect.y += 5
+        screen.append(text)
+        
+        btn = Button((200, 30), 'copy local IP to clipboard', tcolor=(255, 255, 0))
+        btn.set_func(copy_to_clipboard, args=[local_ip])
+        btn.set_timer_rule(125, 'coppied')
+        btn.rect.midtop = screen[-1].rect.midbottom
+        btn.rect.y += 5
+        screen.append(btn)
+        
+        btn = Button((200, 30), 'back', tag='break')
+        btn.rect.midtop = screen[-1].rect.midbottom
+        btn.rect.y += btn.rect.height
+        screen.append(btn)
+        
+        center_buttons_y(screen)
+
+    elif mode == 'new entry':
+        
+        text = Textbox('entry name: ', 20)
+        text.rect.midright = (width // 2, height // 2)
+        text.rect.midbottom = text.rect.midtop
+        screen.append(text)
+        
+        input = Input((100, 20), 'name')
+        input.rect.midleft = screen[-1].rect.midright 
+        screen.append(input)
+        
+        center_buttons_x(screen[-2:])
+        
+        text = Textbox('entry IP: ', 20)
+        text.rect.topright = screen[-2].rect.bottomright
+        text.rect.y += 20
+        screen.append(text)
+        
+        input = Input((100, 20), '255.255.255.255', check=lambda txt: txt.isnumeric() or txt == '.')
+        input.rect.midleft = screen[-1].rect.midright      
+        screen.append(input)
+        
+        center_buttons_x(screen[-2:])
+        
+        btn = Button((200, 30), 'save', (0, 0, 0), (100, 100, 100), func=new_entry,
+                                              args=[screen[1], screen[3]], tag='break')
+        btn.rect.centerx = width // 2
+        btn.rect.y = screen[-1].rect.bottom + (btn.rect.height * 2)
+        screen.append(btn)
+        
+        btn = Button((200, 30), 'cancel', (0, 0, 0), (100, 100, 100), tag='break')
+        btn.rect.centerx = width // 2
+        btn.rect.y = screen[-1].rect.bottom + 5
+        screen.append(btn)
+
     elif mode == 'join game':
         
         name, ip = args
@@ -435,99 +516,7 @@ def set_screen(mode, args=[], wait=0):
         screen.append(btn)
         
         center_buttons_y(screen)
-
-    elif mode == 'new entry':
-        
-        text = Textbox('entry name: ', 20)
-        text.rect.midright = (width // 2, height // 2)
-        text.rect.midbottom = text.rect.midtop
-        screen.append(text)
-        
-        input = Input((100, 20), 'name')
-        input.rect.midleft = screen[-1].rect.midright 
-        screen.append(input)
-        
-        center_buttons_x(screen[-2:])
-        
-        text = Textbox('entry IP: ', 20)
-        text.rect.topright = screen[-2].rect.bottomright
-        text.rect.y += 20
-        screen.append(text)
-        
-        input = Input((100, 20), '255.255.255.255', check=lambda txt: txt.isnumeric() or txt == '.')
-        input.rect.midleft = screen[-1].rect.midright      
-        screen.append(input)
-        
-        center_buttons_x(screen[-2:])
-        
-        btn = Button((200, 30), 'save', (0, 0, 0), (100, 100, 100), func=new_entry,
-                                              args=[screen[1], screen[3]], tag='break')
-        btn.rect.centerx = width // 2
-        btn.rect.y = screen[-1].rect.bottom + (btn.rect.height * 2)
-        screen.append(btn)
-        
-        btn = Button((200, 30), 'cancel', (0, 0, 0), (100, 100, 100), tag='break')
-        btn.rect.centerx = width // 2
-        btn.rect.y = screen[-1].rect.bottom + 5
-        screen.append(btn)
-        
-    elif mode == 'name':
-        
-        text = Textbox('enter your name: ', 30)
-        text.rect.midbottom = (width // 2, height // 2)
-        screen.append(text)
-        
-        input = Input((200, 30), get_data('username'), length=12)
-        input.rect.midtop = screen[0].rect.midbottom
-        input.rect.y += 10
-        screen.append(input)
-        
-        btn = Button((200, 30), 'OK', tcolor=(0, 255, 0))
-        btn.rect.midtop = screen[-1].rect.midbottom
-        btn.rect.y += 50
-        screen.append(btn)
-        
-        btn = Button((200, 30), 'back')
-        btn.rect.bottomleft = (0, height)
-        btn.rect.y -= 5
-        btn.rect.x += 5
-        screen.append(btn)
-        
-    elif mode == 'view ip':
-        
-        public_ip = get_public_ip()
-        local_ip = get_local_ip()
-
-        text = Textbox(f'your online IP:  {public_ip}', 20)
-        text.rect.midbottom = (width // 2, height // 2)
-        screen.append(text)
-        
-        btn = Button((200, 30), 'copy online IP to clipboard', tcolor=(255, 255, 0))
-        btn.set_func(copy_to_clipboard, args=[public_ip])
-        btn.set_timer_rule(125, 'coppied')
-        btn.rect.midtop = screen[-1].rect.midbottom
-        btn.rect.y += 5
-        screen.append(btn)
-        
-        text = Textbox(f'your local IP: {local_ip}', 20)
-        text.rect.midtop = screen[-1].rect.midbottom
-        text.rect.y += 5
-        screen.append(text)
-        
-        btn = Button((200, 30), 'copy local IP to clipboard', tcolor=(255, 255, 0))
-        btn.set_func(copy_to_clipboard, args=[local_ip])
-        btn.set_timer_rule(125, 'coppied')
-        btn.rect.midtop = screen[-1].rect.midbottom
-        btn.rect.y += 5
-        screen.append(btn)
-        
-        btn = Button((200, 30), 'back', tag='break')
-        btn.rect.midtop = screen[-1].rect.midbottom
-        btn.rect.y += btn.rect.height
-        screen.append(btn)
-        
-        center_buttons_y(screen)
-        
+     
     elif mode == 'game options':
         
         client = args[0]
@@ -537,7 +526,7 @@ def set_screen(mode, args=[], wait=0):
         screen.append(btn)
         
         btn = Button((200, 30), 'game settings', func=menu, kwargs={'mode': 'game settings', 
-                                                                    'args': [client, client.get_settings()]})
+                                                                    'args': [client]})
         btn.rect.midtop = screen[-1].rect.midbottom
         screen.append(btn)
         
@@ -555,7 +544,8 @@ def set_screen(mode, args=[], wait=0):
         
     elif mode == 'game settings':
         
-        client, settings = args
+        client = args[0]
+        settings = client.get_settings()
         
         if client.is_host():
         
@@ -750,9 +740,9 @@ def start_game():
     except NoGamesFound:
         new_message('game could not be started', 2000)
         
-    except Exception as e:
-        print(e, 'c2')
-        new_message('an error occurred', 2000)
+    #except Exception as e:
+    #    print(e, 'c2')
+    #    new_message('an error occurred', 2000)
         
     finally:
         if 'c' in locals():
@@ -1045,9 +1035,10 @@ class Player:
         self.timer = timer
 
     def draw(self, deck, num):
-        for _ in range(num):
-            
-            self.client.add_moving_card(self, type='back')
+        #for _ in range(num):
+        #    
+        #    self.client.add_moving_card(self, type='back')
+        pass
 
 class Card(Mover):
     def __init__(self, name, uid=None, color=None):
@@ -1216,9 +1207,11 @@ class Client:
         self.logs = {}
         self.log_queue = []
 
-        self.pid = self.n.get_pid()
+        self.pid = self.send('pid', threaded=False)
         self.colors = gen_colors(20)
         self.players = []
+        
+        self.settings = {}
         
         self.event = None
         self.view_card = None
@@ -1309,7 +1302,7 @@ class Client:
         text.rect.midtop = self.elements['options'].rect.midbottom
         text.rect.y += 10
         self.elements['round'] = text
-        self.update_round()
+        #self.update_round()
         
         text = Textbox('', tsize=100, olcolor=(0, 0, 0), r=4)
         text.rect.center = (width // 2, height // 2)
@@ -1335,6 +1328,13 @@ class Client:
 
         for t in self.coin + self.dice + [self.select]:
             t.add_outline((0, 0, 0))
+            
+        t = Textbox('', 40, tcolor=(255, 255, 0))
+        t.rect.center = (width // 2, height // 2)
+        self.elements['message'] = t
+        
+    def new_message(self, message, timer=60):
+        self.elements['message'].set_message_timer(message, timer)
             
 #pane stuff --------------------------------------------------------------------------------------------------------------
 
@@ -1381,7 +1381,6 @@ class Client:
                 dx = row_rect.x - x0
 
                 for s in row:
-                    
                     s.rect.x += dx
 
                 y += ps.rect.height + 20
@@ -1594,7 +1593,7 @@ class Client:
                 stat = 'game over'
                 
         elif stat == 'waiting':
-            if self.mode == 'single':
+            if self.mode == 'single' or (self.is_host() and len(self.players) > 1):
                 stat = 'start'
 
         self.status = stat
@@ -1632,6 +1631,10 @@ class Client:
                 
                 self.exit()
                 new_message('the host closed the game', 2000)
+                
+            else:
+                
+                self.new_message(f'{p.name} has left the game')
 
     def reset(self):
         for p in self.panes:
@@ -1885,10 +1888,13 @@ class Client:
        
 #server stuff-----------------------------------------------------------------------------
   
-    def send(self, data):
+    def send(self, data, threaded=True):
         if self.playing:
-        
-            reply = self.n.send(data)
+            
+            if threaded and self.mode == 'online':
+                reply = self.n.threaded_send(data)  
+            else:
+                reply = self.n.send(data)
             
             if reply is None:
                 self.playing = False 
@@ -1896,29 +1902,36 @@ class Client:
                 return reply
 
     def get_settings(self):
-        return self.send('settings')
+        return self.send('settings', threaded=False)
         
-    def update_settings(self):    
-        reply = self.send('us')
-        
-        if reply:
+    def update_settings(self):
+        if self.get_status() in ('waiting', 'start', 'new game'):
+            print(self.get_status())
+            self.send('us')
             new_message('settings saved!', 1000)
         else:
             new_message('cannot change settings while playing', 1000)
+            
+    def new_settings(self, settings):
+        self.settings = settings
         
     def disconnect(self):
         new_message('disconnecting...', 1000)
         self.exit()
         
     def get_info(self):
-        scores, info = self.send('info')
-        
-        self.update_player_scores(scores)
+        info = self.send('info')
         
         if info:
 
-            self.log_queue += info
-            self.log_queue.sort(key=sort_logs)
+            scores, logs = info
+        
+            self.update_player_scores(scores)
+            
+            if logs:
+
+                self.log_queue += logs
+                self.log_queue.sort(key=sort_logs)
 
     def update_info(self):
         self.parse_logs(self.log_queue[:15])
@@ -1969,6 +1982,9 @@ class Client:
                     
                 elif type == 'fill':
                     self.fill_shop(log.get('cards'))
+                    
+                #elif type == 'set':
+                #    self.new_settings(log.get('settings'))
                     
             else:
                 

@@ -46,7 +46,6 @@ class Spritesheet:
             del self.extras[name]
         
     def get_image(self, c, outline, scale=(cw, ch)):
-        print(self.extras)
         name = c.name
         
         scale = [int(s) for s in scale]

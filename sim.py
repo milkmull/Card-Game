@@ -25,7 +25,7 @@ class Tester:
             
             try:
                 
-                while not g.done:
+                while not g.done():
                     g.main()
                     
             except:

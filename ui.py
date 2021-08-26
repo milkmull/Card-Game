@@ -537,6 +537,8 @@ class Textbox(Mover):
         self.rect = self.image.get_rect()
         self.anchor = anchor
         
+        self.timer = 0
+        
         super().__init__()
         
     def __str__(self):
@@ -547,6 +549,10 @@ class Textbox(Mover):
         
     def __eq__(self, other):
         return self.message == other.message and self.tcolor == other.tcolor
+
+    def set_message_timer(self, message, timer):
+        self.update_message(message)
+        self.timer = timer
 
     def outline_points(self, r):
         if r in self.olcache:
@@ -861,6 +867,11 @@ class Textbox(Mover):
         
     def update(self):
         self.move()
+        
+        if self.timer != 0:
+            self.timer -= 1
+            if self.timer == 0:
+                self.clear()
         
     def draw(self, win):
         win.blit(self.get_image(), self.rect)
@@ -1306,25 +1317,14 @@ class Pane:
         
         self.ctimer = 0
         
-        self.scroll_buttons = (Textbox('^', 20), Textbox('v', 20))
-        self.fit_buttons()
-        self.scroll_buttons[0].add_background((0, 0, 0))
-        self.scroll_buttons[1].add_background((0, 0, 0))
+        self.scroll_buttons = (Button((self.rect.width, 20), '^', color1=(0, 0, 0), color2=(0, 0, 0),
+                                       func=self.scroll, args=['u'], border_radius=0), 
+                               Button((self.rect.width, 20), 'v', color1=(0, 0, 0), color2=(0, 0, 0),
+                                       func=self.scroll, args=['d'], border_radius=0))
 
         self.objects = []
-        self.waits = []
         
         self.orientation_cache = {'xpad': 5, 'ypad': 5, 'dir': 'y', 'pack': False}
-        
-    def fit_buttons(self):
-        c = 3
-        
-        while any(b.rect.width < self.rect.width for b in self.scroll_buttons):
-            
-            for b in self.scroll_buttons:
-                
-                b.update_message(b.get_message().center(c))
-                c += 2
                 
     def is_same(self, objects):
         if len(objects) == len(self.objects):
@@ -1476,33 +1476,29 @@ class Pane:
     def events(self, input):
         p = pg.mouse.get_pos()
         
-        if self.rect.collidepoint(p):
-        
-            for e in input:
-                
-                if e.type == pg.MOUSEBUTTONDOWN:
-                    
-                    if e.button == 5 or (e.button == 1 and self.scroll_buttons[1].rect.collidepoint(p)):
-                        
-                        self.scroll('d')
-                        
-                    elif e.button == 4 or (e.button == 1 and self.scroll_buttons[0].rect.collidepoint(p)):
-                        
+        for b in self.scroll_buttons:
+            b.events(input)
+            
+        for e in input:
+            if e.type == pg.MOUSEBUTTONDOWN:
+                if self.rect.collidepoint(p):
+                    if e.button == 4 and self.can_scroll_up():
                         self.scroll('u')
+                    elif e.button == 5 and self.can_scroll_down():
+                        self.scroll('d')
+                    
+            break
                         
     def update(self):
         self.scroll_buttons[0].rect.midtop = self.rect.midtop
         self.scroll_buttons[1].rect.midbottom = self.rect.midbottom
         self.tab.midbottom = self.rect.midtop
         
-        for o in self.waits.copy():
-            if o.rect.colliderect(self.rect):
-                self.add_object(o)
-                self.waits.remove(o)
+        for b in self.scroll_buttons:
+            b.update()
         
     def draw(self, win):
         if self.color != (0, 0, 0, 0) or self.objects:
-        
             win.blit(self.image, self.rect)
             
         win.blit(self.label, self.tab)

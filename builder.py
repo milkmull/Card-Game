@@ -40,11 +40,8 @@ class VideoCapture:
         
     def get_frame(self):
         _, frame = self.vid.read()
-        
         if frame is not None:
-            
             image = pg.image.frombuffer(frame.tobytes(), frame.shape[1::-1], 'BGR').convert()
-        
             return image
             
     def close(self):
@@ -129,7 +126,6 @@ class Card:
         self.set_screen(name, description, tags)
         
         if image:
-            
             image = pg.image.load(image).convert()
             self.update_image(image)
             
@@ -175,12 +171,10 @@ class Card:
             
     def events(self, input):
         for e in self.elements.values():
-            
             e.events(input)
             
     def update(self):
         for e in self.elements.values():
-            
             e.update()
         
     def draw(self, win):
@@ -189,7 +183,6 @@ class Card:
         win.blit(self.image, self.rect)
         
         for e in self.elements.values():
-            
             e.draw(win)
 
     def get_image(self):
@@ -201,8 +194,7 @@ class Card:
         
         image.blit(self.pic, self.rects['pic'])
         
-        for e in self.elements.values():
-            
+        for e in self.elements.values(): 
             e.draw(image)
 
         return image
@@ -222,12 +214,10 @@ class Card:
             
     def save(self):
         try:
-        
             pg.image.save(self.get_image(), 'img/test.png')
             pg.image.save(self.pic, f'img/custom/{self.name}.png')
             
         except pygame.error:
-            
             pass
         
 class Builder:
@@ -247,6 +237,9 @@ class Builder:
         self.input = []
         
         self.set_screen()
+        
+    def close(self):
+        self.cam.close()
 
     def set_screen(self):
         x = self.elements['card'].rect.right + 10
@@ -289,26 +282,21 @@ class Builder:
         for e in self.input:
             
             if e.type == pg.QUIT:
-                
                 self.running = False
             
             elif e.type == pg.KEYDOWN:
                 
                 if e.key == pg.K_ESCAPE:
-                    
                     self.running = False
                     
             elif e.type == pg.MOUSEBUTTONDOWN:
-                
                 pass
         
         for e in self.elements.values():
-            
             e.events(self.input)
        
     def update(self):
         for e in self.elements.values():
-            
             e.update()
             
         if self.recording:
@@ -321,7 +309,6 @@ class Builder:
         self.frame.fill((0, 0, 0))
 
         for e in self.elements.values():
-            
             e.draw(self.frame)
 
         self.screen.blit(self.frame, (0, 0))
@@ -353,9 +340,7 @@ class Builder:
             
     def send_recorded_image(self):
         image = self.cam.get_frame()
-        
         if image is not None:
-        
             self.elements['card'].update_image(image)
 
 if __name__ == '__main__':

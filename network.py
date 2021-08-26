@@ -21,10 +21,8 @@ class Network:
         self.port = port
         self.client = self.init_client(server)
         self.addr = (self.server, self.port)
-        
-        self.requests = {}
-        
-        self.pid = self.send('pid')
+
+        self.reply_queue = []
 
     def set_server(self, server):
         self.server = server
@@ -82,40 +80,39 @@ class Network:
             pass
             
         connections[server] = (sock, res)
-
-    def get_pid(self):
-        return self.pid
-        
+  
+    def reset(self):
+        self.reply_queue.clear()
+  
     def threaded_send(self, data):
-        if data not in self.requests:
-            t = Thread(target=self.send, args=(data,))
+        reply = 0
+        
+        if len(self.reply_queue) < 10:
+            
+            t = Thread(target=self.send, args=(data,), kwargs={'threaded': True})
             t.start()
-            self.requests[data] = t
-            reply = 1
-            
-        else:
-            
-            t = self.requests[data]
-            
-            if isinstance(t, Thread):
-                reply = 1   
-            else:
-                reply = self.requests[data]
-                del self.requests[data]
-                
+
+            for info in self.reply_queue:
+                d, r = info
+                if d == data:
+                    reply = r
+                    self.reply_queue.remove(info)
+                    break
+
         return reply
 
-    def send(self, data):
+    def send(self, data, threaded=False):
         try:
             
             self.client.send(str.encode(data))
             reply = json.loads(self.client.recv(4096))
-            self.requests[data] = reply
+            
+            if threaded:
+                self.reply_queue.append((data, reply))
             
             return reply
             
         except socket.error as e:
-
             return
             
     def close(self):

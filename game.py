@@ -84,8 +84,7 @@ class Game:
             
             self.new_player(0)
             self.add_cpus()
-            
-    @property
+
     def done(self):
         return self.status in ('new game', 'next round')
             
@@ -534,6 +533,7 @@ class Game:
     def get_startup_log(self):
         logs = []
         logs.append({'u': 'g', 't': 'ns', 'stat': 'waiting'})
+        logs.append({'u': 'g', 't': 'set', 'settings': self.get_settings()})
         
         for p in self.players:
             logs.append({'u': p.pid, 't': 'add', 'pid': p.pid})
@@ -581,23 +581,22 @@ class Game:
             self.master_log += self.log
             self.log.clear()
             
+        self.check_loop()
+            
+    def check_loop(self):
         up = []
         
         for p in self.players:
-            
             up += p.played
             
         if up == self.mem:
-            
             self.counter += 1
             
         else:
-            
             self.mem = up
             self.counter = 0
  
         if (self.mode == 'turbo' and self.counter > 100) or (not self.mode != 'turbo' and self.counter > 9999):
-            
             raise InfiniteLoop
           
     def send(self, data):
@@ -612,6 +611,10 @@ class Game:
             if data == 'disconnect': #disconnect
                 
                 return
+            
+            if data == 'pid':
+                            
+                reply = 0
 
             elif data == 'info': #get update info
             
@@ -689,19 +692,18 @@ class Game:
                 reply = self.get_settings()
                     
             elif data == 'us':
-                
-                if self.status == 'waiting':
-                    
-                    self.update_settings()
-                    reply = 1
-                
-                else:
-                    
-                    reply = 0
+
+                self.update_settings()
+                reply = 1
 
         return reply
                      
 #settings stuff---------------------------------------------------------------------------------------
+
+    def get_active_names(self):
+        card_names = [key for group in cards for key in cards[group]]
+        player_names = [p.name for p in self.players]
+        return card_names + player_names
 
     def get_settings(self):
         return self.settings.copy()
@@ -712,6 +714,7 @@ class Game:
     def update_settings(self):
         self.settings = load_settings()   
         self.balance_cpus()
+        self.add_log({'t': 'set', 'settings': self.get_settings()})
 
 #turn stuff-----------------------------------------------------------------------------------------------
 
@@ -731,7 +734,7 @@ class Game:
     def check_advance(self):
         if self.status == 'playing':
         
-            if not self.done and self.main_p.finished:
+            if not self.done() and self.main_p.finished:
                 
                 self.advance_turn()
                 
@@ -744,7 +747,7 @@ class Game:
 
             if all(p.game_over for p in self.players):
 
-                if not self.done:
+                if not self.done():
                     
                     if self.round <= self.get_setting('rounds') - 1:
                         
