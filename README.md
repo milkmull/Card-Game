@@ -13,6 +13,10 @@ Table top card game with local wireless play.
 * python3
 * pygame
 ```python3 -m pip install -U pygame```
+* Tkinter
+```python3 -m pip install -U tk```
+* cv2
+```python3 -m pip install -U opencv-python```
 
 ### Disable Windows Defender to Allow Server to Run
 
@@ -23,8 +27,8 @@ Add the file Card Game file
 1. Clone the repo
 ``git clone https://github.com/milkmull/Card-Game``
 2. Install dependencies
-3. Run client.py
-`python3 client.py`
+3. Run main.py
+`python3 main.py`
 4. To start a single player game against computers click "single player" on the main menu
 4. To start a local wireless game, click "host game" on the main menu
 5. To join a local wireless game click "find game" on the main menu
