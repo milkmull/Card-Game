@@ -1,10 +1,21 @@
 import pygame as pg
-from constants import *
-from ui import *
+
+import os
+import cv2
 from tkinter import Tk
 from tkinter import filedialog
-import cv2
 
+import customsheet
+
+import save
+from constants import *
+from ui import *
+
+def init():
+    globals()['CUSTOMSHEET'] = customsheet.get_sheet()
+
+#Button funcs----------------------------------------------------------------------
+     
 def init_colors():
     images = []
     
@@ -22,36 +33,68 @@ def init_colors():
                 
     return images
     
-def build_card(name, description, tags, color=(161, 195, 161), image='img/user.jpg'):
+def build_card(name, description, tags, color=(161, 195, 161), image='img/user.png', save=False):
     name = name.title()
     
     if len(tags) > 1: 
         tags = str(tags).replace("'", '')
-    else: 
+    elif tags: 
         tags = tags[0]
-        
+    else:
+        tags = ''
     c = Card(name=name, description=description, tags=tags, color=color, image=image)
     
-    return c.get_image()
+    if save:
+        c.save()
     
-class VideoCapture:  
-    def start(self):
-        self.vid = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-        
-    def get_frame(self):
-        _, frame = self.vid.read()
-        if frame is not None:
-            image = pg.image.frombuffer(frame.tobytes(), frame.shape[1::-1], 'BGR').convert()
-            return image
-            
-    def close(self):
-        if hasattr(self, 'vid'):
-            self.vid.release()
-            cv2.destroyAllWindows()
+    return c.get_card_image()
+
+def save_card(card):
+    sheet = CUSTOMSHEET.sheet
+    cards = CUSTOMSHEET.cards
+
+    if card.name in NAMES or (card.name in CUSTOMSHEET.names and card.id != CUSTOMSHEET.get_id(card.name)):
+        menu(notice, args=['A card with that name already exists.'], overlay=True)
+        return
+  
+    id = card.id
+
+    if id <= len(cards) - 1:
+        surf = sheet
+        pos = ((id % 9) * 375, (id // 9) * 525)
+    elif not cards:
+        surf = pg.Surface((375, 525)).convert()
+        pos = (0, 0)
+    elif not len(cards) % 9:
+        surf = pg.Surface((sheet.get_width(), sheet.get_height() + 525)).convert()
+        pos = (0, sheet.get_height())
+    elif len(cards) < 9:
+        surf = pg.Surface((sheet.get_width() + 375, 525)).convert()
+        pos = (len(cards) * 375, 0)
+    else:
+        surf = pg.Surface(sheet.get_size()).convert()
+        pos = ((len(cards) % 9) * 375, (len(cards) // 9) * 525)
+
+    surf.blit(sheet, (0, 0))
+    surf.blit(card.get_card_image(), pos)
+    
+    pg.image.save(card.pic, card.get_image_path())
+    pg.image.save(surf, 'img/customsheet.png')
+    if id == 0:
+        pg.image.save(card.get_card_image(), 'img/user_card.png')
+    
+    card_info = card.get_info()
+    save.update_cards(card_info)
+    
+    new_message('card saved!', 2000)
+    
+    CUSTOMSHEET.refresh()
 
 class Card:
-    def __init__(self, name='Title', description='description', tags='tags', color=(161, 195, 161), image=''):
+    def __init__(self, name='Title', description='description', tags='tags', color=[161, 195, 161], id=None, image=''):
         self.file = 'newcard.txt'
+        
+        self.id = save.new_card_id() if id is None else id
         
         self.rects = {}
         self.textboxes = {}
@@ -84,18 +127,15 @@ class Card:
         self.rects['name'] = title_rect
         self.textboxes['name'] = title_textbox
 
-        pic = pg.Surface((card_width - 75, 210)).convert()
-        pic.fill((1, 1, 1))
-        pic_textbox = pic.get_rect()
-        pic = rect_outline(pic)
-        pic.set_colorkey((1, 1, 1))
+        pic = self.load_pic(image)
         pic_rect = pic.get_rect()
         pic_rect.centerx = self.rects['bg'].centerx
         pic_rect.y = self.rects['name'].bottom + 10
-        self.image.blit(pic, pic_rect)
+        window = pic.copy()
+        window.fill((0, 0, 0, 0))
+        self.image.blit(window, pic_rect)
         self.pic = pic
         self.rects['pic'] = pic_rect
-        self.textboxes['pic'] = pic_textbox
         
         desc = pg.Surface((225, 170)).convert()
         desc.fill((255, 255, 255))
@@ -124,27 +164,9 @@ class Card:
         self.image.set_colorkey((1, 1, 1))
         
         self.set_screen(name, description, tags)
-        
-        if image:
-            image = pg.image.load(image).convert()
-            self.update_image(image)
             
         self.update()
-        
-    def set_screen(self, name, description, tags):
-        i = Input(self.textboxes['name'].size, message=name, fitted=True, color=(0, 0, 0, 0), tcolor=(0, 0, 0))
-        i.rect.center = self.textboxes['name'].center
-        self.elements['name'] = i
-        
-        i = Input(self.textboxes['desc'].size, message='description', fitted=True, color=(0, 0, 0, 0), tcolor=(0, 0, 0))
-        i.rect.center = self.textboxes['desc'].center
-        self.elements['desc'] = i
-        i.update_message(description)
-        
-        i = Input(self.textboxes['tags'].size, message=tags, fitted=True, color=(0, 0, 0, 0), tcolor=(0, 0, 0))
-        i.rect.center = self.textboxes['tags'].center
-        self.elements['tags'] = i
-        
+      
     @property
     def name(self):
         return self.elements['name'].get_message()
@@ -156,43 +178,60 @@ class Card:
     @property
     def tags(self):
         return self.elements['tags'].get_message()
+  
+    def load_pic(self, path):
+        if os.path.exists(path):
+            pic = pg.image.load(path).convert_alpha()
+        else:
+            pic = pg.Surface((card_width - 75, 210)).convert_alpha()
+        pic = pg.transform.smoothscale(pic, (card_width - 75, 210))
+        return pic
         
-    def fill_bg(self, color):
-        if self.color != color:
+    def set_screen(self, name, description, tags):
+        tb = self.textboxes['name']
+        i = Input((tb.width - 5, tb.height - 5), message=name, fitted=True, color=(0, 0, 0, 0), tcolor=(0, 0, 0), tsize=30)
+        i.rect.center = self.textboxes['name'].center
+        self.elements['name'] = i
+        
+        tb = self.textboxes['desc']
+        i = Input((tb.width - 5, tb.height - 5), message='description', fitted=True, color=(0, 0, 0, 0), tcolor=(0, 0, 0), tsize=35, length=300)
+        i.rect.center = self.textboxes['desc'].center
+        self.elements['desc'] = i
+        i.update_message(description)
+        
+        tb = self.textboxes['tags']
+        i = Input((tb.width - 5, tb.height - 5), message=str(tags), fitted=True, color=(0, 0, 0, 0), tcolor=(0, 0, 0), tsize=50)
+        i.rect.center = self.textboxes['tags'].center
+        self.elements['tags'] = i
+
+    def is_user(self):
+        return self.id == 0
+        
+    def get_image_path(self):
+        return f'img/custom/{self.id}.png'
+    
+    def get_info(self):
+        return {'name': self.name, 'description': self.description, 'tags': self.tags, 
+                'color': self.color, 'image': self.get_image_path(), 'id': self.id}
             
-            self.color = color
-            self.bg.fill(self.color)
+    def update_color(self, rgb, val):
+        self.color[rgb] = val
+        self.bg.fill(self.color)
             
     def update_image(self, img):
-        self.pic = rect_outline(pg.transform.scale(img, self.textboxes['pic'].size))
+        self.pic = pg.transform.smoothscale(img, self.rects['pic'].size)
         
     def clear_image(self):
         self.pic.fill(self.color)
-            
-    def events(self, input):
-        for e in self.elements.values():
-            e.events(input)
-            
-    def update(self):
-        for e in self.elements.values():
-            e.update()
-        
-    def draw(self, win):
-        win.blit(self.bg, self.rects['bg'])
-        win.blit(self.pic, self.rects['pic'])
-        win.blit(self.image, self.rect)
-        
-        for e in self.elements.values():
-            e.draw(win)
 
-    def get_image(self):
+    def get_card_image(self):
         image = pg.Surface(self.rect.size).convert()
         image.blit(self.bg, self.rects['bg'])
         img = self.image.copy()
         img.set_colorkey((50, 50, 50))
         image.blit(img, (0, 0))
         
-        image.blit(self.pic, self.rects['pic'])
+        image.blit(rect_outline(self.pic), self.rects['pic'])
         
         for e in self.elements.values(): 
             e.draw(image)
@@ -214,15 +253,46 @@ class Card:
             
     def save(self):
         try:
-            pg.image.save(self.get_image(), 'img/test.png')
+            pg.image.save(self.get_card_image(), f'img/{self.name}.png')
             pg.image.save(self.pic, f'img/custom/{self.name}.png')
             
         except pygame.error:
             pass
+            
+    def events(self, input):
+        for e in self.elements.values():
+            e.events(input)
+            
+    def update(self):
+        for e in self.elements.values():
+            e.update()
+        
+    def draw(self, win):
+        win.blit(self.bg, self.rects['bg'])
+        win.blit(rect_outline(self.pic), self.rects['pic'])
+        win.blit(self.image, self.rect)
+        
+        for e in self.elements.values():
+            e.draw(win)
+
+class VideoCapture:  
+    def start(self):
+        self.vid = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        
+    def get_frame(self):
+        _, frame = self.vid.read()
+        if frame is not None:
+            image = pg.image.frombuffer(frame.tobytes(), frame.shape[1::-1], 'BGR').convert()
+            return image
+            
+    def close(self):
+        if hasattr(self, 'vid'):
+            self.vid.release()
+            cv2.destroyAllWindows()
         
 class Builder:
-    def __init__(self, win):
-        self.screen = win
+    def __init__(self, card_info):
+        self.screen = pg.display.get_surface()
         self.frame = pg.Surface((width, height)).convert()
         
         self.clock = pg.time.Clock()
@@ -232,7 +302,7 @@ class Builder:
         self.cam = VideoCapture()
         self.recording = False
 
-        self.elements = {'card': Card()}
+        self.elements = {'card': Card(**card_info)}
         
         self.input = []
         
@@ -244,10 +314,11 @@ class Builder:
     def set_screen(self):
         x = self.elements['card'].rect.right + 10
         
-        for rgb in ('r', 'g', 'b'):
+        for i, rgb in enumerate(('r', 'g', 'b')):
             
-            s = RGBSlider((20, 200), rgb, hcolor=(255, 255, 255))
+            s = RGBSlider((20, 200), rgb, hcolor=(255, 255, 255), func=self.elements['card'].update_color, args=[i])
             s.rect.topleft = (x, 10)
+            s.set_state(self.elements['card'].color[i])
             self.elements[rgb] = s
             
             x += s.rect.width + 40
@@ -262,10 +333,15 @@ class Builder:
         b.rect.y += 20
         self.elements['cam'] = b
         
-        b = Button((100, 40), 'save card', func=self.elements['card'].save)
+        b = Button((100, 40), 'save card', func=save_card, args=[self.elements['card']])
         b.rect.topleft = self.elements['cam'].rect.bottomleft
         b.rect.y += 20
         self.elements['save'] = b
+        
+        b = Button((100, 40), 'return to menu', func=self.quit)
+        b.rect.topleft = self.elements['save'].rect.bottomleft
+        b.rect.y += 20
+        self.elements['quit'] = b
 
     def run(self):
         while self.running:
@@ -302,8 +378,8 @@ class Builder:
         if self.recording:
             self.send_recorded_image()
 
-        bgc = tuple(self.elements[rgb].get_state() for rgb in ('r', 'g', 'b'))
-        self.elements['card'].fill_bg(bgc)
+        #bgc = tuple(self.elements[rgb].get_state() for rgb in ('r', 'g', 'b'))
+        #self.elements['card'].fill_bg(bgc)
 
     def draw(self):
         self.frame.fill((0, 0, 0))
@@ -313,6 +389,10 @@ class Builder:
 
         self.screen.blit(self.frame, (0, 0))
         pg.display.flip()
+        
+    def quit(self):
+        self.running = False
+        self.cam.close()
    
     def record(self):
         self.recording = not self.recording
@@ -342,19 +422,6 @@ class Builder:
         image = self.cam.get_frame()
         if image is not None:
             self.elements['card'].update_image(image)
-
-if __name__ == '__main__':
-
-    pg.init()
-
-    win = pg.display.set_mode((width, height))
-    pg.display.set_caption('card game')
-    
-    b = Builder(win)  
-    b.run()
-    b.cam.close()
-    
-    pg.quit()
 
 
 

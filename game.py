@@ -1,8 +1,5 @@
-import sys
 import random
-import time
-import copy
-from save import load_settings
+import save
 from cards import cards
 from player import Player
 
@@ -44,12 +41,15 @@ def pack_log(logs):
         new_log.append(new_entry)
                 
     return new_log
+    
+def blank_player_info(pid):
+    return {'name': f'player {pid}', 'description': '', 'tags': ['player'], 'image': 'img/user.png'}
         
 class Game:
     def __init__(self, mode='online'):
         self.running = True
         
-        self.settings = load_settings()
+        self.settings = save.get_data('settings')
         self.cards = cards.copy()
         
         self.uid = 0
@@ -82,7 +82,7 @@ class Game:
 
         if self.mode == 'single':
             
-            self.new_player(0)
+            self.new_player(0, save.get_data('cards')[0])
             self.add_cpus()
 
     def done(self):
@@ -105,7 +105,7 @@ class Game:
 
         g.status = self.status
         
-        g.players = [Player(g, p.pid, p.score, True) for p in self.players]
+        g.players = [Player(g, p.pid, p.score, p.get_info(), auto=True) for p in self.players]
         g.main_p = g.players[g.current_player]
             
         for i in range(len(self.players)):
@@ -218,17 +218,19 @@ class Game:
 
         for _ in range(self.get_setting('cpus')):
             
-            p = Player(self, self.pid, self.get_setting('ss'), auto=True)
+            player_info = blank_player_info(self.pid)
+            
+            p = Player(self, self.pid, self.get_setting('ss'), player_info, auto=True)
             self.players.append(p)      
             
             self.add_log({'t': 'add', 'pid': p.pid})
 
             self.pid += 1
             
-    def new_player(self, pid):
+    def new_player(self, pid, player_info):
         if self.status == 'waiting':
 
-            p = Player(self, pid, self.settings['ss'])
+            p = Player(self, pid, self.settings['ss'], player_info)
             self.players.append(p)  
             
             if pid == 0:
@@ -502,7 +504,7 @@ class Game:
             
         scores = self.get_scores()
 
-        return (scores, info)
+        return [scores, info]
                 
     def update_game_logs(self):
         for key in self.logs:
@@ -602,101 +604,77 @@ class Game:
     def send(self, data):
         reply = ''
         
-        if not data:
-                    
+        if not data:        
             return
             
         else:
             
-            if data == 'disconnect': #disconnect
-                
+            if data == 'disconnect':
                 return
             
-            if data == 'pid':
-                            
+            if data == 'pid':            
                 reply = 0
 
-            elif data == 'info': #get update info
-            
+            elif data == 'info':
                 self.update_player(0)
                 self.main()
                 reply = self.get_info(0)
                 
-            elif data.startswith('name'): #set player name
-                
-                reply = self.get_player(0).set_name(data.split(',')[-1])
+            elif data.startswith('name'):
+                reply = self.get_player(0).set_name(data[5:])
             
-            elif data == 'start': #start game
-                
+            elif data == 'start':
                 self.start(0)
                 reply = 1
                 
-            elif data == 'reset': #reset game
-                
+            elif data == 'reset':
                 self.reset()
                 reply = 1
                 
-            elif data == 'continue': #continue to next game/round
-                
+            elif data == 'continue':
                 status = self.status
-                
                 if status == 'next round':
-                    
-                    self.new_round()
-                    
-                elif status == 'new game':
-                    
+                    self.new_round()  
+                elif status == 'new game': 
                     self.new_game()
-                    
                 reply = 1
                 
-            elif data == 'play': #play card
-                
+            elif data == 'play':
                 if self.status == 'playing':
-                
-                    self.update_player(0, 'play')
-                    
+                    self.update_player(0, 'play')    
                 reply = 1
                 
-            elif data == 'cancel': #cancel selection
-                
+            elif data == 'cancel':
                 if self.status == 'playing':
-                
-                    self.update_player(0, 'cancel')
-                    
+                    self.update_player(0, 'cancel')    
                 reply = 1
                 
             elif data.isdigit():
-
                 self.update_player(0, f'select {data}')
                 reply = 1
 
             elif data == 'flip':
-                
                 if self.status == 'playing':
-                
-                    self.update_player(0, 'flip')
-                    
+                    self.update_player(0, 'flip')        
                 reply = 1
                 
             elif data == 'roll':
-                
                 if self.status == 'playing':
-                
-                    self.update_player(0, 'roll')
-                    
+                    self.update_player(0, 'roll')   
                 reply = 1
 
             elif data == 'settings':
-                
                 reply = self.get_settings()
                     
             elif data == 'us':
-
                 self.update_settings()
                 reply = 1
 
         return reply
+        
+    def recieve_player_info(self, pid):
+        p = self.get_player(pid)
+        return p.get_info()
                      
 #settings stuff---------------------------------------------------------------------------------------
 
@@ -712,8 +690,10 @@ class Game:
         return self.settings[setting]
         
     def update_settings(self):
-        self.settings = load_settings()   
-        self.balance_cpus()
+        save.reload_save()
+        self.settings = save.get_data('settings')  
+        if self.mode == 'single':
+            self.balance_cpus()
         self.add_log({'t': 'set', 'settings': self.get_settings()})
 
 #turn stuff-----------------------------------------------------------------------------------------------

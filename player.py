@@ -24,13 +24,15 @@ def get_deck(c):
         return 'unplayed'
 
 class Player:
-    def __init__(self, game, pid, ss, auto=False):
+    def __init__(self, game, pid, ss, player_info, auto=False):
         self.game = game
         self.pid = pid
         
         self.tags = ['player']
-        
-        self.name = f'Player {self.pid}'
+
+        self.player_info = player_info
+        self.set_name()
+        self.name = self.player_info['name']
 
         self.selecting = True #if player has to make a selection
         self.is_turn = False #indicates if player can go
@@ -107,8 +109,12 @@ class Player:
         
     def get_name(self):
         return self.name
+        
+    def get_info(self):
+        return self.player_info
 
-    def set_name(self, name):
+    def set_name(self):
+        name = self.player_info['name']
         names = self.game.get_active_names()
         
         while True:
@@ -120,9 +126,7 @@ class Player:
             else:
                 break
 
-        self.name = name
-        self.add_log({'t': 'cn', 'pid': self.pid, 'name': name})
-        return True
+        self.player_info['name'] = name
 
 #starting stuff--------------------------------------------------------------------------------------------                
 

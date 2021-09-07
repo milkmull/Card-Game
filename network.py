@@ -2,6 +2,7 @@ import socket
 import json
 import subprocess
 from threading import Thread
+import save
 
 confirmation_code = 'thisisthecardgameserver'
 
@@ -23,6 +24,8 @@ class Network:
         self.addr = (self.server, self.port)
 
         self.reply_queue = []
+        
+        self.send_player_info()
 
     def set_server(self, server):
         self.server = server
@@ -71,6 +74,8 @@ class Network:
         
         try:
             sock.connect((server, self.port))
+            
+            sock.sendall(str.encode(confirmation_code))
             code = sock.recv(4096).decode()
             
             if code == confirmation_code:
@@ -83,37 +88,75 @@ class Network:
   
     def reset(self):
         self.reply_queue.clear()
-  
-    def threaded_send(self, data):
-        reply = 0
+
+    def send_player_info(self):
+        player_info = save.get_data('cards')[0]
+        with open(player_info['image'], 'rb') as f:
+            image = f.read()
+
+        self.client.sendall(bytes(json.dumps(player_info), encoding='utf-8'))
+        self.client.recv(4096)
         
-        if len(self.reply_queue) < 10:
+        while image:
+            data = image[:4096]
+            self.client.sendall(data)
+            self.client.recv(4096)
             
-            t = Thread(target=self.send, args=(data,), kwargs={'threaded': True})
-            t.start()
+            image = image[4096:]
 
-            for info in self.reply_queue:
-                d, r = info
-                if d == data:
-                    reply = r
-                    self.reply_queue.remove(info)
-                    break
-
-        return reply
-
-    def send(self, data, threaded=False):
-        try:
+        self.client.sendall(b'done')
+        self.client.recv(4096)
+        
+    def recieve_player_info(self, pid):
+        info = self.send(f'getinfo{pid}')
+        
+        image = b''
+        
+        while True:
             
-            self.client.send(str.encode(data))
+            self.client.send(b'next')
+            reply = self.client.recv(4096)
+            
+            if reply == b'done':
+                break
+            else:
+                image += reply
+
+        with open(info['image'], 'wb') as f:
+            f.write(image)
+            
+        return info
+
+    def send(self, data, return_val=False):
+        try: 
+            self.client.sendall(str.encode(data))
             reply = json.loads(self.client.recv(4096))
             
-            if threaded:
+            if return_val:
                 self.reply_queue.append((data, reply))
-            
+                
             return reply
             
         except socket.error as e:
-            return
+            return ''
+
+    def threaded_send(self, data, return_val):
+        reply = 0
+        
+        if len(self.reply_queue) < 10:
+
+            t = Thread(target=self.send, args=(data,), kwargs={'return_val': return_val})
+            t.start()
+
+        for info in self.reply_queue.copy():
+            d, r = info
+            if d == data:
+                reply = r
+                self.reply_queue.remove(info)
+                break
+
+        return reply
+        
             
     def close(self):
         self.send('disconnect')

@@ -1,5 +1,4 @@
 import random
-import time
 
 class Card:
     def __init__(self, game, uid, name, tags=[]):

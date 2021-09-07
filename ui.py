@@ -1,6 +1,311 @@
 import pygame as pg
 from pygame.math import Vector2 as vec
+import pygame.freetype
+import sys
 from tkinter import Tk
+
+def init():
+    win = pg.display.get_surface()
+    WIDTH, HEIGHT = win.get_size()
+
+    globals()['WIDTH'] = WIDTH
+    globals()['HEIGHT'] = HEIGHT
+    
+#menu stuff---------------------------------------------
+
+def exit():
+    pg.quit()
+    sys.exit()
+
+def new_screen(text, wait=0):
+    win = pg.display.get_surface()
+    win.fill((0, 0, 0))
+
+    for t in text:
+        win.blit(t.get_image(), t.rect)
+        
+    pg.display.update()
+    
+    if wait:
+        pg.time.wait(wait)
+        
+def new_message(message, wait=0):
+    win = pg.display.get_surface()
+    
+    win.fill((0, 0, 0))
+    m = Textbox(message, 20)
+    m.rect.center = (WIDTH / 2, HEIGHT / 2)
+        
+    win.blit(m.get_image(), m.rect)
+    pg.display.update()
+    
+    if wait:
+        pg.time.wait(wait)
+        
+    pg.event.clear()
+
+def center_buttons_y(btns):
+    h = max(b.rect.bottom for b in btns) - min(b.rect.top for b in btns)
+    r = pg.Rect(0, 0, 2, h)
+    r.centery = HEIGHT // 2
+
+    dy = r.y - min(b.rect.top for b in btns)
+    
+    for b in btns:
+        b.rect = b.rect.move(0, dy)
+        
+def center_buttons_x(btns):
+    w = max(b.rect.right for b in btns) - min(b.rect.left for b in btns)
+    r = pg.Rect(0, 0, w, 2)
+    r.centerx = WIDTH // 2
+
+    dx = r.x - min(b.rect.left for b in btns)
+    
+    for b in btns: 
+        b.rect = b.rect.move(dx, 0)
+        
+    return r
+
+def notice(message, color1=(100, 100, 100), color2=(50, 50, 50), bcolor=(0, 200, 0), olcolor=(255, 255, 255)):
+    screen = []
+    
+    body = pg.Rect(0, 0, 300, 150)
+    upper = pg.Rect(0, 0, 300, 100)
+    lower = pg.Rect(0, 100, 300, 50)
+    text_rect = pg.Rect(0, 0, upper.width - 15, upper.height - 15)
+    outline = pg.Rect(0, 0, body.width + 10, body.height + 10)
+    
+    s = pg.Surface(outline.size).convert()
+    pg.draw.rect(s, olcolor, outline, border_radius=10)
+    body.center = outline.center
+    pg.draw.rect(s, color1, body, border_radius=10)
+    lower.bottomleft = body.bottomleft
+    pg.draw.rect(s, color2, lower, border_bottom_right_radius=10, border_bottom_left_radius=10)
+    i = Image(s)
+    i.rect.center = (WIDTH // 2, HEIGHT // 2)
+    screen.append(i)
+    
+    body.center = (WIDTH // 2, HEIGHT // 2)
+    upper.topleft = body.topleft
+    text_rect.center = upper.center
+    lower.bottomleft = body.bottomleft
+    
+    t = Textbox(message)
+    t.fit_text(text_rect, tsize=25)
+    t.rect.center = text_rect.center
+    screen.append(t)
+    
+    b = Button((200, 30), 'ok', color2=bcolor, tag='break')
+    b.rect.center = lower.center
+    screen.append(b)
+
+    return screen
+
+def yes_no(message, color1=(100, 100, 100), color2=(50, 50, 50), olcolor=(255, 255, 255)):
+    screen = []
+    
+    body = pg.Rect(0, 0, 300, 150)
+    upper = pg.Rect(0, 0, 300, 100)
+    lower = pg.Rect(0, 100, 300, 50)
+    text_rect = pg.Rect(0, 0, upper.width - 15, upper.height - 15)
+    outline = pg.Rect(0, 0, body.width + 10, body.height + 10)
+    
+    s = pg.Surface(outline.size).convert()
+    pg.draw.rect(s, olcolor, outline, border_radius=10)
+    body.center = outline.center
+    pg.draw.rect(s, color1, body, border_radius=10)
+    lower.bottomleft = body.bottomleft
+    pg.draw.rect(s, color2, lower, border_bottom_right_radius=10, border_bottom_left_radius=10)
+    i = Image(s)
+    i.rect.center = (WIDTH // 2, HEIGHT // 2)
+    screen.append(i)
+    
+    body.center = (WIDTH // 2, HEIGHT // 2)
+    upper.topleft = body.topleft
+    text_rect.center = upper.center
+    lower.bottomleft = body.bottomleft
+    
+    t = Textbox(message)
+    t.fit_text(text_rect, tsize=25)
+    t.rect.center = text_rect.center
+    screen.append(t)
+    
+    b = Button((120, 30), 'yes', color2=(0, 200, 0), func=lambda : True, tag='return')
+    b.rect.midleft = lower.midleft
+    b.rect.x += 20
+    screen.append(b)
+    
+    b = Button((120, 30), 'no', color2=(200, 0, 0), func=lambda : False, tag='return')
+    b.rect.midright = lower.midright
+    b.rect.x -= 20
+    screen.append(b)
+
+    return screen
+
+#menu mechanics------------------------------------------------------------------------
+
+def mini_loop(elements, input=[]):
+    win = pg.display.get_surface()
+
+    for e in elements:
+
+        is_button = isinstance(e, Button)
+    
+        if hasattr(e, 'events'):
+            e.events(input)
+                
+        if isinstance(e, Button):
+            if e.get_state():
+                break
+                
+    for e in elements:
+            
+        if hasattr(e, 'update'):
+            e.update()
+            
+    win.fill((0, 0, 0))
+            
+    for e in elements:
+        
+        if hasattr(e, 'draw'):
+            e.draw(win)
+
+    pg.display.flip()
+    
+def check_break(elements):
+    for e in elements:
+        
+        if isinstance(e, Button):
+            
+            if e.get_tag() == 'break':
+                
+                if e.get_state():
+                    
+                    return True
+                
+    return False
+
+def get_return(elements):
+    for e in elements:
+        if isinstance(e, Button): 
+            if e.get_tag() == 'return':
+                r = e.get_return()
+                if r is not None:
+                    return r
+
+def check_refresh(elements, set_screen, args, kwargs):
+    for e in elements:
+    
+        if isinstance(e, Button):
+            
+            if e.get_tag() == 'refresh':
+                
+                if e.get_state():
+
+                    return (set_screen(*args, **kwargs), True)
+                
+    return (elements, False)
+
+def menu(set_screen, args=[], kwargs={}, overlay=False):
+    win = pg.display.get_surface()
+    clock = pg.time.Clock()
+    
+    elements = set_screen(*args, **kwargs)
+    skip = False
+    input = []
+    
+    if overlay:
+        s = pg.Surface(win.get_size()).convert_alpha()
+        s.fill((0, 0, 0, 180))
+        win.blit(s, (0, 0))
+        pg.display.flip()
+    
+    while True:
+        clock.tick(30)
+        p = pg.mouse.get_pos()
+        
+        input = pg.event.get()
+        
+        for e in input:
+               
+            if e.type == pg.QUIT:
+                exit()
+                
+            elif e.type == pg.KEYDOWN:
+            
+                if e.key == pg.K_ESCAPE:
+                    exit()
+                    
+        for e in elements:
+            
+            is_button = isinstance(e, Button)
+            if is_button:
+                if e.get_state():
+                    e.reset()
+                    
+            if hasattr(e, 'events'):
+                e.events(input)
+                
+            if is_button:
+                if e.get_state():
+                    break
+                    
+        elements, skip = check_refresh(elements, set_screen, args, kwargs)
+        
+        if not skip:
+            if check_break(elements):
+                break
+            skip = False
+
+        r = get_return(elements)
+        if r is not None:
+            return r
+                    
+        for e in elements:
+            if hasattr(e, 'update'):
+                e.update()
+                
+        win.fill((0, 0, 0))
+                
+        for e in elements:
+            if hasattr(e, 'draw'):
+                e.draw(win)
+                
+        if overlay:
+            pg.display.update([e.rect for e in elements])
+        else:
+            pg.display.flip()
+
+def transition(e1, e2):
+    s1 = pg.Surface((WIDTH, HEIGHT)).convert()
+    r1 = s1.get_rect()
+    for e in e1:
+        e.draw(s1)
+        
+    s2 = pg.Surface((WIDTH, HEIGHT)).convert()
+    r2 = s2.get_rect()
+    for e in e1:
+        e.draw(s1)
+        
+    r2.rect.topleft = r1.rect.topright
+    
+    win = pg.display.get_surface()
+    clock = pg.time.Clock()
+    
+    while True:
+        clock.tick(30)
+        
+        r1.x -= 5
+        r2.x -= 5
+        
+        win.blit(s1, r1)
+        win.blit(s2, r2)
+        
+        if r2.x <= 0:
+            r2.x = 0
+            break
+
+#clipboard stuff----------------------------------------
 
 def copy_to_clipboard(text):
     Tk().clipboard_append(text)
@@ -13,146 +318,6 @@ def get_clip():
         
     return text
 
-def outline_points(r):
-    x, y, e = r, 0, 1 - r
-    points = []
-
-    while x >= y:
-    
-        points.append((x, y))
-        
-        y += 1
-        
-        if e < 0:
-        
-            e += 2 * y - 1
-            
-        else:
-        
-            x -= 1
-            e += 2 * (y - x) - 1
-            
-    points += [(y, x) for x, y in points if x > y]
-    points += [(-x, y) for x, y in points if x]
-    points += [(x, -y) for x, y in points if y]
-    
-    points.sort()
-    
-    return points
-
-def create_text(message, size=10, color=(255, 255, 255), bgcolor=None, olcolor=None, r=2):
-    font = 'freesansbold.ttf'
-
-    text_font = pg.font.Font(font, size)
-    text = text_font.render(message, size, color).convert_alpha()
-    
-    if olcolor is not None:
-        
-        w, h = text.get_size()
-        w = w + 2 * r
-        
-        osurf = pg.Surface((w, h + 2 * r)).convert_alpha()
-        osurf.fill((0, 0, 0, 0))
-        surf = osurf.copy()
-        outline = create_text(message, size, color=olcolor)
-        osurf.blit(outline, (0, 0))
-        
-        for dx, dy in outline_points(r):
-            
-            surf.blit(osurf, (dx + r, dy + r))
-            
-        surf.blit(text, (r, r))
-        text = surf
-    
-    if bgcolor is not None:
-        
-        bg = pg.Surface(text.get_size()).convert()
-        bg.fill(bgcolor)
-        bg.blit(text, (0, 0))
-        
-        text = bg
-
-    return text
-
-def fit_text(rect, text, tcolor=(255, 255, 255), bgcolor=(0, 0, 0, 0), olcolor=None):
-    surf = pg.Surface(rect.size).convert_alpha()
-    surf.fill(bgcolor)
-    
-    rect = surf.get_rect()
-    
-    if text.strip():
-    
-        text = text.split()
-        
-        if len(text) > 1:
-            
-            for i in range(1, len(text)):
-                
-                text[i] = ' ' + text[i]
-
-        tsize = rect.height
-        i = 0
-        
-        while i < len(text):
-
-            i = 0
-            x = 0
-            y = 0 
-            lines = []
-            line = []
-
-            for word in text:
-                
-                textbox = create_text(word, size=tsize, color=tcolor, olcolor=olcolor)
-                r = textbox.get_rect()
-                r.topleft = (x, y)
-                
-                if r.right > rect.right:
-                    
-                    lines.append(line.copy())
-                    line.clear()
-                    
-                    x = 0
-                    y += r.height
-                    
-                    textbox = create_text(word.replace(' ', ''), size=tsize, color=tcolor, olcolor=olcolor)
-                    r = textbox.get_rect()
-                    r.topleft = (x, y)
-
-                if not rect.contains(r):
-                    
-                    tsize -= 1
-
-                    break
-                    
-                else:
-                    
-                    line.append((word, textbox, r))
-                    
-                    x += r.width
-                    i += 1
-                    
-        lines.append(line.copy())
-        
-        total_height = sum(line[0][2].height for line in lines)
-        r = pg.Rect(0, 0, 1, total_height)
-        r.centery = rect.centery
-        dy = r.y - lines[0][0][2].y
-                    
-        for line in lines:
-            
-            total_width = sum(l[2].width for l in line)
-            r = pg.Rect(0, 0, total_width, 1)
-            r.centerx = rect.centerx
-            dx = r.x - line[0][2].x
-            
-            for word, textbox, trect in line:
-                
-                x, y = trect.topleft
-                surf.blit(textbox, (x + dx, y + dy))
-
-    return surf
-
 def rect_outline(img, color=(0, 0, 0), ol_size=2):
     ol = img.copy()
     ol.fill(color)
@@ -162,32 +327,6 @@ def rect_outline(img, color=(0, 0, 0), ol_size=2):
     ol.blit(img, (ol_size, ol_size))
     
     return ol
-    
-def get_rate(p0, p1, rate):
-    x0, y0 = p0
-    x1, y1 = p1
-    
-    dx = x1 - x0
-    dy = y1 - y0
-    d = pow(pow(dx, 2) + pow(dy, 2), 0.5)
-    
-    if dx != 0:
-        rx = d / dx
-        vx = rate / rx
-    else:
-        rx = 0
-        vx = 0
-        
-    if dy != 0:
-        ry = d / dy
-        vy = rate / ry
-    else:
-        ry = 0
-        vy = 0
-        
-    steps = 1 / (rate * d)
-  
-    return (steps, [vx, vy])
 
 class Mover:
     def __init__(self):
@@ -518,125 +657,187 @@ class FreeImage:
                 pg.draw.rect(win, (255, 0, 0), r)
 
 class Textbox(Mover):
-    def __init__(self, message, tsize=10, tcolor=(255, 255, 255), bgcolor=None, olcolor=None, r=2, anchor='center', font='freesansbold.ttf'):
+    def __init__(self, message, tsize=10, anchor='center', font='freesansbold.ttf', fgcolor=(255, 255, 255), bgcolor=None, olcolor=None, olrad=2):
         self.message = message
         self.original_message = message
         
-        self.font = font
-        self.text_font = pg.font.Font(font, tsize)
-
         self.tsize = tsize
-        self.tcolor = tcolor
-        self.olcolor = olcolor
-        self.olrad = r
-        self.bgcolor = bgcolor
+        self._font = font
+        self.font = pg.freetype.Font(font, tsize)
+        setattr(self.font, 'pad', True)
         
+        self.fgcolor = fgcolor
+        self.bgcolor = bgcolor
+        self.olcolor = olcolor
+        self.olrad = olrad
         self.olcache = {}
         
-        self.image = self.create_text(self.message, tsize=self.tsize, tcolor=self.tcolor, bgcolor=self.bgcolor, olcolor=self.olcolor, r=self.olrad)
-        self.rect = self.image.get_rect()
+        self.image, self.rect = self.render(self.message, get_rect=True)
         self.anchor = anchor
+        
+        self.characters = []
         
         self.timer = 0
         
         super().__init__()
         
     def __str__(self):
-        return self.get_message()
+        return self.message
         
     def __repr__(self):
-        return self.get_message()
+        return self.message
         
     def __eq__(self, other):
-        return self.message == other.message and self.tcolor == other.tcolor
-
+        return self.message == other.message and self.fgcolor == other.fgcolor
+        
+    def set_message(self, message):
+        self.message = message
+        
+    def set_antialiased(self, antialiased):
+        setattr(self.font, 'antialiased', antialiased)
+        
+    def set_kerning(self, kerning):
+        setattr(self.font, 'kerning', kerning)
+        
+    def set_underline(self, underline):
+        setattr(self.font, 'underline', underline)
+        
+    def set_strong(self, strong):
+        setattr(self.font, 'strong', strong)
+        
+    def set_oblique(self, oblique):
+        setattr(self.font, 'oblique', oblique)
+        
+    def set_wide(self, wide):
+        setattr(self.font, 'wide', wide)
+        
+    def set_fgcolor(self, fgcolor):
+        self.fgcolor = fgcolor
+        
+    def set_bgcolor(self, bgcolor):
+        self.bgcolor = bgcolor
+        
+    def set_olcolor(self, olcolor, r=None):
+        self.olcolor = olcolor
+        if r is not None:
+            self.olrad = r
+        
+    def set_font_size(self, tsize):
+        self.font.size = tsize
+        self.tsize = tsize
+        
+    def set_font(self, font, tsize=None):
+        if tsize is not None:
+            self.tsize = tsize
+        self._font = font
+        self.font = pg.freetype.Font(font, self.tsize)
+        setattr(self.font, 'pad', True)
+        
+    def set_anchor(self, anchor):
+        self.anchor = anchor
+        
     def set_message_timer(self, message, timer):
         self.update_message(message)
         self.timer = timer
-
-    def outline_points(self, r):
-        if r in self.olcache:
-            
-            points = self.olcache[r]
-            
-        else:
         
+    def get_message(self):
+        return self.message
+
+    def get_text_rect(self, text):
+        return self.font.get_rect(text)
+        
+    def get_image(self):
+        return self.image
+        
+    def get_characters(self):
+        return self.characters
+        
+    def reset(self):
+        self.update_message(self.original_message)
+        
+    def update_image(self):
+        self.update_text(self.get_message())
+        
+    def add_outline(self, message, image):
+        r = self.olrad
+        if r in self.olcache:
+            points = self.olcache[r]     
+        else:
             x, y, e = r, 0, 1 - r
             points = []
 
             while x >= y:
             
                 points.append((x, y))
-                
                 y += 1
-                
                 if e < 0:
-                
-                    e += 2 * y - 1
-                    
+                    e += 2 * y - 1 
                 else:
-                
                     x -= 1
                     e += 2 * (y - x) - 1
                     
             points += [(y, x) for x, y in points if x > y]
             points += [(-x, y) for x, y in points if x]
             points += [(x, -y) for x, y in points if y]
-            
-            points.sort()
-            
+            points.sort() 
             self.olcache[r] = points
             
-        return points
+        w, h = image.get_size()
+        w = w + 2 * r
         
-    def new_image(self, image):
-        a = getattr(self.rect, self.anchor, self.rect.topleft)
-        self.image = image
-        self.rect = self.image.get_rect()
-        setattr(self.rect, self.anchor, a)
+        osurf = pg.Surface((w, h + 2 * r)).convert_alpha()
+        osurf.fill((0, 0, 0, 0))
+        surf = osurf.copy()
+        outline = self.simple_render(message, fgcolor=self.olcolor)
+        osurf.blit(outline, (0, 0))
         
-    def update_font(self, tsize=None, font=None):
-        if tsize is None:
-            tsize = self.tsize
-        if font is None:
-            font = self.font
+        for dx, dy in points:
+            surf.blit(osurf, (dx + r, dy + r))
             
-        self.text_font = pg.font.Font(font, tsize)
-        self.tsize = tsize
-        self.font = font
-
-    def create_text(self, message, tsize=10, tcolor=(255, 255, 255), bgcolor=None, olcolor=None, r=2):
-        text = self.text_font.render(message, tsize, tcolor).convert_alpha()
+        surf.blit(image, (r, r))
+        image = surf
         
-        if olcolor is not None:
-            
-            w, h = text.get_size()
-            w = w + 2 * r
-            
-            osurf = pg.Surface((w, h + 2 * r)).convert_alpha()
-            osurf.fill((0, 0, 0, 0))
-            surf = osurf.copy()
-            outline = self.create_text(message, tsize=tsize, tcolor=olcolor)
-            osurf.blit(outline, (0, 0))
-            
-            for dx, dy in outline_points(r):
-                
-                surf.blit(osurf, (dx + r, dy + r))
-                
-            surf.blit(text, (r, r))
-            text = surf
+        return image
         
-        if bgcolor is not None:
+    def simple_render(self, message, fgcolor=None, bgcolor=None, tsize=0, get_rect=False):
+        if fgcolor is None:
+            fgcolor = self.fgcolor
             
-            bg = pg.Surface(text.get_size()).convert()
-            bg.fill(bgcolor)
-            bg.blit(text, (0, 0))
+        image, rect = self.font.render(message, fgcolor=fgcolor, bgcolor=bgcolor, size=tsize)
             
-            text = bg
-
-        return text
+        if get_rect:
+            return (image, rect)
+        else:
+            return image
         
-    def multicolor(self, colors):
+    def render(self, message, get_rect=False, track_chars=False):
+        image, rect = self.font.render(message, fgcolor=self.fgcolor)
+        
+        if self.olcolor is not None:
+            image = self.add_outline(message, image)
+            rect = image.get_rect()
+            
+        if self.bgcolor is not None:
+            bg = pg.Surface(rect.size).convert()
+            bg.fill(self.bgcolor)
+            bg.blit(image, (0, 0))
+            image = bg
+            
+        if track_chars:
+            characters = []
+            x = 0 if self.olcolor is None else self.olrad
+            for char in message + ' ':
+                r = self.get_text_rect(char)
+                characters.append((char, r, (x, 0)))
+                x += r.width
+            self.characters = characters
+            
+        if get_rect:
+            return (image, rect)
+        else:
+            return image
+           
+    def render_multicolor(self, colors):
         chars = []
         message = self.get_message()
         
@@ -647,9 +848,9 @@ class Textbox(Mover):
             
             char = message[i]
             color = colors[j % len(colors)]
+            self.set_fgcolor(color)
             
-            img = self.create_text(char, tsize=self.tsize, tcolor=color, bgcolor=self.bgcolor, olcolor=self.olcolor, r=self.olrad)
-            r = img.get_rect()
+            img, r = self.render(char, get_rect=True)
             chars.append((img, r))
             
             width += r.width
@@ -664,226 +865,171 @@ class Textbox(Mover):
         y = 0
             
         for char, r in chars:
-            
             r.topleft = (x, y)
             image.blit(char, r)
             
             x += r.width
             
         self.new_image(image)
+           
+    def fit_text(self, bounding_rect, tsize=None, centered=True):
+        message = self.message
         
-    def get_char_rect(self, char):
-        return self.text_font.size(char)
+        if tsize is None:
+            tsize = bounding_rect.height
+        elif tsize > bounding_rect.height:
+            tsize = bounding_rect.height
+        self.set_font_size(tsize)
+        
+        words = [word.split(' ') for word in message.splitlines()]
+        characters = []
+        
+        image = pg.Surface(bounding_rect.size).convert_alpha()
+        image.fill((0, 0, 0, 0))
 
-    def set_anchor(self, anchor):
-        self.anchor = anchor
+        while True:
 
-    def fit_text(self, rect):
-        if self.rect.size == rect.size:
-            return 
+            space = self.get_text_rect(' ').width
+            max_width, max_height = bounding_rect.size
+            x, y = (0, 0)
             
-        surf = pg.Surface(rect.size).convert_alpha()
-        
-        if self.bgcolor is not None:
-            surf.fill(self.bgcolor)
-        else:
-            surf.fill((0, 0, 0, 0))
-
-        rect = surf.get_rect()
-        text = self.message
-        tsize = rect.height
-        
-        if text.strip():
-        
-            text = text.split()
+            over_y = False
+            rendered_lines = []
+            current_line = []
             
-            if len(text) > 1:
-                for i in range(1, len(text)):  
-                    text[i] = ' ' + text[i]
-
-            tsize = rect.height
-            self.update_font(tsize=tsize)
-            i = 0
-            
-            while i < len(text):
-
-                i = 0
-                x = 0
-                y = 0 
-                lines = []
-                line = []
-
-                for word in text:
+            for line in words:
+        
+                for word in line:
+                
+                    word_surface, word_rect = self.simple_render(word, get_rect=True)
+                    width, height = word_rect.size
                     
-                    r = pg.Rect(0, 0, 0, 0)
-                    r.size = self.text_font.size(word)
-                    r.topleft = (x, y)
-                    
-                    if r.right > rect.right:
-                        
-                        lines.append(line.copy())
-                        line.clear()
-                        
+                    if x + width >= max_width:
                         x = 0
-                        y += r.height
-                        
-                        r = pg.Rect(0, 0, 0, 0)
-                        r.size = self.text_font.size(word)
-                        r.topleft = (x, y)
+                        y += height
+                        if y + height > max_height or x + width >= max_width:
+                            over_y = True
+                            break
+                        else:
+                            rendered_lines.append(current_line.copy())
+                            current_line.clear()
 
-                    if not rect.contains(r):
-                        
-                        tsize -= 1
-                        self.update_font(tsize=tsize)
-
-                        break
-                        
-                    else:
-                        
-                        line.append((word, r))
-                        
-                        x += r.width
-                        i += 1
-                        
-            lines.append(line.copy())
-            
-            total_height = sum(line[0][1].height for line in lines)
-            r = pg.Rect(0, 0, 1, total_height)
-            r.centery = rect.centery
-            dy = r.y - lines[0][0][1].y
-                        
-            for line in lines:
-                
-                total_width = sum(l[1].width for l in line)
-                r = pg.Rect(0, 0, total_width, 1)
-                r.centerx = rect.centerx
-                dx = r.x - line[0][1].x
-                
-                for word, r in line:
+                    word_rect.topleft = (x, y)
+                    current_line.append([word, word_surface, word_rect])
+                    x += width + space
                     
-                    img = self.create_text(word, tsize=tsize, tcolor=self.tcolor, bgcolor=self.bgcolor, olcolor=self.olcolor, r=self.olrad)
+                if over_y:
+                    self.set_font_size(tsize - 1)
+                    tsize = self.tsize
+                    break
                     
-                    x, y = r.topleft
-                    surf.blit(img, (x + dx, y + dy))
+                x = 0
+                y += height
+                
+            if not over_y:
+                rendered_lines.append(current_line)
+                break
+                
+        if centered and rendered_lines[0]:
+                
+            max_y = rendered_lines[-1][0][2].bottom
+            min_y = rendered_lines[0][0][2].top
 
-        self.new_image(surf)
-        self.tsize = tsize
-        
-    def resize(self, tsize):
-        self.tsize = tsize
-        image = self.create_text(self.message, tsize=self.tsize, tcolor=self.tcolor, bgcolor=self.bgcolor, olcolor=self.olcolor, r=self.olrad)
-        self.new_image(image)
-        
-    def scale(self, width=None, height=None):
-        if width is None:
-            width = self.rect.width
-        if height is None:
-            height = self.rect.height
-            
-        img = pg.transform.scale(self.image, (int(width), int(height)))
-        self.new_image(img)
-        
-    def update_all(self, message=None, tsize=None, tcolor=None, bgcolor=None, olcolor=None, r=None):
-        p = getattr(self.rect, self.anchor)
-        
-        if message is not None:
-            self.message = message
-        
-        if tsize is not None:
-            self.tsize = tsize
-            
-        if tcolor is not None:
-            self.tcolor = tcolor
-            
-        if bgcolor is not None:
-            self.bgcolor = bgcolor
-            
-        if olcolor is not None:
-            self.olcolor = olcolor
-            
-        if r is not None:
-            self.olrad = r
+            h = max_y - min_y
+            r = pg.Rect(0, 0, 2, h)
+            r.centery = bounding_rect.height // 2
 
-        self.image = self.create_text(self.message, tsize=self.tsize, tcolor=self.tcolor, bgcolor=self.bgcolor, olcolor=self.olcolor, r=self.olrad)
-        self.rect = self.image.get_rect()
+            dy = r.y - min_y
+            
+            for line in rendered_lines: 
+                for info in line:
+                    info[2] = info[2].move(0, dy)
+      
+        for line in rendered_lines:
         
-        setattr(self.rect, self.anchor, p)
+            if centered and line:
+                
+                max_x = max(r.right for _, _, r in line)
+                min_x = min(r.left for _, _, r in line)
+            
+                w = max_x - min_x
+                r = pg.Rect(0, 0, w, 2)
+                r.centerx = bounding_rect.width // 2
+
+                dx = r.x - min_x
+                
+                for info in line: 
+                    info[2] = info[2].move(dx, 0)
+
+            for word, surf, r in line:
+                image.blit(surf, r)
+                
+                x, y = r.topleft
+                w, h = r.size
+                for char in word:
+                    r = self.get_text_rect(char)
+                    r.topleft = (x, y)
+                    characters.append((char, r, (r.x, r.y)))
+                    x += r.width
+                    
+                if r is not line[-1][2]:
+                    r = self.get_text_rect(' ')
+                    r.topleft = (x, y)
+                    characters.append((' ', r, (r.x, r.y)))
+
+        self.characters = characters
         
-    def add_background(self, bgcolor):
-        self.bgcolor = bgcolor
-        image = self.create_text(self.message, tsize=self.tsize, tcolor=self.tcolor, bgcolor=self.bgcolor, olcolor=self.olcolor, r=self.olrad)
-        self.new_image(image)
+        self.new_image(image, rect=bounding_rect.copy())
+           
+    def new_image(self, image, rect=None):
+        if rect is None:
+            rect = image.get_rect()
+
+        a = getattr(self.rect, self.anchor, self.rect.topleft)
+        self.image = image
+        self.rect = rect
+        setattr(self.rect, self.anchor, a)
         
-    def remove_background(self):
-        self.bgcolor = (0, 0, 0, 0)
-        image = self.create_text(self.message, tsize=self.tsize, tcolor=self.tcolor, bgcolor=self.bgcolor, olcolor=self.olcolor, r=self.olrad)
-        self.new_image(image)
+        self.move_characters()
         
-    def add_outline(self, olcolor, r=2):
-        self.olcolor = olcolor
-        self.olrad = r
-        image = self.create_text(self.message, tsize=self.tsize, tcolor=self.tcolor, bgcolor=self.bgcolor, olcolor=self.olcolor, r=self.olrad)
-        self.new_image(image)
-        
-    def remove_outline(self):
-        self.olcolor = None
-        image = self.create_text(self.message, tsize=self.tsize, tcolor=self.tcolor, bgcolor=self.bgcolor, olcolor=self.olcolor, r=self.olrad)
-        self.new_image(image)
-       
-    def set_color(self, tcolor):
-        self.tcolor = tcolor
-        image = self.create_text(self.message, tsize=self.tsize, tcolor=self.tcolor, bgcolor=self.bgcolor, olcolor=self.olcolor, r=self.olrad)
-        self.new_image(image)
-       
     def update_message(self, message):
         self.message = message
-        image = self.create_text(self.message, tsize=self.tsize, tcolor=self.tcolor, bgcolor=self.bgcolor, olcolor=self.olcolor, r=self.olrad)
-        self.new_image(image)
+        image, rect = self.render(self.message, get_rect=True, track_chars=True)
+        self.new_image(image, rect=rect)
         
     def clear(self):
         self.update_message('')
         
-    def reset(self):
-        self.self.bgcolor = None
-        self.olcolor = None
-        
-        image = self.create_text(self.message, tsize=self.size, tcolor=self.tcolor)
-        self.new_image(image)
-        
-    def get_message(self):
-        return self.message
-        
-    def get_image(self):
-        return self.image
-        
-    def is_outlined(self):
-        return self.olcolor is not None
-        
-    def is_color(self, color):
-        return self.tcolor == color
+    def move_characters(self):
+        rect = self.rect
+
+        for char, r, rel in self.characters:
+            rx, ry = rel
+            r.topleft = (self.rect.x + rx, self.rect.y + ry)
         
     def events(self, input):
         pass
         
     def update(self):
+        self.move_characters()
         self.move()
         
         if self.timer != 0:
             self.timer -= 1
             if self.timer == 0:
                 self.clear()
-        
+    
     def draw(self, win):
         win.blit(self.get_image(), self.rect)
-       
+
 class Button:
-    def __init__(self, size, message, color1=(0, 0, 0), color2=(100, 100, 100), tcolor=(255, 255, 255), border_radius=10, tag='', func=lambda: None, args=[], kwargs={}):
+    def __init__(self, size, message, color1=(0, 0, 0), color2=(100, 100, 100), tcolor=(255, 255, 255), border_radius=10, tag='', func=lambda *args, **kwargs: None, args=[], kwargs={}):
         self.rect = pg.Rect(0, 0, size[0], size[1])
         r = self.rect.copy()
         r.width -= 5
         r.height -= 5
         self.text_rect = r
-        self.textbox = Textbox(message, tsize=r.height, tcolor=tcolor)
+        self.textbox = Textbox(message, tsize=r.height, fgcolor=tcolor)
         self.textbox.fit_text(r)
         
         self.max_timer = 0
@@ -988,6 +1134,7 @@ class Button:
     def update(self):
         self.textbox.rect.center = self.rect.center
         self.textbox.rect.y -= 1
+        self.textbox.update()
         
         if not self.disabled:
         
@@ -1011,180 +1158,306 @@ class Button:
     def update_message(self, message, tcolor=None):    
         self.textbox.update_message(message)
         if tcolor is not None:
-            self.textbox.set_color(tcolor)
+            self.textbox.set_fgcolor(tcolor)
             
         self.textbox.fit_text(self.text_rect)
 
-class Input(Textbox):
-    def __init__(self, size, message='', color=(0, 0, 0), tsize=None, tcolor=(255, 255, 255), length=99, check=lambda char: True, fitted=False):
-        self.size = size
-        self.tsize = self.size[1] if tsize is None else tsize
-
-        self.default_message = message
-        self.message = message
-        
-        self.textbox = Textbox(self.message, tsize=self.tsize, tcolor=tcolor)
-
-        self.image = pg.Surface(self.size).convert_alpha()
+class Input:
+    def __init__(self, size, message='type here', tsize=30, color=(0, 0, 0, 0), tcolor=(255, 255, 255), length=99, check=lambda char: True, fitted=False):
+        self.image = pg.Surface(size).convert_alpha()
         self.color = color
-        self.image.fill(self.color)
-        self.rect = self.image.get_rect()
+        self.image.fill(color)
+        
+        self.rect = pg.Rect(0, 0, 0, 0)
+        self.rect.size = size
+        
+        self.tsize = tsize
         
         self.active = False
         
-        self.timer = 25
+        self.index = 0
         
         self.btimer = 0
         self.backspace = False
+        self.bhold = False
+        
+        self.selecting = False
+        self.selection = []
+        
+        self.copy = [0, 0]
+        self.cut = [0, 0]
+        self.paste = [0, 0]
         
         self.length = length
         self.check = check
-        self.paste = [0, 0]
+        
+        self.timer = 0
         
         self.fitted = fitted
         
-        self.update_message(self.get_message())
+        self.textbox = Textbox(message, tsize=tsize, fgcolor=tcolor, anchor='topleft')
+        self.update_message(self.textbox.get_message())
         
-    def clear(self):
-        self.update_message('')
+    def set_index(self, index):
+        index = max(index, 0)
+        index = min(index, len(self.textbox.get_message()))
         
-    def update_message(self, message, tcolor=None):
-        if tcolor:
+        self.index = index
+        
+    def check_index(self):
+        self.index = max(self.index, 0)
+        self.index = min(self.index, len(self.textbox.get_message()))
+        
+    def get_chars(self):
+        return self.textbox.characters
+        
+    def copy_to_clipboard(self, text):
+        Tk().clipboard_append(text)
+  
+    def get_clip(self):
+        try:
+            text = Tk().clipboard_get()     
+        except:
+            text = None
             
-            self.tcolor = tcolor
-    
-        self.message = message
-        self.textbox.update_message(self.message)
+        return text
         
-        if self.fitted:
-        
-            self.textbox.fit_text(self.rect)
-        
-    def reset(self):
-        self.update_message(self.default_message)
+    def get_selection(self):
+        if self.selection:
+            i, j = self.selection
+            return self.textbox.get_message()[min(i, j):max(i, j)]
+        return ''
         
     def get_message(self):
-        return self.message.replace('|', '')
+        return self.textbox.get_message()
+        
+    def update_message(self, message):
+        if self.check_message(message):
+            if self.fitted:
+                self.textbox.set_message(message)
+                self.textbox.fit_text(self.rect, tsize=self.tsize)
+            else:
+                self.textbox.update_message(message)
         
     def close(self):
-        m = self.get_message()
+        self.active = False
+        if not self.textbox.get_message().strip():
+            self.textbox.reset()
+        self.selection.clear()
         
-        if not m.strip():
+    def check_message(self, text):
+        passed = False
+        if text is not None:
+            if all(31 < ord(char) < 127 for char in text) and all(self.check(char) for char in text):
+                if 0 <= len(text) < self.length:
+                      passed = True
+        return passed
+                      
+    def send_keys(self, text):
+        m = self.textbox.get_message()
+        message = m[:self.index] + text + m[self.index:]
+        self.update_message(message)
+        self.set_index(self.index + len(text))
+                    
+    def replace_selection(self, text):
+        m = self.textbox.get_message()
+        i, j = self.selection
+        message = m[:min(i, j)] + text + m[max(i, j):] 
+        self.update_message(message)
+        self.set_index(min(i, j))
+        self.selection.clear()
             
-            m = self.default_message
-        
-        self.update_message(m)
+    def delete(self):
+        if self.btimer <= 0:
+            
+            if self.selection:
+                self.replace_selection('')
+            else:
+                m = self.textbox.get_message()
+                message = m[:max(self.index - 1, 0)] + m[self.index:]
+                self.update_message(message)
+                self.set_index(self.index - 1)
+            
+            if not self.bhold:
+                self.btimer = 15
+                self.bhold = True
+            else:
+                self.btimer = 2
         
     def events(self, input):
+        click = False
         p = pg.mouse.get_pos()
         
         for e in input:
         
             if e.type == pg.MOUSEBUTTONDOWN:
                 
+                click = True
+                
                 if self.rect.collidepoint(p) or self.textbox.rect.collidepoint(p):
                     
-                    self.active = True
-                    
-                else:
+                    if not self.active:
+                        self.active = True
+                        self.set_index(len(self.textbox.get_message()))                       
+                    else:
+                        self.selecting = True
+                        for i, info in enumerate(self.get_chars()):
+                            if info[1].collidepoint(p):
+                                if p[0] - info[1].centerx >= 0:
+                                    i += 1
+                                self.set_index(i)
+                                break
+                                
+                    self.selection.clear()
 
-                    self.active = False
+                else:
                     self.close()
+                    
+            elif e.type == pg.MOUSEBUTTONUP:
+                self.selecting = False
                     
             elif self.active:
 
                 if e.type == pg.KEYDOWN:
                     
                     if e.key == pg.K_BACKSPACE:
-                        
                         self.backspace = True
                         
                     elif (e.key == pg.K_RCTRL) or (e.key == pg.K_LCTRL):
-                        
+                        self.copy[0] = 1
+                        self.cut[0] = 1
                         self.paste[0] = 1
-                            
-                    elif e.key == pg.K_v:
-                        
+                    elif e.key == pg.K_c:
+                        self.copy[1] = 1
+                    elif e.key == pg.K_x:
+                        self.cut[1] = 1
+                    elif e.key == pg.K_v: 
                         self.paste[1] = 1
                         
                     elif e.key == pg.K_SPACE:
-                        
                         self.send_keys(' ')
+                        
+                    elif e.key == pg.K_RIGHT:
+                        if self.selection:
+                            self.set_index(max(self.selection))
+                        else:
+                            self.set_index(self.index + 1)
+                        self.selection.clear()
+                        self.timer = 25
+                    elif e.key == pg.K_LEFT:
+                        if self.selection:
+                            self.set_index(min(self.selection))
+                        else:
+                            self.set_index(self.index - 1)
+                        self.selection.clear()
+                        self.timer = 25
+                        
+                    elif e.key == pg.K_RETURN:
+                        self.close()
                     
                     elif hasattr(e, 'unicode'):
-                        
                         char = e.unicode.strip()
-                        
-                        self.send_keys(char)
+                        if char:
+                            self.send_keys(char)
                             
                 elif e.type == pg.KEYUP:
                     
                     if e.key == pg.K_BACKSPACE:
                         
                         self.backspace = False
+                        self.bhold = False
+                        self.btimer = 0
                     
                     elif (e.key == pg.K_RCTRL) or (e.key == pg.K_LCTRL):
-                    
-                        self.paste[0] = 0
-                            
-                    elif e.key == pg.K_v:
-                        
+                        self.copy[0] = 0
+                        self.cut[0] = 0
+                        self.paste[0] = 0 
+                    elif e.key == pg.K_c:
+                        self.copy[1] = 0
+                    elif e.key == pg.K_x:
+                        self.cut[1] = 0
+                    elif e.key == pg.K_v: 
                         self.paste[1] = 0
                         
-        if all(self.paste):
+        if all(self.copy):
+            text = self.get_selection()
+            self.copy_to_clipboard(text)
+            self.copy = [0, 0]
             
+        elif all(self.cut):
+            if self.selection:
+                text = self.get_selection()
+                self.copy_to_clipboard(text)
+                self.replace_selection('')
+                self.cut = [0, 0]
+                        
+        elif all(self.paste):
             text = self.get_clip()
-            self.send_keys(text)
+            if self.selection:
+                self.replace_selection(text)
+            else:
+                self.send_keys(text)
+            self.paste = [0, 0]
             
         elif self.backspace:
-            
             self.delete()
+       
+        if self.selecting:
             
-    def get_clip(self):
-        try:
-        
-            text = Tk().clipboard_get()
-            
-        except:
-            
-            text = None
-            
-        return text
-                            
-    def send_keys(self, text):
-        if text and all(self.check(char) for char in text):
+            if click:
+                self.selection = [self.index, self.index]   
+            else:
+                chars = self.get_chars()
+                for i in range(len(chars)):
+                    r = chars[i][1]
+                    if r.collidepoint(p):
+                        if p[0] - r.centerx >= 0:
+                            i += 1
+                        if i not in self.selection:
+                            self.selection[1] = i
+                            break
 
-            if len(self.get_message()) < self.length or len(text) == 0:
+            self.set_index(self.selection[1])
 
-                self.update_message(self.get_message() + text)
-            
-    def delete(self):
-        if self.btimer <= 0:
-        
-            self.update_message(self.get_message()[:-1])
-            self.btimer = 3
-            
     def update(self):
         self.timer -= 1
         self.btimer -= 1
-    
-        if self.active and self.timer <= 0:
+        
+        if self.timer == -25:
+            self.timer *= -1
 
-            if '|' in self.message:
+        if not self.fitted:
+            self.textbox.rect.topleft = self.rect.topleft
+        else:
+            self.textbox.rect.center = self.rect.center
                 
-                self.update_message(self.message[:-1])
-                
-            else:
-                
-                self.update_message(self.message + '|') 
-    
-            self.timer = 25
-            
-        self.textbox.rect.topleft = self.rect.topleft
+        self.textbox.update()
         
     def draw(self, win):
         win.blit(self.image, self.rect)
+        
+        if self.selection:
+            chars = self.get_chars()
+            i, j = self.selection
+            for _, r, _ in chars[min(i, j):max(i, j)]:
+                pg.draw.rect(win, (0, 102, 255), r)
+
         self.textbox.draw(win)
+        
+        if self.active and self.timer > 0:
+            chars = self.get_chars()
+            if chars:
+                if self.index in range(len(chars)):
+                    _, r, _ = chars[self.index]
+                    pg.draw.line(win, self.textbox.fgcolor, r.topleft, r.bottomleft, width=2)
+            else:
+                r = self.textbox.get_text_rect(' ')
+                if self.fitted:
+                    r.center = self.rect.center
+                    pg.draw.line(win, self.textbox.fgcolor, r.midtop, r.midbottom, width=2)
+                else:
+                    r.midleft = self.rect.midleft
+                    pg.draw.line(win, self.textbox.fgcolor, r.topleft, r.bottomleft, width=2)
 
 class Counter:
     def __init__(self, options, option=None, tsize=30, tag=''):
@@ -1310,8 +1583,9 @@ class Pane:
         self.image.fill(self.color)
 
         self.message = label
-        self.label = fit_text(pg.Rect(0, 0, self.size[0], tsize), self.message, tcolor=tcolor)
-        self.tab = self.label.get_rect()
+        self.label = Textbox(self.message, tsize=tsize, fgcolor=tcolor)
+        self.label.fit_text(pg.Rect(0, 0, self.size[0], tsize))
+        self.tab = self.label.rect
         
         self.rect = self.image.get_rect()
         
@@ -1389,7 +1663,6 @@ class Pane:
                 self.go_to_bottom()
                 
         elif same and move:
-            
             for i in range(len(self.objects)):
                 objects[i].rect = self.objects[i].rect.copy()
             
@@ -1405,9 +1678,6 @@ class Pane:
             
         objects = self.objects + [object]
         self.join_objects(objects, xpad=xpad, ypad=ypad, dir=dir, pack=pack)
-        
-    def add_waits(self, object):
-        self.waits.append(object)
         
     def clear(self):
         self.join_objects([])
@@ -1492,7 +1762,7 @@ class Pane:
     def update(self):
         self.scroll_buttons[0].rect.midtop = self.rect.midtop
         self.scroll_buttons[1].rect.midbottom = self.rect.midbottom
-        self.tab.midbottom = self.rect.midtop
+        self.label.rect.midbottom = self.rect.midtop
         
         for b in self.scroll_buttons:
             b.update()
@@ -1501,7 +1771,7 @@ class Pane:
         if self.color != (0, 0, 0, 0) or self.objects:
             win.blit(self.image, self.rect)
             
-        win.blit(self.label, self.tab)
+        self.label.draw(win)
         
         if self.can_scroll_up():
             self.scroll_buttons[0].draw(win)
@@ -1668,7 +1938,7 @@ class Popup(Pane):
             self.click_timer += 1
 
 class Slider:
-    def __init__(self, ran, size, bcolor=(255, 255, 255), hcolor=(0, 0, 0)):
+    def __init__(self, ran, size, bcolor=(255, 255, 255), hcolor=(0, 0, 0), func=lambda *args, **kwargs: None, args=[], kwargs={}):
         self.range = ran
         
         self.size = size
@@ -1689,6 +1959,11 @@ class Slider:
         elif self.rect.width < self.rect.height:
             self.orientation = 'y'
             self.handel = pg.Rect(0, 0, self.rect.width + 10, 10)
+            
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+        self.return_val = None
        
     def collision(self):
         if self.orientation == 'x':
@@ -1711,37 +1986,65 @@ class Slider:
         self.collision()
         
         if self.orientation == 'x':
-        
             dx = self.handel.centerx - self.rect.x
-            ratio = dx / self.rect.width
-            
-            if self.flipped:
-                ratio = 1 - ratio
-
-            full = len(self.range)
-            shift = self.range[0]
-
-            state = (full * ratio) + shift
-
-            return round(state)
-            
+            ratio = dx / self.rect.width 
         elif self.orientation == 'y':
-
             dy = self.handel.centery - self.rect.y
             ratio = dy / self.rect.height
             
-            if self.flipped:
-                ratio = 1 - ratio
+        if self.flipped:
+            ratio = 1 - ratio
 
-            full = len(self.range)
-            shift = self.range[0]
+        full = len(self.range)
+        shift = self.range[0]
 
-            state = (full * ratio) + shift
+        state = (full * ratio) + shift
 
-            return round(state)
+        return round(state)
+            
+    def set_state(self, value):
+        state = round(value)
+        
+        full = len(self.range)
+        shift = self.range[0]
+        
+        ratio = (state - shift) / full
+        
+        if self.flipped:
+            ratio = 1 - ratio
+            
+        if self.orientation == 'x':   
+            dx = ratio * self.rect.width
+            self.handel.centerx = dx + self.rect.x
+        elif self.orientation == 'y':
+            dy = ratio * self.rect.height
+            self.handel.centery = dy + self.rect.y
 
     def flip(self):
         self.flipped = True
+
+    def get_return(self, reset=True):
+        r = self.return_val
+        if reset:
+            self.return_val = None
+        return r
+        
+    def set_func(self, func, args=None, kwargs=None):
+        self.func = func
+        if args is not None:
+            self.args = args
+        if kwargs is not None:
+            self.kwargs = kwargs
+        
+    def set_args(self, args=None, kwargs=None):
+        if args is not None:
+            self.args = args
+        if kwargs is not None:
+            self.kwargs = kwargs
+        
+    def clear_args(self):
+        self.args.clear()
+        self.kwargs.clear()
 
     def events(self, input):
         p = pg.mouse.get_pos()
@@ -1749,19 +2052,16 @@ class Slider:
         for e in input:
             
             if e.type == pg.MOUSEBUTTONDOWN:
-                
                 if self.handel.collidepoint(p) or self.rect.collidepoint(p):
-                    
                     self.held = True
                     
-            elif e.type == pg.MOUSEBUTTONUP:
-                
+            elif e.type == pg.MOUSEBUTTONUP: 
                 self.held = False
                 
     def update(self):
         if self.held:
-            
             self.handel.center = pg.mouse.get_pos()
+            self.return_val = self.func(*self.args, self.get_state(), **self.kwargs)
             
         self.collision()
             
@@ -1770,8 +2070,8 @@ class Slider:
         pg.draw.rect(win, self.hcolor, self.handel)
         
 class RGBSlider(Slider):
-    def __init__(self, size, rgb, hcolor=None, flipped=True):
-        super().__init__(range(255), size)
+    def __init__(self, size, rgb, hcolor=None, flipped=True, func=lambda *args, **kwargs: None, args=[], kwargs={}):
+        super().__init__(range(255), size, func=func, args=args, kwargs=kwargs)
         
         self.hcolor = hcolor
         
@@ -1808,7 +2108,6 @@ class RGBSlider(Slider):
         self.image = pg.transform.scale(surf, self.size)
         
         if flipped:
-            
             self.flip()
         
     def flip(self):
@@ -1833,9 +2132,21 @@ class RGBSlider(Slider):
         super().update()
         
         if self.hcolor is None:
-        
             self.hcolor = self.get_color()
         
     def draw(self, win):
         win.blit(self.image, self.rect)
         pg.draw.rect(win, self.hcolor, self.handel)
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
