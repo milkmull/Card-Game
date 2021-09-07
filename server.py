@@ -1,4 +1,4 @@
-import socket, json, os
+import socket, json, os, time
 from _thread import start_new_thread
 from game import Game
 import save
@@ -26,7 +26,7 @@ class Server:
         self.port = get_port()
         self.addr = (self.server, self.port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.settimeout(1)
+        self.sock.settimeout(3)
         
         self.game = None
         self.player_info = {}
@@ -47,37 +47,35 @@ class Server:
     def send_player_info(self, conn, pid):
         p = self.game.get_player(pid)
         info = p.get_info()
-        conn.sendall(bytes(json.dumps(info), encoding='utf-8'))
-        
         with open(info['image'], 'rb') as f:
             image = f.read()
+        info['len'] = len(image)
+        
+        conn.sendall(bytes(json.dumps(info), encoding='utf-8'))
+        conn.recv(4096)
             
         while image:
-            
-            data = conn.recv(4096)
+
             reply = image[:4096]
             conn.sendall(reply)
             
             image = image[4096:]
-            
-        data = conn.recv(4096)
-        conn.sendall(b'done')
 
     def recieve_player_info(self, id, conn):
         info = json.loads(conn.recv(4096))
-
         self.player_info[id] = info
+        
+        length = info['len']
         image = b''
         
-        while True:
+        conn.sendall(b'next')
+        
+        while len(image) < length:
+
+            reply = conn.recv(4096)
+            image += reply
             
             conn.sendall(b'next')
-            reply = conn.recv(4096)
-
-            if reply == b'done':
-                break
-            else:
-                image += reply
                 
         filename = f'img/temp/{id}.png'
         with open(filename, 'wb') as f:
@@ -85,8 +83,6 @@ class Server:
             
         self.player_info[id]['image'] = filename
         self.player_info[id]['id'] = id
-        
-        conn.sendall(b'done')
 
     def threaded_client(self, conn, id):
         try:
@@ -171,12 +167,12 @@ class Server:
 
                         elif data.startswith('getinfo'):
                             self.send_player_info(conn, int(data[7:]))
+                            reply = ''
                             continue
-
+     
                         conn.sendall(bytes(json.dumps(reply), encoding='utf-8'))
 
         except Exception as e:
-            
             print(e, 's1')
                 
         print('lost connection')

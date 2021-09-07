@@ -53,6 +53,12 @@ def main_menu(args=[]):
     btn.rect.y += 5
     screen.append(btn)
     
+    btn = Button((200, 30), 'exit game', (0, 0, 0), (100, 100, 100), tag='break')
+    btn.rect.midtop = screen[-1].rect.midbottom
+    btn.rect.y += 5
+    btn.rect.y += btn.rect.height
+    screen.append(btn)
+    
     center_buttons_y(screen)
     
     return screen
@@ -69,7 +75,7 @@ def settings_menu():
     text = Input((200, 30), save.get_data('username'), color=(0, 0, 0), tcolor=(255, 255, 255), length=12)
     text.rect.midleft = screen[-1].rect.midright
     screen.append(text)
-    
+
     text = Textbox('default port:  ', 20)
     text.rect.right = width // 2
     text.rect.y = screen[-1].rect.bottom + 5
@@ -79,10 +85,11 @@ def settings_menu():
                                                    check=lambda char: char.isnumeric(), length=5)
     text.rect.midleft = screen[-1].rect.midright
     screen.append(text)
-    
-    b = Button((200, 30), 'reset save data', func=save.refresh_save, tag='refresh')
-    b.rect.midtop = screen[-1].rect.midbottom
-    b.rect.y += 5
+
+    b = Button((200, 30), 'reset save data', func=refresh_save, tag='refresh')
+    b.rect.centerx = width // 2
+    b.rect.y = screen[-1].rect.bottom
+    b.rect.y += b.rect.height
     screen.append(b)
     
     btn = Button((200, 30), 'save', (0, 0, 0), (100, 100, 100), func=save_user_settings)
@@ -336,6 +343,10 @@ def get_public_ip():
         pass
         
     return ip
+    
+def refresh_save():
+    save.refresh_save()
+    CUSTOMSHEET.refresh()
 
 #main--------------------------------------------------------------------
 

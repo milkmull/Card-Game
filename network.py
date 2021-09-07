@@ -21,6 +21,7 @@ class Network:
     def __init__(self, server, port):
         self.port = port
         self.client = self.init_client(server)
+        self.client.settimeout(3)
         self.addr = (self.server, self.port)
 
         self.reply_queue = []
@@ -84,7 +85,8 @@ class Network:
         except socket.error:
             pass
             
-        connections[server] = (sock, res)
+        finally: 
+            connections[server] = (sock, res)
   
     def reset(self):
         self.reply_queue.clear()
@@ -93,7 +95,8 @@ class Network:
         player_info = save.get_data('cards')[0]
         with open(player_info['image'], 'rb') as f:
             image = f.read()
-
+        player_info['len'] = len(image)
+        
         self.client.sendall(bytes(json.dumps(player_info), encoding='utf-8'))
         self.client.recv(4096)
         
@@ -103,24 +106,19 @@ class Network:
             self.client.recv(4096)
             
             image = image[4096:]
-
-        self.client.sendall(b'done')
-        self.client.recv(4096)
         
     def recieve_player_info(self, pid):
         info = self.send(f'getinfo{pid}')
-        
+        length = info['len']
+
         image = b''
+
+        self.client.sendall(b'next')
         
-        while True:
-            
-            self.client.send(b'next')
+        while len(image) < length:
+
             reply = self.client.recv(4096)
-            
-            if reply == b'done':
-                break
-            else:
-                image += reply
+            image += reply
 
         with open(info['image'], 'wb') as f:
             f.write(image)
@@ -131,7 +129,7 @@ class Network:
         try: 
             self.client.sendall(str.encode(data))
             reply = json.loads(self.client.recv(4096))
-            
+
             if return_val:
                 self.reply_queue.append((data, reply))
                 

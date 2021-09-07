@@ -1302,28 +1302,26 @@ class Input:
         
             if e.type == pg.MOUSEBUTTONDOWN:
                 
-                if e.button == 1:
+                click = True
                 
-                    click = True
+                if self.rect.collidepoint(p) or self.textbox.rect.collidepoint(p):
                     
-                    if self.rect.collidepoint(p) or self.textbox.rect.collidepoint(p):
-                        
-                        if not self.active:
-                            self.active = True
-                            self.set_index(len(self.textbox.get_message()))                       
-                        else:
-                            self.selecting = True
-                            for i, info in enumerate(self.get_chars()):
-                                if info[1].collidepoint(p):
-                                    if p[0] - info[1].centerx >= 0:
-                                        i += 1
-                                    self.set_index(i)
-                                    break
-                                    
-                        self.selection.clear()
-
+                    if not self.active:
+                        self.active = True
+                        self.set_index(len(self.textbox.get_message()))                       
                     else:
-                        self.close()
+                        self.selecting = True
+                        for i, info in enumerate(self.get_chars()):
+                            if info[1].collidepoint(p):
+                                if p[0] - info[1].centerx >= 0:
+                                    i += 1
+                                self.set_index(i)
+                                break
+                                
+                    self.selection.clear()
+
+                else:
+                    self.close()
                     
             elif e.type == pg.MOUSEBUTTONUP:
                 self.selecting = False
@@ -1374,8 +1372,6 @@ class Input:
                         self.close()
                     
                     if hasattr(e, 'unicode') and not self.copy[0]:
-                        if self.selection:
-                            self.replace_selection('')
                         char = e.unicode.strip()
                         if char:
                             self.send_keys(char)
