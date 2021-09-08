@@ -2,6 +2,7 @@ import os, json
 
 def create_folders():
     os.mkdir('img/temp')
+    os.mkdir('save')
 
 def get_save_data():
     return globals()['SAVE_DATA']
@@ -18,7 +19,6 @@ def get_blank_data():
     return save_data
 
 def update_save(save_data):
-    os.mkdir('save')
     with open('save/save.json', 'w') as f:
         json.dump(save_data, f, indent=4)
         
