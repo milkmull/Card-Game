@@ -1,8 +1,10 @@
 import os, json
 
 def create_folders():
-    os.mkdir('img/temp')
-    os.mkdir('save')
+    if not os.path.exists('img/temp'):
+        os.mkdir('img/temp')
+    if not os.path.exists('save'):
+        os.mkdir('save')
 
 def get_save_data():
     return globals()['SAVE_DATA']
