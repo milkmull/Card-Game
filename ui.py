@@ -90,7 +90,7 @@ def notice(message, color1=(100, 100, 100), color2=(50, 50, 50), bcolor=(0, 200,
     text_rect.center = upper.center
     lower.bottomleft = body.bottomleft
     
-    t = Textbox(message)
+    t = Textbox(message, olcolor=(0, 0, 0))
     t.fit_text(text_rect, tsize=25)
     t.rect.center = text_rect.center
     screen.append(t)
@@ -125,7 +125,7 @@ def yes_no(message, color1=(100, 100, 100), color2=(50, 50, 50), olcolor=(255, 2
     text_rect.center = upper.center
     lower.bottomleft = body.bottomleft
     
-    t = Textbox(message)
+    t = Textbox(message, olcolor=(0, 0, 0))
     t.fit_text(text_rect, tsize=25)
     t.rect.center = text_rect.center
     screen.append(t)
@@ -890,6 +890,8 @@ class Textbox(Mover):
         while True:
 
             space = self.get_text_rect(' ').width
+            if self.olcolor is not None:
+                space -= self.olrad * 2
             max_width, max_height = bounding_rect.size
             x, y = (0, 0)
             
@@ -901,7 +903,7 @@ class Textbox(Mover):
         
                 for word in line:
                 
-                    word_surface, word_rect = self.simple_render(word, get_rect=True)
+                    word_surface, word_rect = self.render(word, get_rect=True)
                     width, height = word_rect.size
                     
                     if x + width >= max_width:
@@ -1053,6 +1055,8 @@ class Button:
         
         self.disabled = False
         
+        self.visible = True
+        
     def set_timer_rule(self, timer, message):
         self.max_timer = timer
         self.tmessage = message
@@ -1097,51 +1101,55 @@ class Button:
         self.args.clear()
         self.kwargs.clear()
         
+    def set_visible(self, visible):
+        self.visible = visible
+        
     def reset(self):
         self.pressed = False
         
     def events(self, input):
-        p = pg.mouse.get_pos()
+        if self.visible:
+        
+            p = pg.mouse.get_pos()
 
-        if self.rect.collidepoint(p):
-            self.active = True  
-        else:  
-            self.active = False
-            
-        if not self.disabled:
-            
-            for e in input:
+            if self.rect.collidepoint(p):
+                self.active = True  
+            else:  
+                self.active = False
                 
-                if e.type == pg.MOUSEBUTTONDOWN:
+            if not self.disabled:
+                
+                for e in input:
                     
-                    if e.button == 1:
-                    
-                        if self.active:
-                            
-                            self.pressed = True
-                            self.return_val = self.func(*self.args, **self.kwargs)
-                            
-                            if self.max_timer:
-                                self.update_message(self.tmessage)
-                                self.timer = self.max_timer
-                            
-                elif e.type == pg.MOUSEBUTTONUP:
-                    
-                    if e.button == 1:
-                        
-                        self.pressed = False
+                    if e.type == pg.MOUSEBUTTONDOWN:
+                        if e.button == 1:
+                            if self.active:
+                                
+                                self.pressed = True
+                                self.return_val = self.func(*self.args, **self.kwargs)
+                                
+                                if self.max_timer:
+                                    self.update_message(self.tmessage)
+                                    self.timer = self.max_timer
+                                
+                    elif e.type == pg.MOUSEBUTTONUP:
+                        if e.button == 1:
+                            self.pressed = False
             
     def update(self):
         self.textbox.rect.center = self.rect.center
-        self.textbox.rect.y += 1
-        self.textbox.update()
+        self.textbox.rect.y -= 1
         
-        if not self.disabled:
+        if self.visible:
         
-            if self.active and self.current_color != self.color2:
-                self.current_color = self.color2       
-            elif not self.active and self.current_color != self.color1:
-                self.current_color = self.color1   
+            self.textbox.update()
+            
+            if not self.disabled:
+            
+                if self.active and self.current_color != self.color2:
+                    self.current_color = self.color2       
+                elif not self.active and self.current_color != self.color1:
+                    self.current_color = self.color1   
                 
         if self.timer > 0:
             self.timer -= 1
@@ -1149,8 +1157,9 @@ class Button:
                 self.update_message(self.textbox.original_message)
   
     def draw(self, win):
-        pg.draw.rect(win, self.current_color, self.rect, border_radius=self.border_radius)
-        self.textbox.draw(win)
+        if self.visible:
+            pg.draw.rect(win, self.current_color, self.rect, border_radius=self.border_radius)
+            self.textbox.draw(win)
         
     def get_message(self):
         return self.textbox.get_message()
@@ -1212,11 +1221,11 @@ class Input:
         return self.textbox.characters
         
     def copy_to_clipboard(self, text):
-        Tk().clipboard_append(text)
+        Tk().clipboard_append(text.strip())
   
     def get_clip(self):
         try:
-            text = Tk().clipboard_get()     
+            text = Tk().clipboard_get().strip()  
         except:
             text = ''
             
@@ -1252,7 +1261,44 @@ class Input:
                 if 0 <= len(text) < self.length:
                       passed = True
         return passed
-                      
+        
+    def highlight_word(self):
+        i = self.index
+        j = self.index 
+        
+        m = self.textbox.get_message()
+        
+        if i not in range(len(m)):
+            return
+        
+        istop = False
+        jstop = False
+
+        while not (istop and jstop):
+
+            if not istop:
+                if i == 0:
+                    istop = True
+                elif m[i] == ' ':
+                    i += 1
+                    istop = True
+                else:
+                    i -= 1
+
+            if not jstop:
+                if j == len(m) or m[j] == ' ':
+                    jstop = True
+                else:
+                    j += 1
+
+        self.selection = [i, j]
+        self.set_index(j)
+        
+    def highlight_full(self):
+        m = self.textbox.get_message()
+        self.selection = [0, len(m)]
+        self.set_index(len(m))
+           
     def send_keys(self, text):
         m = self.textbox.get_message()
         message = m[:self.index] + text + m[self.index:]
@@ -1308,19 +1354,28 @@ class Input:
                     
                     if self.rect.collidepoint(p) or self.textbox.rect.collidepoint(p):
                         
-                        if not self.active:
-                            self.active = True
-                            self.set_index(len(self.textbox.get_message()))                       
+                        if self.timer <= 25:
+                        
+                            if not self.active:
+                                self.active = True
+                                self.set_index(len(self.textbox.get_message()))                       
+                            else:
+                                self.selecting = True
+                                for i, info in enumerate(self.get_chars()):
+                                    if info[1].collidepoint(p):
+                                        if p[0] - info[1].centerx >= 0:
+                                            i += 1
+                                        self.set_index(i)
+                                        break
+                                        
+                            self.selection.clear()
+                          
+                        elif self.selection:
+                            self.highlight_full()
                         else:
-                            self.selecting = True
-                            for i, info in enumerate(self.get_chars()):
-                                if info[1].collidepoint(p):
-                                    if p[0] - info[1].centerx >= 0:
-                                        i += 1
-                                    self.set_index(i)
-                                    break
-                                    
-                        self.selection.clear()
+                            self.highlight_word()
+                            
+                        self.timer = 34
 
                     else:
                         self.close()
@@ -1595,7 +1650,7 @@ class Hole:
             pg.draw.circle(win, (0, 0, 0), self.rect.center, self.radius // 2)
  
 class Pane:
-    def __init__(self, size, label='', color=(0, 0, 0, 0), tsize=25, tcolor=(255, 255, 255), live=False):
+    def __init__(self, size, label='', label_space=0, color=(0, 0, 0, 0), tsize=25, tcolor=(255, 255, 255), ul=False, live=False):
         self.size = size
         
         self.image = pg.Surface(self.size).convert_alpha()
@@ -1604,6 +1659,8 @@ class Pane:
 
         self.message = label
         self.label = Textbox(self.message, tsize=tsize, fgcolor=tcolor)
+        self.label.set_underline(ul)
+        self.label_space = label_space
         self.label.fit_text(pg.Rect(0, 0, self.size[0], tsize))
         self.tab = self.label.rect
         
@@ -1786,29 +1843,25 @@ class Pane:
             
         if self.live:
             for e in self.objects:
-                if hasattr(e, 'events'):
-                    e.events(input)
+                if hasattr(e, 'set_visible'):
+                    if self.rect.contains(e.rect):
+                        e.set_visible(True)
+                    else:
+                        e.set_visible(False)
                         
     def update(self):
         self.scroll_buttons[0].rect.midtop = self.rect.midtop
         self.scroll_buttons[1].rect.midbottom = self.rect.midbottom
         self.label.rect.midbottom = self.rect.midtop
+        self.label.rect.y -= self.label_space
         
         for b in self.scroll_buttons:
             b.update()
-            
-        if self.live:
-            for e in self.objects:
-                if hasattr(e, 'update'):
-                    e.update()
         
     def draw(self, win):
         if not self.live:
             if self.color != (0, 0, 0, 0) or self.objects:
                 win.blit(self.image, self.rect)
-        else:
-            self.redraw()
-            win.blit(self.image, self.rect)
             
         self.label.draw(win)
         
@@ -1819,7 +1872,7 @@ class Pane:
         
 class Popup(Pane):
     def __init__(self, size, slide_dir='u', label='', color=(0, 0, 0, 0), tsize=15, tcolor=(255, 255, 255)):
-        super().__init__(size, label, color, tsize, tcolor)
+        super().__init__(size, label=label, color=color, tsize=tsize, tcolor=tcolor)
         
         self.slide_dir = slide_dir
         self.target = self.rect.copy()

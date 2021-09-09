@@ -65,15 +65,10 @@ class Card:
         
     def sort_players(self, player, cond=None):
         if cond is None:
-        
-            return [p for p in self.game.players if p.pid != player.pid]
-            
-        elif cond == 'steal':
-            
+            return [p for p in self.game.players if p.pid != player.pid]  
+        elif cond == 'steal': 
             return [p for p in self.game.players if p.pid != player.pid and p.score]
-            
         else:
-            
             return [p for p in self.game.players if p.pid != player.pid and cond(p)]
    
     def get_players(self):
@@ -117,11 +112,11 @@ class Card:
 
 class Blank(Card):
     def __init__(self, game, name):
-        super().__init__(game, game.get_new_uid(), name, [])
+        super().__init__(game, game.get_new_uid(), name, tags=[])
 
 class Michael(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'michael', ['human'])
+        super().__init__(game, uid, 'michael', tags=['human'])
 
     def start(self, player):
         sp = 5 if self.game.current_player == 0 else 2
@@ -132,7 +127,7 @@ class Michael(Card):
         
 class Dom(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'dom', ['human'])
+        super().__init__(game, uid, 'dom', tags=['human'])
         
     def start(self, player):
         for p in self.game.players:
@@ -147,7 +142,7 @@ class Dom(Card):
         
 class Jack(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'jack', ['human'])
+        super().__init__(game, uid, 'jack', tags=['human'])
         
     def get_selection(self, player):
         return self.cards
@@ -171,7 +166,7 @@ class Jack(Card):
             
 class Mary(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'mary', ['human'])
+        super().__init__(game, uid, 'mary', tags=['human'])
         
     def start(self, player):
         if self.game.check_last(player):
@@ -185,7 +180,7 @@ class Daniel(Card):
         self.game = game
         self.uid = uid
         
-        super().__init__(game, uid, 'daniel', ['human'])
+        super().__init__(game, uid, 'daniel', tags=['human'])
         
     def start(self, player):
         self.pids.clear()
@@ -212,7 +207,7 @@ class Daniel(Card):
 
 class Emily(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'emily', ['human'])
+        super().__init__(game, uid, 'emily', tags=['human'])
         
     def start(self, player):
         player.ongoing.append(self)
@@ -241,7 +236,7 @@ class Emily(Card):
                   
 class GamblingBoi(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'gambling boi', ['human', 'city'])
+        super().__init__(game, uid, 'gambling boi', tags=['human', 'city'])
         
     def start(self, player):
         score = (len(player.played) - len(player.unplayed)) * 2
@@ -256,7 +251,7 @@ class GamblingBoi(Card):
             
 class Mom(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'mom', ['human'])
+        super().__init__(game, uid, 'mom', tags=['human'])
         
     def get_selection(self, player):
         return self.sort_players(player, 'steal')
@@ -284,7 +279,7 @@ class Mom(Card):
             
 class Dad(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'dad', ['human'])
+        super().__init__(game, uid, 'dad', tags=['human'])
         
     def get_selection(self, player):
         hs = max((p.score for p in self.game.players), default=-1)
@@ -311,7 +306,7 @@ class Dad(Card):
             
 class AuntPeg(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'aunt peg', ['human'])
+        super().__init__(game, uid, 'aunt peg', tags=['human'])
             
     def start(self, player):
         if self in player.played:
@@ -326,7 +321,7 @@ class AuntPeg(Card):
         
 class UncleJohn(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'uncle john', ['human'])
+        super().__init__(game, uid, 'uncle john', tags=['human'])
         
     def get_selection(self, player):
         players = self.sort_players(player, 'steal')
@@ -346,7 +341,7 @@ class UncleJohn(Card):
     
 class Kristen(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'kristen', ['human'])
+        super().__init__(game, uid, 'kristen', tags=['human'])
         
     def start(self, player):
         for _ in player.get_spells():
@@ -355,7 +350,7 @@ class Kristen(Card):
     
 class Joe(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'joe', ['human'])
+        super().__init__(game, uid, 'joe', tags=['human'])
         
     def get_selection(self, player):
         return [p for p in self.sort_players(player, 'steal') if p.items]
@@ -372,7 +367,7 @@ class Joe(Card):
             
 class Robber(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'robber', ['human', 'city'])
+        super().__init__(game, uid, 'robber', tags=['human', 'city'])
     
     def start(self, player):
         player.draw_cards('items')
@@ -388,7 +383,7 @@ class Robber(Card):
        
 class Ninja(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'ninja', ['human'])
+        super().__init__(game, uid, 'ninja', tags=['human'])
               
     def start(self, player):
         if any(any('human' in c.tags for c in p.played) for p in self.sort_players(player)):
@@ -401,7 +396,7 @@ class Ninja(Card):
   
 class MaxTheDog(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'max the dog', ['animal', 'city', 'dog'])
+        super().__init__(game, uid, 'max the dog', tags=['animal', 'city', 'dog'])
         
     def start(self, player):
         if self in player.played:
@@ -418,7 +413,7 @@ class MaxTheDog(Card):
  
 class BasilTheDog(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'basil the dog', ['animal', 'city', 'dog'])
+        super().__init__(game, uid, 'basil the dog', tags=['animal', 'city', 'dog'])
                 
     def start(self, player):
         if self.game.check_last(player) or any('dog' in c.tags and c != self for c in player.played):
@@ -427,7 +422,7 @@ class BasilTheDog(Card):
             
 class CopyCat(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'copy cat', ['animal', 'city'])
+        super().__init__(game, uid, 'copy cat', tags=['animal', 'city'])
         
     def start(self, player):
         player.ongoing.append(self)
@@ -449,7 +444,7 @@ class CopyCat(Card):
                 
 class Racoon(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'racoon', ['animal', 'city', 'forest'])
+        super().__init__(game, uid, 'racoon', tags=['animal', 'city', 'forest'])
         
     def get_selection(self, player):
         return [c.copy() for c in self.game.shop]
@@ -469,7 +464,7 @@ class Racoon(Card):
             
 class Fox(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'fox', ['animal', 'forest', 'city'])
+        super().__init__(game, uid, 'fox', tags=['animal', 'forest', 'city'])
         
     def get_selection(self, player):
         return self.sort_players(player, 'steal')
@@ -494,7 +489,7 @@ class Fox(Card):
             
 class Cow(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'cow', ['animal', 'farm'])
+        super().__init__(game, uid, 'cow', tags=['animal', 'farm'])
         
     def start(self, player):
         player.ongoing.append(self)
@@ -524,7 +519,7 @@ class Cow(Card):
             
 class Shark(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'shark', ['animal', 'water'])
+        super().__init__(game, uid, 'shark', tags=['animal', 'water'])
         
     def check(self, c):
         return 'water' in c.tags and 'animal' in c.tags
@@ -547,7 +542,7 @@ class Shark(Card):
 
 class Fish(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'fish', ['animal', 'water'])
+        super().__init__(game, uid, 'fish', tags=['animal', 'water'])
         
     def start(self, player):
         for c in player.played:
@@ -558,7 +553,7 @@ class Fish(Card):
                 
 class Pelican(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'pelican', ['animal', 'sky', 'water'])
+        super().__init__(game, uid, 'pelican', tags=['animal', 'sky', 'water'])
             
     def start(self, player):     
         gp = 0
@@ -575,7 +570,7 @@ class Pelican(Card):
                 
 class LuckyDuck(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'lucky duck', ['animal', 'sky', 'water'])
+        super().__init__(game, uid, 'lucky duck', tags=['animal', 'sky', 'water'])
         
     def start(self, player):
         for _ in range(len(player.get_spells())):
@@ -590,7 +585,7 @@ class LuckyDuck(Card):
                 
 class LadyBug(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'lady bug', ['animal', 'sky', 'garden', 'bug'])
+        super().__init__(game, uid, 'lady bug', tags=['animal', 'sky', 'garden', 'bug'])
         
     def start(self, player):
         player.ongoing.append(self)
@@ -613,7 +608,7 @@ class LadyBug(Card):
             
 class Mosquito(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'mosquito', ['animal', 'sky', 'bug'])
+        super().__init__(game, uid, 'mosquito', tags=['animal', 'sky', 'bug'])
         
     def start(self, player):
         for p in self.sort_players(player, 'steal'):
@@ -628,7 +623,7 @@ class Mosquito(Card):
                         
 class Snail(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'snail', ['animal', 'garden', 'water', 'bug'])
+        super().__init__(game, uid, 'snail', tags=['animal', 'garden', 'water', 'bug'])
         
     def start(self, player):
         if self.game.check_last(player):
@@ -641,7 +636,7 @@ class Snail(Card):
     
 class Dragon(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'dragon', ['monster', 'sky'])
+        super().__init__(game, uid, 'dragon', tags=['monster', 'sky'])
         
     def get_selection(self, player):
         return self.sort_players(player, 'steal')
@@ -695,7 +690,7 @@ class Dragon(Card):
 
 class Clam(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'clam', ['animal', 'water'])
+        super().__init__(game, uid, 'clam', tags=['animal', 'water'])
 
     def start(self, player):
         player.add_request(self, 'flip')
@@ -712,7 +707,7 @@ class Clam(Card):
     
 class Cactus(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'cactus', ['plant', 'desert'])
+        super().__init__(game, uid, 'cactus', tags=['plant', 'desert'])
 
     def start(self, player):
         player.ongoing.append(self)
@@ -733,7 +728,7 @@ class Cactus(Card):
     
 class PoisonIvy(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'poison ivy', ['plant', 'forest'])
+        super().__init__(game, uid, 'poison ivy', tags=['plant', 'forest'])
         
     def start(self, player):
         for p in self.sort_players(player):
@@ -766,7 +761,7 @@ class PoisonIvy(Card):
     
 class Rose(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'rose', ['plant', 'garden'])
+        super().__init__(game, uid, 'rose', tags=['plant', 'garden'])
         
     def get_selection(self, player):
         return self.sort_players(player)
@@ -785,7 +780,7 @@ class Rose(Card):
      
 class MrSquash(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'mr. squash', ['plant', 'farm'])
+        super().__init__(game, uid, 'mr. squash', tags=['plant', 'farm'])
         
     def start(self, player):
         for p in self.sort_players(player):
@@ -809,7 +804,7 @@ class MrSquash(Card):
                 
 class MrsSquash(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'mrs. squash', ['plant', 'farm'])
+        super().__init__(game, uid, 'mrs. squash', tags=['plant', 'farm'])
 
     def start(self, player):
         for p in self.sort_players(player):
@@ -833,7 +828,7 @@ class MrsSquash(Card):
      
 class FishingPole(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'fishing pole', ['item'])
+        super().__init__(game, uid, 'fishing pole', tags=['item'])
         
     def can_use(self, player):
         if not player.auto:
@@ -865,7 +860,7 @@ class FishingPole(Card):
                 
 class InvisibilityCloak(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'invisibility cloak', ['equipment'])
+        super().__init__(game, uid, 'invisibility cloak', tags=['equipment'])
 
     def start(self, player):
         self.get_cards_from_logs(player, 'iv')
@@ -885,7 +880,7 @@ class InvisibilityCloak(Card):
            
 class LastTurnPass(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'last turn pass', ['item'])
+        super().__init__(game, uid, 'last turn pass', tags=['item'])
         
     def can_use(self, player):
         return self.game.players[-1] != player
@@ -898,7 +893,7 @@ class LastTurnPass(Card):
                 
 class SpeedBoostPotion(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'speed boost potion', ['item'])
+        super().__init__(game, uid, 'speed boost potion', tags=['item'])
         
     def can_use(self, player):
         return self.game.players[0] != player
@@ -911,7 +906,7 @@ class SpeedBoostPotion(Card):
         
 class Mirror(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'mirror', ['item'])
+        super().__init__(game, uid, 'mirror', tags=['item'])
         
     def can_use(self, player):
         return player.get_spells() and any(any(p.can_cast(c) for c in player.get_spells()) for p in self.sort_players(player))
@@ -943,7 +938,7 @@ class Mirror(Card):
                 
 class Sword(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'sword', ['equipment'])
+        super().__init__(game, uid, 'sword', tags=['equipment'])
 
     def start(self, player):
         player.equip(self)
@@ -967,7 +962,7 @@ class Sword(Card):
         
 class Fertilizer(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'fertilizer', ['item'])
+        super().__init__(game, uid, 'fertilizer', tags=['item'])
         
     def can_use(self, player):
         return any('plant' in c.tags for c in player.played)
@@ -988,7 +983,7 @@ class Fertilizer(Card):
        
 class MustardStain(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'mustard stain', ['treasure'])
+        super().__init__(game, uid, 'mustard stain', tags=['treasure'])
         
     def end(self, player):
         if player.has_card('items', 'detergent'):
@@ -998,28 +993,28 @@ class MustardStain(Card):
             
 class Gold(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'gold', ['treasure'])
+        super().__init__(game, uid, 'gold', tags=['treasure'])
 
     def end(self, player):
         player.gain(self, 20)
         
 class Pearl(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'pearl', ['treasure'])
+        super().__init__(game, uid, 'pearl', tags=['treasure'])
         
     def end(self, player):
         player.gain(self, 10)
         
 class Uphalump(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'uphalump', ['monster'])
+        super().__init__(game, uid, 'uphalump', tags=['monster'])
 
     def start(self, player):
         player.lose(self, 5)
             
 class Ghost(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'ghost', ['monster'])
+        super().__init__(game, uid, 'ghost', tags=['monster'])
         
     def start(self, player):
         player.ongoing.append(self)
@@ -1041,7 +1036,7 @@ class Ghost(Card):
             
 class Detergent(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'detergent', ['item'])
+        super().__init__(game, uid, 'detergent', tags=['item'])
         
     def can_use(self, player):
         return False
@@ -1051,7 +1046,7 @@ class Detergent(Card):
             
 class TreasureChest(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'treasure chest', ['item'])
+        super().__init__(game, uid, 'treasure chest', tags=['item'])
         
     def can_use(self, player):
         return True
@@ -1062,7 +1057,7 @@ class TreasureChest(Card):
                 
 class GoldCoins(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'gold coins', ['item', 'treasure'])
+        super().__init__(game, uid, 'gold coins', tags=['item', 'treasure'])
         
     def can_use(self, player):
         return player.is_turn and not player.game_over
@@ -1079,14 +1074,15 @@ class GoldCoins(Card):
             c = player.selected.pop(0)
             
             if player.buy_card(c.uid):
-                
                 if self in player.treasure:
-                
                     player.treasure.remove(self)
+                    
+    def end(self, player):
+        player.gain(self, 1)
         
 class SpellTrap(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'spell trap', ['spell'])
+        super().__init__(game, uid, 'spell trap', tags=['spell'])
 
         self.mult = False
         
@@ -1095,26 +1091,23 @@ class SpellTrap(Card):
         
     def ongoing(self, player):
         for _ in self.get_cards_from_logs(player, 'cast'):
-
             player.lose(self, len(player.unplayed))
         
 class Curse(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'curse', ['spell'])
+        super().__init__(game, uid, 'curse', tags=['spell'])
 
     def ongoing(self, player):
         if player.check_log('play'):
-        
             player.add_request(self, 'flip')
             
     def coin(self, player, coin):
         if not coin:
-            
             player.lose(self, 3)
     
 class TreasureCurse(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'treasure curse', ['spell'])
+        super().__init__(game, uid, 'treasure curse', tags=['spell'])
 
         self.mult = False
         
@@ -1136,14 +1129,14 @@ class TreasureCurse(Card):
                 
 class Bronze(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'bronze', ['treasure'])
+        super().__init__(game, uid, 'bronze', tags=['treasure'])
         
     def end(self, player):
         player.gain(self, 5)
         
 class ItemHex(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'item hex', ['spell'])
+        super().__init__(game, uid, 'item hex', tags=['spell'])
         
         self.mult = False
         
@@ -1171,7 +1164,7 @@ class ItemHex(Card):
                 
 class Luck(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'luck', ['spell'])
+        super().__init__(game, uid, 'luck', tags=['spell'])
 
         self.mult = False
         
@@ -1182,7 +1175,7 @@ class Luck(Card):
             
 class Boomerang(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'boomerang', ['equipment'])
+        super().__init__(game, uid, 'boomerang', tags=['equipment'])
 
     def start(self, player):
         if not any(c.name == self.name for c in player.equipped):
@@ -1217,7 +1210,7 @@ class Boomerang(Card):
             
 class BathTub(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'bath tub', ['item'])
+        super().__init__(game, uid, 'bath tub', tags=['item'])
         
     def can_use(self, player):
         return any(p.get_spells() for p in self.game.players)
@@ -1244,7 +1237,7 @@ class BathTub(Card):
 
 class ItemLeech(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'item leech', ['spell'])
+        super().__init__(game, uid, 'item leech', tags=['spell'])
 
         self.mult = False
         
@@ -1270,7 +1263,7 @@ class ItemLeech(Card):
             
 class ItemFrenzy(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'item frenzy', ['event'])
+        super().__init__(game, uid, 'item frenzy', tags=['event'])
 
     def start(self, game):
         for p in game.players:
@@ -1286,7 +1279,7 @@ class ItemFrenzy(Card):
          
 class Flu(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'flu', ['event'])
+        super().__init__(game, uid, 'flu', tags=['event'])
         
     def start(self, game):
         for p in game.players:
@@ -1306,7 +1299,7 @@ class Flu(Card):
                                       
 class NegativeZone(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'negative zone', ['event'])
+        super().__init__(game, uid, 'negative zone', tags=['event'])
         
     def start(self, game):
         for p in self.game.players:
@@ -1334,7 +1327,7 @@ class NegativeZone(Card):
                 
 class FishingTrip(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'fishing trip', ['event'])
+        super().__init__(game, uid, 'fishing trip', tags=['event'])
         
     def start(self, game):
         return
@@ -1348,7 +1341,7 @@ class FishingTrip(Card):
                     
 class FutureOrb(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'future orb', ['item'])
+        super().__init__(game, uid, 'future orb', tags=['item'])
         
     def get_target(self, player):
         i = self.game.players.index(player) - 1
@@ -1382,7 +1375,7 @@ class FutureOrb(Card):
 
 class Knife(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'knife', ['item'])
+        super().__init__(game, uid, 'knife', tags=['item'])
         
     def can_use(self, player):
         cards = [c for p in self.game.players for c in p.played if 'human' in c.tags] + [c for c in player.unplayed if 'human' in c.tags]
@@ -1410,7 +1403,7 @@ class Knife(Card):
             
 class MagicWand(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'magic wand', ['item'])
+        super().__init__(game, uid, 'magic wand', tags=['item'])
         
     def can_use(self, player):
         return True
@@ -1421,7 +1414,7 @@ class MagicWand(Card):
             
 class LuckyCoin(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'lucky coin', ['item'])
+        super().__init__(game, uid, 'lucky coin', tags=['item'])
         
     def can_use(self, player):
         return True
@@ -1453,7 +1446,7 @@ class LuckyCoin(Card):
        
 class Sapling(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'sapling', ['plant', 'forest'])
+        super().__init__(game, uid, 'sapling', tags=['plant', 'forest'])
         
     def start(self, player):
         player.add_request(self, 'roll')
@@ -1467,7 +1460,7 @@ class Sapling(Card):
            
 class Vines(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'vines', ['plant', 'garden'])
+        super().__init__(game, uid, 'vines', tags=['plant', 'garden'])
         
     def start(self, player):
         if self in player.played:
@@ -1484,7 +1477,7 @@ class Vines(Card):
             
 class Zombie(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'zombie', ['monster', 'human'])
+        super().__init__(game, uid, 'zombie', tags=['monster', 'human'])
         
     def start(self, player):
         for p in self.sort_players(player):
@@ -1500,7 +1493,7 @@ class Zombie(Card):
             
 class Jumble(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'jumble', ['monster'])
+        super().__init__(game, uid, 'jumble', tags=['monster'])
         
     def deploy(self, players):
         for p in players:
@@ -1522,7 +1515,7 @@ class Jumble(Card):
             
 class DemonWaterGlass(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'demon water glass', ['monster', 'water'])
+        super().__init__(game, uid, 'demon water glass', tags=['monster', 'water'])
 
     def start(self, player):
         player.gain(self, 5)
@@ -1545,7 +1538,7 @@ class DemonWaterGlass(Card):
 
 class Succosecc(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'succosecc', ['monster'])
+        super().__init__(game, uid, 'succosecc', tags=['monster'])
         
     def get_selection(self, player):
         return self.cards
@@ -1586,7 +1579,7 @@ class Succosecc(Card):
                 
 class Sunflower(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'sunflower', ['plant', 'garden'])
+        super().__init__(game, uid, 'sunflower', tags=['plant', 'garden'])
         
     def start(self, player):
         if self in player.played:
@@ -1609,7 +1602,7 @@ class Sunflower(Card):
 
 class LemonLord(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'lemon lord', ['plant', 'farm'])
+        super().__init__(game, uid, 'lemon lord', tags=['plant', 'farm'])
         
     def start(self, player): 
         player.ongoing.append(self)
@@ -1636,7 +1629,7 @@ class LemonLord(Card):
             
 class Wizard(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'wizard', ['human'])
+        super().__init__(game, uid, 'wizard', tags=['human'])
         
     def get_selection(self, player):
         if len(player.selected) == 0:
@@ -1667,7 +1660,7 @@ class Wizard(Card):
                 
 class HauntedOak(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'haunted oak', ['plant', 'forest', 'monster'])
+        super().__init__(game, uid, 'haunted oak', tags=['plant', 'forest', 'monster'])
 
     def get_selection(self, player):
         return self.sort_players(player, 'steal')
@@ -1686,7 +1679,7 @@ class HauntedOak(Card):
             
 class SpellReverse(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'spell reverse', ['event'])
+        super().__init__(game, uid, 'spell reverse', tags=['event'])
         
     def start(self, game):
         for p in game.players:
@@ -1697,7 +1690,7 @@ class SpellReverse(Card):
                 
 class SunnyDay(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'sunny day', ['event'])
+        super().__init__(game, uid, 'sunny day', tags=['event'])
         
     def start(self, game):
         return
@@ -1711,7 +1704,7 @@ class SunnyDay(Card):
         
 class Garden(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'garden', ['landscape'])
+        super().__init__(game, uid, 'garden', tags=['landscape'])
         
     def ongoing(self, player):
         logs = player.get_logs('play')
@@ -1728,7 +1721,7 @@ class Garden(Card):
             
 class Desert(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'desert', ['landscape'])
+        super().__init__(game, uid, 'desert', tags=['landscape'])
         
     def ongoing(self, player):
         logs = player.get_logs('play')
@@ -1745,7 +1738,7 @@ class Desert(Card):
             
 class FoolsGold(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'fools gold', ['treasure'])
+        super().__init__(game, uid, 'fools gold', tags=['treasure'])
         
     def get_selection(self, player):
         return self.sort_players(player)
@@ -1765,7 +1758,7 @@ class FoolsGold(Card):
                         
 class Graveyard(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'graveyard', ['landscape'])
+        super().__init__(game, uid, 'graveyard', tags=['landscape'])
         
     def ongoing(self, player):
         logs = player.get_logs('play')
@@ -1782,7 +1775,7 @@ class Graveyard(Card):
             
 class City(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'city', ['landscape'])
+        super().__init__(game, uid, 'city', tags=['landscape'])
         
     def ongoing(self, player):
         logs = player.get_logs('play')
@@ -1799,7 +1792,7 @@ class City(Card):
                 
 class Farm(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'farm', ['landscape'])
+        super().__init__(game, uid, 'farm', tags=['landscape'])
         
     def ongoing(self, player):
         logs = player.get_logs('play')
@@ -1816,7 +1809,7 @@ class Farm(Card):
                 
 class Forest(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'forest', ['landscape'])
+        super().__init__(game, uid, 'forest', tags=['landscape'])
         
     def ongoing(self, player):
         logs = player.get_logs('play')
@@ -1833,7 +1826,7 @@ class Forest(Card):
                 
 class Water(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'water', ['landscape'])
+        super().__init__(game, uid, 'water', tags=['landscape'])
         
     def ongoing(self, player):
         logs = player.get_logs('play')
@@ -1850,7 +1843,7 @@ class Water(Card):
                 
 class Sky(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'sky', ['landscape'])
+        super().__init__(game, uid, 'sky', tags=['landscape'])
         
     def ongoing(self, player):
         logs = player.get_logs('play')
@@ -1867,7 +1860,7 @@ class Sky(Card):
             
 class OfficeFern(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'office fern', ['plant', 'city'])
+        super().__init__(game, uid, 'office fern', tags=['plant', 'city'])
         
     def start(self, player):
         if self in player.played:
@@ -1883,7 +1876,7 @@ class OfficeFern(Card):
         
 class Parade(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'parade', ['event'])
+        super().__init__(game, uid, 'parade', tags=['event'])
         
     def start(self, game):
         return
@@ -1924,7 +1917,7 @@ class Parade(Card):
             
 class Camel(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'camel', ['animal', 'desert'])
+        super().__init__(game, uid, 'camel', tags=['animal', 'desert'])
         
     def check_water(self, p):
         return any('water' in c.tags for c in p.played)
@@ -1957,7 +1950,7 @@ class Camel(Card):
             
 class RattleSnake(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'rattle snake', ['animal', 'desert'])
+        super().__init__(game, uid, 'rattle snake', tags=['animal', 'desert'])
         
     def deploy(self, players):
         self.pids.clear()
@@ -2037,7 +2030,7 @@ class RattleSnake(Card):
             
 class TumbleWeed(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'tumble weed', ['plant', 'desert'])
+        super().__init__(game, uid, 'tumble weed', tags=['plant', 'desert'])
 
     def start(self, player):
         if any('human' in c.tags for c in player.played):
@@ -2047,7 +2040,7 @@ class TumbleWeed(Card):
             
 class WindGust(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'wind gust', ['event'])
+        super().__init__(game, uid, 'wind gust', tags=['event'])
         
     def start(self, game):
         for p in game.players: 
@@ -2059,7 +2052,7 @@ class WindGust(Card):
             
 class Sunglasses(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'sunglasses', ['item'])
+        super().__init__(game, uid, 'sunglasses', tags=['item'])
         
     def can_use(self, player):
         return player.is_turn and len(player.unplayed) > 1 and not player.gone
@@ -2083,7 +2076,7 @@ class Sunglasses(Card):
             
 class MetalDetector(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'metal detector', ['item'])
+        super().__init__(game, uid, 'metal detector', tags=['item'])
         
     def can_use(self, player):
         return self.game.get_discarded_items()
@@ -2105,7 +2098,7 @@ class MetalDetector(Card):
             
 class SandStorm(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'sand storm', ['event'])
+        super().__init__(game, uid, 'sand storm', tags=['event'])
         
     def start(self, game):
         for p in game.players:
@@ -2124,7 +2117,7 @@ class SandStorm(Card):
 
 class Mummy(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'mummy', ['monster', 'desert', 'human'])
+        super().__init__(game, uid, 'mummy', tags=['monster', 'desert', 'human'])
         
     def deploy(self, players):
         for p in players:
@@ -2163,7 +2156,7 @@ class Mummy(Card):
             
 class MummysCurse(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'mummys curse', ['spell'])
+        super().__init__(game, uid, 'mummys curse', tags=['spell'])
         
     def get_selection(self, player):
         return [c.copy() for c in player.played if 'human' in c.tags]
@@ -2184,7 +2177,7 @@ class MummysCurse(Card):
             
 class Pig(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'pig', ['animal', 'farm'])
+        super().__init__(game, uid, 'pig', tags=['animal', 'farm'])
         
     def start(self, player):
         player.ongoing.append(self)
@@ -2216,7 +2209,7 @@ class Pig(Card):
             
 class Corn(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'corn', ['plant', 'farm'])
+        super().__init__(game, uid, 'corn', tags=['plant', 'farm'])
 
     def get_selection(self, player):
         if len(player.selected) == 0:
@@ -2257,7 +2250,7 @@ class Corn(Card):
             
 class Harvest(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'harvest', ['event'])
+        super().__init__(game, uid, 'harvest', tags=['event'])
             
     def start(self, game):
         return
@@ -2272,14 +2265,14 @@ class Harvest(Card):
             
 class GoldenEgg(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'golden egg', ['treasure'])
+        super().__init__(game, uid, 'golden egg', tags=['treasure'])
         
     def end(self, player):
         player.gain(self, sum(5 for c in player.played if 'animal' in c.tags))
         
 class Bear(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'bear', ['animal', 'forest'])
+        super().__init__(game, uid, 'bear', tags=['animal', 'forest'])
         
     def start(self, player):
         sp = 4 if self.game.get_event() == 'parade' else 2
@@ -2290,7 +2283,7 @@ class Bear(Card):
             
 class BigRock(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'big rock', ['item'])
+        super().__init__(game, uid, 'big rock', tags=['item'])
         
     def can_use(self, player):
         return player.played
@@ -2323,7 +2316,7 @@ class BigRock(Card):
             
 class UnluckyCoin(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'unlucky coin', ['item'])
+        super().__init__(game, uid, 'unlucky coin', tags=['item'])
         
     def can_use(self, player):
         return True
@@ -2355,7 +2348,7 @@ class UnluckyCoin(Card):
             
 class HuntingSeason(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'hunting season', ['event'])
+        super().__init__(game, uid, 'hunting season', tags=['event'])
 
     def start(self, game):
         for p in game.players:
@@ -2379,7 +2372,7 @@ class HuntingSeason(Card):
             
 class Stardust(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'stardust', ['spell'])
+        super().__init__(game, uid, 'stardust', tags=['spell'])
 
         self.mult = False
         
@@ -2403,7 +2396,7 @@ class Stardust(Card):
             
 class WaterLilly(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'water lilly', ['plant', 'water'])
+        super().__init__(game, uid, 'water lilly', tags=['plant', 'water'])
         
     def start(self, player):
         gp = len(player.get_items() + player.spells) + (len(player.get_spells()) * 5)
@@ -2411,7 +2404,7 @@ class WaterLilly(Card):
         
 class Torpedo(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'torpedo', ['equipment'])
+        super().__init__(game, uid, 'torpedo', tags=['equipment'])
 
     def start(self, player):
         self.pids.clear()
@@ -2440,26 +2433,22 @@ class Torpedo(Card):
         
 class Bat(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'bat', ['animal', 'sky'])
+        super().__init__(game, uid, 'bat', tags=['animal', 'sky'])
         
         self.option1 = Blank(self.game, 'draw item')
         self.option2 = Blank(self.game, 'draw spell')
         
     def get_selection(self, player):
         if self.mode == 0:
-            
-            return self.sort_players(player, lambda p: p.treasure)
-            
-        elif self.mode == 1:
-            
+            return self.sort_players(player, lambda p: p.treasure) 
+        elif self.mode == 1: 
             return [self.option1, self.option2]
         
     def start(self, player):
         player.add_request(self, 'flip')
         
     def coin(self, player, coin):
-        if not coin:
-            
+        if not coin: 
             self.mode = 1
             
         player.add_request(self, 'select')
@@ -2477,17 +2466,14 @@ class Bat(Card):
                 
                 o = player.selected.pop(0)
                 
-                if o is self.option1:
-                    
-                    player.draw_cards('items')
-                    
+                if o is self.option1:  
+                    player.draw_cards('items')   
                 elif o is self.option2:
-                    
                     player.draw_cards('spells')
         
 class SkyFlower(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'sky flower', ['plant', 'sky'])
+        super().__init__(game, uid, 'sky flower', tags=['plant', 'sky'])
         
     def get_selection(self, player):
         return self.sort_players(player)
@@ -2503,7 +2489,7 @@ class SkyFlower(Card):
         
 class Kite(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'kite', ['item'])
+        super().__init__(game, uid, 'kite', tags=['item'])
         
     def can_use(self, player):
         return bool(player.unplayed)
@@ -2514,7 +2500,7 @@ class Kite(Card):
         
 class Balloon(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'balloon', ['item'])
+        super().__init__(game, uid, 'balloon', tags=['item'])
         
     def can_use(self, player):
         return len(player.played) > 1
@@ -2526,7 +2512,7 @@ class Balloon(Card):
         
 class NorthWind(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'north wind', ['spell'])
+        super().__init__(game, uid, 'north wind', tags=['spell'])
         
         self.mult = False
 
@@ -2542,7 +2528,7 @@ class NorthWind(Card):
         
 class GardenSnake(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'garden snake', ['animal', 'garden'])
+        super().__init__(game, uid, 'garden snake', tags=['animal', 'garden'])
         
     def get_selection(self, player):
         return self.sort_players(player, 'steal')
@@ -2564,7 +2550,7 @@ class GardenSnake(Card):
 
 class WateringCan(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'watering can', ['item'])
+        super().__init__(game, uid, 'watering can', tags=['item'])
         
     def can_use(self, player):
         return not player.has_card('landscapes', 'water')
@@ -2578,14 +2564,14 @@ class WateringCan(Card):
         
 class MagicBean(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'magic bean', ['treasure'])
+        super().__init__(game, uid, 'magic bean', tags=['treasure'])
         
     def end(self, player):
         player.gain(self, sum(5 for c in player.played if 'plant' in c.tags))
         
 class Trap(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'trap', ['item'])
+        super().__init__(game, uid, 'trap', tags=['item'])
         
     def can_use(self, player):
         return self.game.shop
@@ -2622,7 +2608,7 @@ class Trap(Card):
         
 class FlowerPot(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'flower pot', ['item'])
+        super().__init__(game, uid, 'flower pot', tags=['item'])
         
     def can_use(self, player):
         return not player.has_card('landscapes', 'garden')
@@ -2636,7 +2622,7 @@ class FlowerPot(Card):
         
 class TheVoid(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'the void', ['spell'])
+        super().__init__(game, uid, 'the void', tags=['spell'])
         
         mult = True
         
@@ -2664,7 +2650,7 @@ class TheVoid(Card):
         
 class BugNet(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'bug net', ['item'])
+        super().__init__(game, uid, 'bug net', tags=['item'])
         
     def can_use(self, player):
         return player.played
@@ -2690,7 +2676,7 @@ class BugNet(Card):
         
 class BigSandWorm(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'big sand worm', ['animal', 'desert'])
+        super().__init__(game, uid, 'big sand worm', tags=['animal', 'desert'])
         
     def start(self, player):
         if self.game.check_last(player):
@@ -2703,7 +2689,7 @@ class BigSandWorm(Card):
             
 class LostPalmTree(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'lost palm tree', ['plant', 'desert', 'water'])
+        super().__init__(game, uid, 'lost palm tree', tags=['plant', 'desert', 'water'])
         
     def start(self, player):
         t = False
@@ -2721,7 +2707,7 @@ class LostPalmTree(Card):
                     
 class Seaweed(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'seaweed', ['plant', 'water'])
+        super().__init__(game, uid, 'seaweed', tags=['plant', 'water'])
         
     def start(self, player):
         player.add_request(self, 'flip')
@@ -2738,7 +2724,7 @@ class Seaweed(Card):
         
 class ScubaBaby(Card):
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'scuba baby', ['human', 'water'])
+        super().__init__(game, uid, 'scuba baby', tags=['human', 'water'])
         
     def start(self, player):
         player.gain(self, 3)

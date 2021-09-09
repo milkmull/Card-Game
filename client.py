@@ -917,7 +917,7 @@ class Client:
             self.cards += ps.add_cards('active_card', [p.active_card] if p.active_card is not None else [])
             
             cards = p.landscapes.copy() + p.ongoing.copy()
-            if self.status not in ('waiting', 'playing', 'draft'):         
+            if self.status in ('game over', 'new game'):         
                 cards += [c.copy() for c in p.treasure] 
             self.cards += ps.add_cards('ongoing', cards)
 

@@ -16,6 +16,11 @@ from ui import *
 def init():
     globals()['SPRITESHEET'] = spritesheet.get_sheet()
     globals()['CUSTOMSHEET'] = customsheet.get_sheet()
+    
+#errors----------------------------------------------------------------
+
+class PortInUse(Exception):
+    pass
 
 #menus-----------------------------------------------------------------
 
@@ -267,23 +272,26 @@ def join_game_menu(name, ip):
 def builder_menu():
     screen = []
     
-    t = Textbox('custom cards:', tsize=30)
-    t.rect.centerx = width // 2
-    t.rect.y = t.rect.height * 2
-    screen.append(t)
+    p = Pane((300, 300), label='custom cards:', label_space=10, tsize=30, ul=True, live=True)
+    p.rect.centerx = width // 2
+    p.rect.y = 70
+    screen.append(p)
+    
+    #t = Textbox('custom cards:', tsize=30)
+    #t.rect.centerx = width // 2
+    #t.rect.y = t.rect.height * 2
+    #screen.append(t)
 
     cards = save.get_data('cards').copy()
     
-    y = screen[-1].rect.bottom + 30
-    
+    buttons = []
     for c in cards:
         name = c['name']
         b = Button((200, 30), name, func=menu, args=[card_edit_menu], kwargs={'args': [c]}, tag='refresh')
-        b.rect.centerx = width // 2
-        b.rect.y = y
         screen.append(b)
+        buttons.append(b)
         
-        y += b.rect.height + 5
+    p.join_objects(buttons)
         
     b = Button((200, 30), 'new', func=run_builder, tag='refresh')
     b.rect.midbottom = (width // 2, height)
@@ -345,8 +353,10 @@ def get_public_ip():
     return ip
     
 def refresh_save():
-    save.refresh_save()
-    CUSTOMSHEET.refresh()
+    r = menu(yes_no, args=['Are you sure you want to reset your save data?'], overlay=True)
+    if r:
+        save.refresh_save()
+        CUSTOMSHEET.refresh()
 
 #main--------------------------------------------------------------------
 
@@ -380,7 +390,16 @@ def start_game():
     new_message('starting game...', 500)
 
     try:
-        subprocess.Popen([sys.executable, 'server.py'])
+    
+        pipe = subprocess.Popen([sys.executable, 'server.py'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+        try:
+            _, error = pipe.communicate(timeout=1)
+            if 'PortInUse' in error.decode():
+                raise PortInUse
+        except subprocess.TimeoutExpired:
+            pass
+
         net = network.Network(get_local_ip(), save.get_data('port'))
         c = client.Client(net, 'online')
         c.run()
@@ -388,6 +407,9 @@ def start_game():
     except EOFError as e:
         print(e)
         new_message('diconnected', 1000)
+        
+    except PortInUse:
+        menu(notice, args=['The port you requested is currently being used by another device. Try changing the default port in settings'], overlay=True)
         
     except network.NoGamesFound:
         new_message('game could not be started', 2000)

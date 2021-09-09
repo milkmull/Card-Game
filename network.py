@@ -93,6 +93,7 @@ class Network:
 
     def send_player_info(self):
         player_info = save.get_data('cards')[0]
+        player_info['name'] = save.get_data('username')
         with open(player_info['image'], 'rb') as f:
             image = f.read()
         player_info['len'] = len(image)

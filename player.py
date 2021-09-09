@@ -181,12 +181,16 @@ class Player:
     def new_round(self):
         items = self.items.copy()
         spells = self.spells.copy()
+        treasure = self.treasure.copy()
+        if not any(c.name == 'gold coins' for c in treasure):
+            treasure.append(self.game.get_card('gold coins'))
         
         self.reset()
         
-        self.items = items
-        self.spells = spells
-        
+        self.new_deck('items', items)
+        self.new_deck('spells', spells)
+        self.new_deck('treasure', treasure)
+
         self.draw_cards('landscapes')
         self.draw_cards('unplayed', self.game.get_setting('cards'))
         self.draw_cards('items', max(self.game.get_setting('items') - len(self.items), 0))
@@ -775,7 +779,6 @@ class Player:
             card = self.game.find_card(self, uid)
 
             if card:
-            
                 self.select(card)
  
         elif cmd == 'cancel':
@@ -833,17 +836,16 @@ class Player:
     def finished_game(self):
         return not (self.unplayed or self.requests)
         
-    def end_game(self):
+    def end_game(self, t):
         if hasattr(self.game.event, 'end'):
-            
             self.game.event.end(self)
             
-        for c in self.treasure:
+        if t or self.turbo:
+            
+            for c in self.treasure:
+                if hasattr(c, 'end'):
+                    c.end(self)
 
-            if hasattr(c, 'end'):
-                
-                c.end(self)
-                
         self.game_over = True
         
 #sim stuff------------------------------------------------------------------------------------------
@@ -882,11 +884,8 @@ class Player:
         self.requests = [c.sim_copy(game) for c in ref.requests]
         
         if ref.active_card is not None:
-        
-            self.active_card = next(c for c in self.requests if c == ref.active_card)
-            
+            self.active_card = next(c for c in self.requests if c == ref.active_card)  
         else:
-        
             self.active_card = None
         
         self.master_log = ref.master_log.copy()

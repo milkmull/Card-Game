@@ -82,7 +82,9 @@ class Game:
 
         if self.mode == 'single':
             
-            self.new_player(0, save.get_data('cards')[0])
+            player_info = save.get_data('cards')[0]
+            player_info['name'] = save.get_data('username')
+            self.new_player(0, player_info)
             self.add_cpus()
 
     def done(self):
@@ -332,8 +334,7 @@ class Game:
         
         for i, card in enumerate(cards):
 
-            cards[i] = deck[card][1](self, self.uid)
-            self.uid += 1
+            cards[i] = deck[card][1](self, self.get_new_uid())
             
         test = [c.name for c in cards]
             
@@ -346,9 +347,8 @@ class Game:
             
             if info is not None:
                 
-                card = info[1](self, self.uid)
-                self.uid += 1
-                
+                card = info[1](self, self.get_new_uid())
+
                 return card
   
     def transform(self, old_card, const):
@@ -720,7 +720,6 @@ class Game:
                 
     def advance_turn(self):
         if self.status != 'playing':
-            
             return 
 
         if all(p.finished_game() for p in self.players):
@@ -729,12 +728,9 @@ class Game:
 
                 if not self.done():
                     
-                    if self.round <= self.get_setting('rounds') - 1:
-                        
-                        self.new_status('next round')
-                        
+                    if self.round <= self.get_setting('rounds') - 1: 
+                        self.new_status('next round')   
                     else:
-                        
                         self.new_status('new game')
                         
                     self.add_log({'t': 'fin', 'w': self.get_winners()})
@@ -742,13 +738,11 @@ class Game:
             else:
                 
                 for p in self.players:
-                    
-                    p.end_game()
+                    p.end_game(not (self.round % self.get_setting('rounds')))
                     
             return  
             
         elif self.main_p.finished_turn():
-
             self.find_turn()
             
     def find_turn(self):

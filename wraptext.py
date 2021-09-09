@@ -20,7 +20,10 @@ class Game:
         p.rect.center = (WIDTH // 2, HEIGHT // 2)
         screen.append(p)
         
-        p.join_objects([Input((100, 30), message=str(i)) for i in range(100)])
+        ob = [Button((100, 30), message=str(i)) for i in range(100)]
+        p.join_objects(ob)
+        
+        screen += ob
         
         return screen
         

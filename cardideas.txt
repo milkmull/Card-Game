@@ -21,3 +21,5 @@ reword sunglasses
 reword itemleech
 sunglasses -> every player gets second choice
 flu takes place at end of round
+
+treasure cards based on metrics 
