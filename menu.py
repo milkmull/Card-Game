@@ -365,7 +365,7 @@ def connect(ip, port):
 
     try:       
         net = network.Network(ip, port)
-        c = client.Client(net, 'online') 
+        c = client.Client(net, 'online')
         c.run()
         
     except network.InvalidIP:

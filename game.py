@@ -494,11 +494,11 @@ class Game:
     def get_info(self, pid):
         p = self.get_player(pid)
         
-        logs = self.logs[pid]
+        logs = self.logs[pid][:6]
         
         if logs:
             info = pack_log(logs)
-            self.logs[pid].clear()
+            self.logs[pid] = self.logs[pid][6:]
         else:
             info = logs
             
