@@ -19,6 +19,8 @@ def start():
     pg.display.set_mode((width, height))#, flags=pg.SCALED|pg.RESIZABLE)
     pg.display.set_caption('card game')
     
+    save.verify_data()
+    
     spritesheet.init()
     customsheet.init()
     menu.init()

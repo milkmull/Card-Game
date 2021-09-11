@@ -158,4 +158,3 @@ def verify_data():
         
 create_folders()
 SAVE_DATA = load_save()
-verify_data()
