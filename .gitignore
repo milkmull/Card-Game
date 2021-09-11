@@ -5,6 +5,8 @@ save.json
 user_card.png
 customsheet.png
 img/custom/
+tests/
+issues.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
