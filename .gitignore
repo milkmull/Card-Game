@@ -1,12 +1,10 @@
 #file names
 issues.txt
-cmds.txt
-save.json
-user_card.png
-customsheet.png
+save/save.json
+img/user_card.png
+img/customsheet.png
 img/custom/
 tests/
-issues.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
