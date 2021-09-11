@@ -1,5 +1,12 @@
 import os, json, copy
 
+def init():
+    import customsheet
+    create_folders()
+    customsheet.test_init()
+    globals()['SAVE_DATA'] = load_save()
+    verify_data()
+
 def rewrite_card(info):
     from builder import reset
     reset(info)
@@ -156,5 +163,4 @@ def verify_data():
         settings = {'rounds': 3, 'ss': 20, 'cards': 5, 'items': 3, 'spells': 1, 'cpus': 1, 'diff': 4}
         set_data('settings', settings)
         
-create_folders()
-SAVE_DATA = load_save()
+SAVE_DATA = {}

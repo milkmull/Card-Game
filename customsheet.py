@@ -2,6 +2,12 @@ import os
 import pygame as pg
 import save
 from constants import *
+   
+def test_init():
+    if not os.path.exists('img/customsheet.png'):
+        create_blank_sheet()
+    if not os.path.exists('img/custom/0.png'):
+        create_blank_custom()
 
 def init():
     globals()['CUSTOMSHEET'] = Customsheet()
@@ -23,10 +29,6 @@ def create_blank_custom():
 
 class Customsheet:
     def __init__(self):
-        if not os.path.exists('img/customsheet.png'):
-            create_blank_sheet()
-        if not os.path.exists('img/custom/0.png'):
-            create_blank_custom()
         self.cards = save.get_data('cards').copy()
         self.names = [c['name'] for c in self.cards]
         self.sheet = pg.image.load('img/customsheet.png').convert()
