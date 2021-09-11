@@ -1,8 +1,14 @@
-import os, json
+import os, json, copy
+
+def rewrite_card(info):
+    from builder import reset
+    reset(info)
 
 def create_folders():
     if not os.path.exists('img/temp'):
         os.mkdir('img/temp')
+    if not os.path.exists('img/custom'):
+        os.mkdir('img/custom')
     if not os.path.exists('save'):
         os.mkdir('save')
 
@@ -16,7 +22,7 @@ def get_blank_data():
     save_data = {'username': 'Player 0', 'port': 5555, 'ips': [],
              'settings': {'rounds': 3, 'ss': 20, 'cards': 5, 'items': 3, 'spells': 1, 'cpus': 1, 'diff': 4},
              'cards': [{'name': 'Player 0', 'description': 'description', 'tags': ['player'], 
-                        'image': 'img/user.png', 'id': 0}]}
+                        'image': 'img/user.png', 'color': [161, 195, 161], 'id': 0}]}
                       
     return save_data
 
@@ -32,7 +38,7 @@ def load_save():
         with open('save/save.json', 'r') as f:
             save_data = json.load(f)       
     except:
-        update_save(save_data) 
+        refresh_save() 
     finally:
         if 'f' in locals():
             f.close()
@@ -42,17 +48,20 @@ def load_save():
 def refresh_save():
     save_data = get_blank_data()
     update_save(save_data)
-    
+
     for f in os.listdir('img/custom'):
         if '0' not in f:
             os.remove(f'img/custom/{f}')
+            
+    rewrite_card(get_data('cards')[0])
     
 def reload_save():
     set_save_data(load_save())
     
 def get_data(key):
     save_data = get_save_data()
-    val = save_data.get(key)
+    val = copy.deepcopy(save_data.get(key))
+
     return val
     
 def set_data(key, val):
@@ -64,7 +73,7 @@ def set_data(key, val):
         update_save(save_data)
     
 def update_ips(entry):
-    ips = get_data('ips').copy()
+    ips = get_data('ips')
 
     if entry not in ips:
     
@@ -72,7 +81,7 @@ def update_ips(entry):
         set_data('ips', ips)
 
 def del_ips(entry):
-    ips = get_data('ips').copy()
+    ips = get_data('ips')
     
     if entry in ips:
     
@@ -81,7 +90,7 @@ def del_ips(entry):
  
 def update_cards(entry):
     update = False
-    cards = get_data('cards').copy()
+    cards = get_data('cards')
 
     for i, c in enumerate(cards):
         if c['id'] == entry['id']:
@@ -98,7 +107,7 @@ def update_cards(entry):
       
 def del_card(entry):
     file = 'img/custom/{}.png'
-    cards = get_data('cards').copy()
+    cards = get_data('cards')
     
     if entry in cards:
         i = cards.index(entry)
@@ -148,5 +157,5 @@ def verify_data():
         set_data('settings', settings)
 
 SAVE_DATA = load_save()
-verify_data()
 create_folders()
+verify_data()

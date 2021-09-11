@@ -112,24 +112,25 @@ def settings_menu():
 def select_host_menu():
     screen = []
     
-    y = 0
+    p = Pane((300, 300), label='saved ips:', label_space=10, tsize=30, ul=True, live=True)
+    p.rect.centerx = width // 2
+    p.rect.y = 70
+    screen.append(p)
+    
+    buttons = []
 
     for entry in save.get_data('ips'):
 
-        btn = Button((200, 30), entry['name'] + ': ' + entry['ip'], (0, 0, 0), (100, 100, 100), func=menu,
+        btn = Button((300, 30), entry['name'] + ': ' + entry['ip'], (0, 0, 0), (100, 100, 100), func=menu,
                      args=[join_game_menu], kwargs={'args': [entry['name'], entry['ip']]}, tag='refresh')
-        btn.rect.centerx = width // 2
-        btn.rect.y = y
+        buttons.append(btn)
         screen.append(btn)
         
-        y += btn.rect.height + 5
-        
-    if screen:  
-        center_buttons_y(screen)
+    p.join_objects(buttons)
 
     btn = Button((200, 30), 'new entry', (0, 0, 0), (100, 100, 100), func=menu, args=[new_entry_menu], tag='refresh')
     if screen:
-        btn.rect.midtop = screen[-1].rect.midbottom   
+        btn.rect.midtop = screen[0].rect.midbottom   
     else:
         btn.rect.midbottom = (width // 2, height // 2) 
     btn.rect.y += 20
@@ -144,8 +145,6 @@ def select_host_menu():
     btn.rect.y += btn.rect.height
     screen.append(btn)
 
-    center_buttons_y(screen)
-    
     return screen
     
 def view_ip_menu():
@@ -242,7 +241,7 @@ def join_game_menu(name, ip):
     text.rect.right = width // 2
     screen.append(text)
     
-    input = Input((100, 20), str(save.get_data('port')))
+    input = Input((100, 20), str(save.get_data('port')), tsize=20)
     input.rect.midleft = screen[-1].rect.midright
     screen.append(input)
     
@@ -276,11 +275,6 @@ def builder_menu():
     p.rect.centerx = width // 2
     p.rect.y = 70
     screen.append(p)
-    
-    #t = Textbox('custom cards:', tsize=30)
-    #t.rect.centerx = width // 2
-    #t.rect.y = t.rect.height * 2
-    #screen.append(t)
 
     cards = save.get_data('cards').copy()
     

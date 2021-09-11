@@ -13,6 +13,11 @@ from ui import *
 
 def init():
     globals()['CUSTOMSHEET'] = customsheet.get_sheet()
+    
+def reset(info):
+    CUSTOMSHEET.reset()
+    c = Card(name=info['name'], description=info['description'], tags=info['tags'], color=info['color'], id=info['id'], image=info['image'])
+    save_card(c, suppress=True)
 
 #Button funcs----------------------------------------------------------------------
      
@@ -33,7 +38,7 @@ def init_colors():
                 
     return images
     
-def build_card(name, description, tags, color=(161, 195, 161), image='img/user.png', save=False):
+def build_card(name, description, tags, color=[161, 195, 161], image='img/user.png', id=None, save=False):
     name = name.title()
     
     if len(tags) > 1: 
@@ -42,18 +47,18 @@ def build_card(name, description, tags, color=(161, 195, 161), image='img/user.p
         tags = tags[0]
     else:
         tags = ''
-    c = Card(name=name, description=description, tags=tags, color=color, image=image)
+    c = Card(name=name, description=description, tags=tags, color=color, id=id, image=image)
     
     if save:
-        c.save()
+        save_card(c)
     
     return c.get_card_image()
 
-def save_card(card):
+def save_card(card, suppress=False):
     sheet = CUSTOMSHEET.sheet
     cards = CUSTOMSHEET.cards
 
-    if card.name in NAMES or (card.name in CUSTOMSHEET.names and card.id != CUSTOMSHEET.get_id(card.name)):
+    if card.name in NAMES or ((card.name in CUSTOMSHEET.names and card.id != CUSTOMSHEET.get_id(card.name)) and not suppress):
         menu(notice, args=['A card with that name already exists.'], overlay=True)
         return
   
@@ -80,13 +85,14 @@ def save_card(card):
     
     pg.image.save(card.pic, card.get_image_path())
     pg.image.save(surf, 'img/customsheet.png')
-    if id == 0:
-        pg.image.save(card.get_card_image(), 'img/user_card.png')
+    #if id == 0:
+    #    pg.image.save(card.get_card_image(), 'img/user_card.png')
     
     card_info = card.get_info()
     save.update_cards(card_info)
     
-    new_message('card saved!', 2000)
+    if not suppress:
+        new_message('card saved!', 2000)
     
     CUSTOMSHEET.refresh()
 
@@ -250,14 +256,6 @@ class Card:
             tabs = 2
             
             parse_node(f, tabs, start_node)
-            
-    def save(self):
-        try:
-            pg.image.save(self.get_card_image(), f'img/{self.name}.png')
-            pg.image.save(self.pic, f'img/custom/{self.name}.png')
-            
-        except pygame.error:
-            pass
             
     def events(self, input):
         for e in self.elements.values():

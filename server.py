@@ -169,8 +169,6 @@ class Server:
                             self.send_player_info(conn, int(data[7:]))
                             reply = ''
                             continue
-                            
-                        print(id, data, reply)
 
                         conn.sendall(bytes(json.dumps(reply), encoding='utf-8'))
 

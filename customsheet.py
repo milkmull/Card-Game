@@ -1,20 +1,43 @@
+import os
 import pygame as pg
 import save
+from constants import *
 
 def init():
     globals()['CUSTOMSHEET'] = Customsheet()
 
 def get_sheet():
     return globals().get('CUSTOMSHEET')
+    
+def create_blank_sheet():
+    pg.image.save(pg.Surface((1, 1)).convert(), 'img/customsheet.png')
+    
+def create_blank_custom():
+    if os.path.exists('img/user.png'):
+        img = pg.image.load('img/user.png').convert()
+    else:
+        img = pg.Surface((1, 1)).convert()
+        
+    img = pg.transform.smoothscale(img, (card_width - 75, 210))
+    pg.image.save(img, 'img/custom/0.png')
 
 class Customsheet:
     def __init__(self):
+        if not os.path.exists('img/customsheet.png'):
+            create_blank_sheet()
+        if not os.path.exists('img/custom/0.png'):
+            create_blank_custom()
         self.cards = save.get_data('cards').copy()
         self.names = [c['name'] for c in self.cards]
         self.sheet = pg.image.load('img/customsheet.png').convert()
         
     def refresh(self):
         self.__init__()
+        
+    def reset(self):
+        self.refresh()
+        pg.image.save(self.get_image('Player 0'), 'img/customsheet.png')
+        self.refresh()
         
     def get_id(self, name):
         if name in self.names:

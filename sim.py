@@ -1,4 +1,4 @@
-import traceback
+import traceback, time
 from game import *
 
 class Tester:
@@ -24,7 +24,6 @@ class Tester:
             st = time.time()
             
             try:
-                
                 while not g.done():
                     g.main()
                     

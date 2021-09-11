@@ -208,14 +208,6 @@ def gen_colors(num):
 
     return colors
 
-def sort_logs(log):
-    u = log.get('u')
-    
-    if u == 'g':
-        return -1
-    else:
-        return u
-
 #button functions------------------------------------------------------------------
 
 def save_game_settings(client, counters):
@@ -291,7 +283,7 @@ class Player:
             
         elif self.rolling and not self.frt % 2:
             self.dice = random.choice(range(0, 6))
-            
+
         if self.timer:
             self.timer -= 1
 
@@ -359,6 +351,10 @@ class Player:
                 self.client.add_moving_card(self, original=c)
                 self.played.append(c)
                 
+                sound = SPRITESHEET.get_sound(c.name)
+                if sound:
+                    sound.play()
+                
                 break
          
     def new_deck(self, deck, cards):
@@ -386,11 +382,8 @@ class Player:
                         break
             
             if self.coin == -1:
-                
-                self.coin = None
-                
-            if self.dice == -1:
-                
+                self.coin = None   
+            if self.dice == -1:   
                 self.dice = None
          
     def use_item(self, uid, name):
@@ -479,19 +472,17 @@ class Player:
         
     def end_flip(self, coin, timer):
         self.flipping = False
-        
         self.coin = coin
-        
         self.timer = timer
     
     def start_roll(self):
         self.rolling = True
         
     def end_roll(self, dice, timer):
+        if self.pid == 1:
+            print(True)
         self.rolling = False
-        
         self.dice = dice - 1
-        
         self.timer = timer
 
     def draw(self, deck, num):
@@ -663,8 +654,7 @@ class Client:
         self.status = ''
         self.round = 1
 
-        self.frame = pg.Surface((width, height)).convert()
-        self.camera = self.frame.get_rect()
+        self.camera = self.screen.get_rect()
         
         self.clock = pg.time.Clock()
 
@@ -1156,15 +1146,7 @@ class Client:
         self.send(f'name,{name}')
             
 #main loop-----------------------------------------------------------------------------
-     
-    def mini_loop(self):
-        self.get_info()
-        self.update_info()
-        
-        self.events()
-        self.update()
-        self.draw()
-     
+
     def run(self):
         while self.playing:
         
@@ -1325,45 +1307,44 @@ class Client:
         update_particles(self.particles)    
 
     def draw(self):
-        self.frame.fill((0, 0, 0))
+        self.screen.fill((0, 0, 0))
 
         for t in self.targets.values():
-            self.frame.blit(t.textbox.get_image(), t.rect)
+            self.screen.blit(t.textbox.get_image(), t.rect)
             
             for p in t.points:
-                self.frame.blit(p.image, p.rect)
+                self.screen.blit(p.image, p.rect)
                 
             for c in t.cards:
-                self.frame.blit(c.get_image(), c.rect)
+                self.screen.blit(c.get_image(), c.rect)
    
         for e in self.player_spots:
-            e.draw(self.frame)
+            e.draw(self.screen)
             
         for e in self.elements.values():
-            e.draw(self.frame)
+            e.draw(self.screen)
            
         if self.outlined_card:
-            self.frame.blit(self.outlined_card.get_image(), self.outlined_card.rect)
+            self.screen.blit(self.outlined_card.get_image(), self.outlined_card.rect)
               
         for s, e in self.lines:
-            pg.draw.line(self.frame, (255, 0, 0), s, e, 5)
+            pg.draw.line(self.screen, (255, 0, 0), s, e, 5)
             
         for p in self.points:
-            p.draw(self.frame)
+            p.draw(self.screen)
   
         if self.moving_cards:
             for c in self.moving_cards[:5]:
-                self.frame.blit(c.get_image(scale=c.get_scale()), c.rect)
+                self.screen.blit(c.get_image(scale=c.get_scale()), c.rect)
             
         for e in self.effects:
-            e.draw(self.frame)
+            e.draw(self.screen)
             
-        draw_particles(self.frame, self.particles)
+        draw_particles(self.screen, self.particles)
         
         if self.view_card:
-            self.frame.blit(self.view_card.get_image(scale=(card_width, card_height)), self.view_card_rect)
+            self.screen.blit(self.view_card.get_image(scale=(card_width, card_height)), self.view_card_rect)
 
-        self.screen.blit(self.frame, (0, 0))
         pg.display.flip()
        
 #server stuff-----------------------------------------------------------------------------
@@ -1371,7 +1352,7 @@ class Client:
     def send(self, data, threaded=True, return_val=False):
         if self.playing:
             
-            #if threaded and self.mode == 'online':
+            #if threaded and self.r'online':
             #    reply = self.n.threaded_send(data, return_val=return_val)  
             #else:
             reply = self.n.send(data)
@@ -1408,9 +1389,7 @@ class Client:
             self.update_player_scores(scores)
             
             if logs:
-
                 self.log_queue += logs
-                self.log_queue.sort(key=sort_logs)
 
     def update_info(self):
         self.parse_logs(self.log_queue[:15])

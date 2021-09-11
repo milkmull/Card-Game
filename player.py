@@ -198,10 +198,20 @@ class Player:
  
 #card stuff--------------------------------------------------------------------------------------
 
-    def sort_cards(self, c): 
+    def sort_cards_og(self, c): 
         if c.name in ('the void', 'negative zone'):
             return 4
         elif any(tag in ('animal', 'plant', 'human', 'monster', 'treasure') for tag in c.tags):  
+            return 0 
+        elif any(tag in ('item', 'equipment') for tag in c.tags):   
+            return 1   
+        elif 'spell' in c.tags:    
+            return 2   
+        else:   
+            return 3
+            
+    def sort_cards_requests(self, c): 
+        if any(tag in ('animal', 'plant', 'human', 'monster') for tag in c.tags):  
             return 0 
         elif any(tag in ('item', 'equipment') for tag in c.tags):   
             return 1   
@@ -393,7 +403,6 @@ class Player:
                 deck = 'unplayed'
                 
             if not free:
-                
                 self.remove_coins()
             
             self.add_card(c, deck)
@@ -421,35 +430,28 @@ class Player:
         if c.wait in ('select', 'cast'):
             
             if c.wait == 'select':
-            
                 cards = c.get_selection(self)
                 
-            elif c.wait == 'cast':
-                
+            elif c.wait == 'cast': 
                 cards = [p for p in self.game.players if p.can_cast(c)]
 
             if cards:
- 
                 if cards != self.selection:
-
                     self.new_deck('selection', cards)
-                    self.selecting = True
-                    
-            else:
-                
+                    self.selecting = True     
+            else: 
                 c.wait = None
                 
-        elif c.wait == 'flip':
-            
+        elif c.wait == 'flip': 
             self.coin = -1
             self.ft = self.max
             
         elif c.wait == 'roll':
-            
             self.dice = -1
             self.rt = self.max
         
     def process_request(self):
+        self.requests.sort(key=self.sort_cards_requests)
         c = self.requests[0]
 
         if c is not self.active_card:
@@ -458,6 +460,7 @@ class Player:
             self.active_card = c
             self.add_log({'t': 'aac', 'c': self.active_card, 'w': self.active_card.wait, 'cancel': self.can_cancel()})
             self.start_request(c)
+            self.set_timer()
             
         confirm = False
 
@@ -499,12 +502,10 @@ class Player:
                 confirm = True
 
         if c.wait is None:
-            
             self.requests.pop(0)
             self.cancel_request()
             
         elif confirm:
-            
             self.start_request(c)
 
         if self.turbo and self.requests:
@@ -552,12 +553,9 @@ class Player:
     def select(self, card):
         if self.selection:
         
-            for c in self.selection:
-                
+            for c in self.selection:  
                 if c == card:
-                    
                     self.selected.append(c)
-
                     return
                     
         else:
@@ -565,111 +563,78 @@ class Player:
             if self.is_turn and not (self.gone or self.requests):
                 
                 for c in self.unplayed:
-                
-                    if c == card:
-                        
+                    if c == card:   
                         self.play_card(c)
-                        
                         return
                         
             if not self.game_over:
         
-                for c in self.items:
-                    
+                for c in self.items: 
                     if c == card and c not in self.requests:
-                        
                         if c.can_use(self):
                         
                             c.start(self)
-                        
                         return
                         
-                for c in self.spells:
-                    
+                for c in self.spells:    
                     if c == card and c not in self.requests:
-
                         c.wait = 'cast'
                         self.requests.append(c)
-                        
                         return
                         
                 for c in self.treasure:
-                    
-                    if c == card and c not in self.requests:
-                        
+                    if c == card and c not in self.requests:  
                         if hasattr(c, 'start'):
-                        
-                            c.start(self)
-                            
+                            c.start(self)     
                         return
                         
-                for c in self.equipped:
-                    
-                    if c == card and c not in self.requests:   
-
+                for c in self.equipped:                   
+                    if c == card and c not in self.requests:  
                         self.unequip(c)
-                            
                         return
 
     def flip(self):
         if self.auto and not self.turbo:
-            
             if self.ft == self.max - 1:
-                
-                if self.timer != 30:
+                if self.timer > 30:
                     return
-                
                 self.add_log({'t': 'cfs'})
     
-        if self.flipping and self.ft > 0:
-                
+        if self.flipping and self.ft > 0:   
             if self.ft <= self.max / 2:
-            
                 if self.ft == self.max / 2:
-                
                     self.add_log({'t': 'cfe', 'coin': self.coin, 'ft': self.ft - 2, 'd': False})
-                
             else:
-                
                 self.coin = random.choice((1, 0))
             
         self.ft = max(self.ft - 1, 0)
-        
-        if self.ft == 0:
-            
+        if self.ft == 0: 
             self.flipping = False
             self.coin = None
 
     def roll(self):
-        if self.auto and not self.turbo and self.timer_up():
-            
-            if self.rt == self.max - 1:
-                
-                if self.timer != 30:
+        if self.auto and not self.turbo:
+            if self.rt == self.max - 1: 
+                if self.timer > 30:
                     return
-                
                 self.add_log({'t': 'drs'})
                 
-        if self.rolling and self.rt > 0:
-                
+        if self.rolling and self.rt > 0:    
             if self.rt <= self.max / 2:
-            
                 if self.rt == self.max / 2:
-            
-                    self.add_log({'t': 'dre', 'dice': self.dice, 'rt': self.rt - 2, 'd': False})
-                
-            else:
-                
+                    self.add_log({'t': 'dre', 'dice': self.dice, 'rt': self.rt - 2, 'd': False})  
+            else:   
                 self.dice = random.randrange(0, 6) + 1
             
         self.rt = max(self.rt - 1, 0)
-        
-        if self.rt == 0:
-            
+        if self.rt == 0:   
             self.rolling = False
             self.dice = None
         
-    def cast(self, target, c):
+    def cast(self, target, c, invisible=False):
+        if not target.can_cast(c):
+            return
+    
         self.discard_card(c, d=True, ogd=True)
 
         if c in self.spells:
@@ -681,7 +646,7 @@ class Player:
         if hasattr(c, 'start'):
             c.start(target)
         
-        self.add_log({'t': 'cast', 'c': c.copy(), 'target': target, 'd': False})
+        self.add_log({'t': 'cast', 'c': c.copy(), 'target': target, 'd': False, 'inv': invisible})
     
     def can_cast(self, s):
         return not any(s.name == c.name and not c.mult for c in self.get_spells())
@@ -689,7 +654,7 @@ class Player:
 #ongoing stuff--------------------------------------------------------------------------------------
    
     def og(self):
-        self.ongoing.sort(key=self.sort_cards)
+        self.ongoing.sort(key=self.sort_cards_og)
 
         og = self.ongoing.copy()
         
@@ -723,8 +688,9 @@ class Player:
        
 #log stuff------------------------------------------------------------------------------------------
 
-    def add_log(self, log):
-        log['u'] = self.pid
+    def add_log(self, log, kwargs={}):
+        kwargs['u'] = self.pid
+        log.update(kwargs)
         self.log.append(log)
 
     def update_logs(self):
@@ -739,7 +705,7 @@ class Player:
         
         for log in self.log:
             
-            if log.get('t') == type and not log.get('d'):
+            if log.get('t') == type and not (log.get('d') or log.get('inv')):
                 
                 logs.append(log)
                 
@@ -750,7 +716,7 @@ class Player:
     
         for log in self.master_log:
             
-            if log.get('t') == type and not log.get('d'):
+            if log.get('t') == type and not (log.get('d') or log.get('inv')):
                 
                 logs.append(log)
                 
@@ -761,7 +727,7 @@ class Player:
         
         for log in self.log + self.master_log:
             
-            if log.get('t') == type and not log.get('d'):
+            if log.get('t') == type and not (log.get('d') or log.get('inv')):
                 
                 logs.append(log)
                 
@@ -819,12 +785,15 @@ class Player:
 
 #turn stuff-----------------------------------------------------------------------------------------
 
+    def set_timer(self):
+        if self.auto:
+            self.timer = random.randrange(60, 120)
+
     def start_turn(self):
         self.is_turn = True
         self.gone = False
         
-        if self.auto:
-            self.timer = random.randrange(60, 120)
+        self.set_timer()
         
     def end_turn(self):
         self.is_turn = False
@@ -894,7 +863,7 @@ class Player:
         
     def unpack_log(self, g):
         p = g.get_player(self.pid)
-
+        
         gain = p.score - self.score
         lead = round(sum(p.score - o.score for o in g.players) / (len(g.players) - 1))
         score = gain + (lead * 2)
@@ -904,20 +873,15 @@ class Player:
         d = []
         
         for log in p.temp_log:
-            
             if log['t'] == 'select':
-                
                 c = log['s']
-                
                 if c in cards:
-                    
-                    d.append(unpack_decision(log))
-                    
-            elif log['t'] == 'wait':
-                
+                    d.append(unpack_decision(log))      
+            elif log['t'] == 'wait':   
                 d.append(unpack_decision(log))
+                
         if d:
-            
+
             d = d[0]
         
             keys = [d[0] for d in self.tree]
@@ -989,10 +953,10 @@ class Player:
         self.decision = None
         self.tree.clear()
         
-        self.timer = random.randrange(60, 120)
+        self.set_timer()
       
     def is_stable(self):
-        return self.stable_counter > self.max_stable // 4
+        return self.stable_counter > self.max_stable // 4 or self.timer < -200
  
 #auto stuff-----------------------------------------------------------------------------------------
 
@@ -1022,14 +986,17 @@ class Player:
         return max(((1 / fps) - total_update_time) / players, 0)
 
     def get_selection(self):
-        cards = [c for c in self.items if c.can_use(self)] + self.spells
-        
-        if self.can_buy():
-            cards += [c for c in self.treasure if c.name == 'gold coins']
-        if self.is_turn and not self.gone:      
-            cards += self.unplayed  
-        if self.selection:  
-            cards += self.selection
+        if self.selection:
+            return self.selection.copy()
+        else:
+            cards = [c for c in self.items if c.can_use(self)] + self.spells
+            
+            if self.can_buy():
+                cards += [c for c in self.treasure if c.name == 'gold coins']
+            if self.is_turn and not self.gone:      
+                cards += self.unplayed  
+            if self.selection:  
+                cards += self.selection
             
         return cards
 
@@ -1049,6 +1016,7 @@ class Player:
                 d = self.get_decision()
 
                 if d:
+                
                     type = d[0]
                         
                     if type == 'select':
@@ -1127,25 +1095,19 @@ class Player:
         cmd = self.set_cmd()
 
         if cmd == 'select':
-            
             card = self.auto_select()
-
             if card is not None:
-
                 self.select(card)
 
         if self.coin is not None:
-            
             self.flipping = True
             self.flip()
                 
         if self.dice is not None:
-
             self.rolling = True
             self.roll()
 
         if self.requests:
-
             self.process_request()
             
         self.og()

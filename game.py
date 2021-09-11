@@ -42,6 +42,14 @@ def pack_log(logs):
                 
     return new_log
     
+def sort_logs(log):
+    u = log.get('u')
+    
+    if u == 'g':
+        return -1
+    else:
+        return u
+    
 def blank_player_info(pid):
     return {'name': f'player {pid}', 'description': '', 'tags': ['player'], 'image': 'img/user.png'}
         
@@ -69,6 +77,8 @@ class Game:
         self.turn = 0
         self.current_turn = 0
         self.round = 0
+        
+        self.end_timer = 0
 
         self.event = None
         
@@ -102,6 +112,8 @@ class Game:
         g.turn = self.turn
         g.current_turn = self.current_turn
         g.round = self.round
+        
+        g.end_timer = self.end_timer
 
         g.current_player = self.current_player
 
@@ -153,6 +165,8 @@ class Game:
         self.current_turn = 0
         self.round = 1
         self.update_round()
+        
+        self.end_timer = 0
 
         self.mem.clear()
         self.counter = 0
@@ -184,6 +198,8 @@ class Game:
         self.turn = 0
         self.current_turn = 0
         
+        self.end_timer = 0
+        
         self.round += 1
         self.update_round()
         
@@ -209,6 +225,9 @@ class Game:
         if (pid == 0 and len(self.players) > 1) or self.mode == 'single':
 
             self.new_game()
+            
+    def isinit(self):
+        return any(p.is_turn for p in self.players)
  
 #player stuff ------------------------------------------------------------------------
  
@@ -501,7 +520,7 @@ class Game:
             self.logs[pid] = self.logs[pid][6:]
         else:
             info = logs
-            
+
         scores = self.get_scores()
 
         return [scores, info]
@@ -509,8 +528,8 @@ class Game:
     def update_game_logs(self):
         for key in self.logs:
             
-            sublog = self.logs[key]           
-            sublog += self.log
+            self.logs[key] += self.log
+            self.logs[key].sort(key=sort_logs)
             
         self.master_log += self.log
         self.log.clear()
@@ -564,26 +583,6 @@ class Game:
         p = self.get_player(pid)
    
         p.update(cmd)
-          
-    def main(self):
-        if self.status != 'waiting':
-
-            for p in self.players:
-            
-                if p.auto:
-                    
-                    p.auto_update()
-      
-        if not self.mode == 'turbo':
-                
-            self.update_game_logs()
-            
-        else:
-            
-            self.master_log += self.log
-            self.log.clear()
-            
-        self.check_loop()
             
     def check_loop(self):
         up = []
@@ -697,32 +696,42 @@ class Game:
         self.add_log({'t': 'set', 'settings': self.get_settings()})
 
 #turn stuff-----------------------------------------------------------------------------------------------
+   
+    def main(self):
+        if self.status != 'waiting':
+
+            for p in self.players:
+                if p.auto: 
+                    p.auto_update()
+      
+        if not self.mode == 'turbo':            
+            self.update_game_logs()  
+        else:
+            self.master_log += self.log
+            self.log.clear()
+            
+        self.check_loop()
 
     def rotate_cards(self):
         selections = []
 
         for p in self.players:
-        
-            selections.append(p.unplayed)
-            
+            selections.append(p.unplayed)  
         selections.insert(0, selections.pop(-1))
             
         for p, s in zip(self.players, selections):
-        
             p.new_deck('unplayed', s)
-
-    def check_advance(self):
-        if self.status == 'playing':
-        
-            if not self.done() and self.main_p.finished:
-                
-                self.advance_turn()
                 
     def advance_turn(self):
         if self.status != 'playing':
             return 
-
-        if all(p.finished_game() for p in self.players):
+            
+        all_done = all(p.finished_game() for p in self.players)
+            
+        if all_done:
+            self.end_timer += 1
+            
+        if self.end_timer > 2:
 
             if all(p.game_over for p in self.players):
 
@@ -735,14 +744,13 @@ class Game:
                         
                     self.add_log({'t': 'fin', 'w': self.get_winners()})
                     
-            else:
-                
+            else: 
                 for p in self.players:
                     p.end_game(not (self.round % self.get_setting('rounds')))
                     
             return  
             
-        elif self.main_p.finished_turn():
+        elif self.main_p.finished_turn() and not all_done:
             self.find_turn()
             
     def find_turn(self):

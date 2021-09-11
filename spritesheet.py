@@ -1,3 +1,4 @@
+import os
 from constants import *
 from ui import rect_outline
 from builder import build_card
@@ -8,12 +9,27 @@ def init():
 
 def get_sheet():
     return globals().get('SPRITESHEET')
+    
+def load_sounds():
+    sounds = {}
+    files = os.listdir('snd/cards')
+    
+    for f in files:
+        name = f[:-4]
+        
+        try:
+            sounds[name] = pg.mixer.Sound(f'snd/cards/{f}')
+        except pg.error:
+            continue
+        
+    return sounds
 
 class Spritesheet:
     def __init__(self):
         self.names = NAMES
         self.sheet = pg.image.load('img/spritesheet.png').convert()
         self.extras = {'back': pg.image.load('img/back.png').convert()}
+        self.sounds = load_sounds()
         
     def add_extra(self, name):
         self.extras[name] = create_text(name)
@@ -64,5 +80,8 @@ class Spritesheet:
             img = rect_outline(img, color=olcolor)
 
         return img
+        
+    def get_sound(self, name):
+        return self.sounds.get(name)
 
         

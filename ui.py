@@ -904,12 +904,12 @@ class Textbox(Mover):
                 for word in line:
                 
                     word_surface, word_rect = self.render(word, get_rect=True)
-                    width, height = word_rect.size
+                    w, h = word_rect.size
                     
-                    if x + width >= max_width:
+                    if x + w >= max_width:
                         x = 0
-                        y += height
-                        if y + height > max_height or x + width >= max_width:
+                        y += h
+                        if y + h > max_height or x + w >= max_width:
                             over_y = True
                             break
                         else:
@@ -918,7 +918,7 @@ class Textbox(Mover):
 
                     word_rect.topleft = (x, y)
                     current_line.append([word, word_surface, word_rect])
-                    x += width + space
+                    x += w + space
                     
                 if over_y:
                     self.set_font_size(tsize - 1)
@@ -926,7 +926,7 @@ class Textbox(Mover):
                     break
                     
                 x = 0
-                y += height
+                y += h
                 
             if not over_y:
                 rendered_lines.append(current_line)
@@ -1257,7 +1257,7 @@ class Input:
     def check_message(self, text):
         passed = False
         if text is not None:
-            if all(31 < ord(char) < 127 for char in text) and all(self.check(char) for char in text):
+            if (all(31 < ord(char) < 127 for char in text) and all(self.check(char) for char in text)) or (self.fitted and text == '\n'):
                 if 0 <= len(text) < self.length:
                       passed = True
         return passed
@@ -1343,7 +1343,7 @@ class Input:
     def events(self, input):
         click = False
         p = pg.mouse.get_pos()
-        
+
         for e in input:
         
             if e.type == pg.MOUSEBUTTONDOWN:
@@ -1353,7 +1353,7 @@ class Input:
                     click = True
                     
                     if self.rect.collidepoint(p) or self.textbox.rect.collidepoint(p):
-                        
+
                         if self.timer <= 25:
                         
                             if not self.active:

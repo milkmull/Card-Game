@@ -33,13 +33,27 @@ class Card:
         return self.uid == other.get_id() and self.name == other.get_name()
         
     def copy(self): 
-        return type(self)(self.game, self.uid)
+        T = type(self)
+        if T != Blank:
+            c = T(self.game, self.uid)
+        else:
+            c = T(self.game, self.uid, self.name)
+        return c
         
     def light_sim_copy(self, game):
-        return type(self)(game, self.uid)
+        T = type(self)
+        if T != Blank:
+            c = T(game, self.uid)
+        else:
+            c = T(game, self.uid, self.name)
+        return c
         
     def sim_copy(self, game):
-        c = type(self)(game, self.uid)
+        T = type(self)
+        if T != Blank:
+            c = T(game, self.uid)
+        else:
+            c = T(game, self.uid, self.name)
 
         c.mode = self.mode
 
@@ -51,11 +65,8 @@ class Card:
         c.cards = [o.sim_copy(game) for o in self.cards if o is not self]
         
         if self.extra_card:
-        
-            c.extra_card = self.extra_card.sim_copy(game)
-            
-        if self.extra_player:
-            
+            c.extra_card = self.extra_card.sim_copy(game) 
+        if self.extra_player: 
             c.extra_player = game.get_player(self.extra_player.pid)
     
         return c
@@ -111,8 +122,11 @@ class Card:
         return cards
 
 class Blank(Card):
-    def __init__(self, game, name):
+    def __init__(self, game, uid, name):
         super().__init__(game, game.get_new_uid(), name, tags=[])
+        
+    def __eq__(self, other):
+        return self.name == other.get_name()
 
 class Michael(Card):
     def __init__(self, game, uid):
@@ -831,17 +845,12 @@ class FishingPole(Card):
         super().__init__(game, uid, 'fishing pole', tags=['item'])
         
     def can_use(self, player):
-        if not player.auto:
-            print([c.copy() for p in self.sort_players(player) for c in p.played if c.name == 'fish'])
         return bool([c.copy() for p in self.sort_players(player) for c in p.played if c.name == 'fish'])
         
     def get_selection(self, player):
-        if len(player.selected) == 0:
-            
-            return [c.copy() for c in player.played]
-            
-        elif len(player.selected) == 1:
-            
+        if len(player.selected) == 0: 
+            return [c.copy() for c in player.played]   
+        elif len(player.selected) == 1: 
             return [c.copy() for p in self.sort_players(player) for c in p.played if c.name == 'fish']
 
     def start(self, player):
@@ -850,11 +859,9 @@ class FishingPole(Card):
         
     def select(self, player, num):
         if num == 1:
-
             self.wait = 'select'
                 
         elif num == 2:
-
             self.game.swap(player.selected[0], player.selected[1])
             player.discard_card(self)
                 
@@ -909,15 +916,13 @@ class Mirror(Card):
         super().__init__(game, uid, 'mirror', tags=['item'])
         
     def can_use(self, player):
-        return player.get_spells() and any(any(p.can_cast(c) for c in player.get_spells()) for p in self.sort_players(player))
+        return player.get_spells() and all(any(p.can_cast(c) for p in self.sort_players(player)) for c in player.spells)
         
     def get_selection(self, player):
         if len(player.selected) == 0:
-
             return [c.copy() for c in player.get_spells()]
             
         elif len(player.selected) == 1:
-
             return [p for p in self.sort_players(player) if p.can_cast(player.selected[0])]
             
     def start(self, player):
@@ -926,11 +931,9 @@ class Mirror(Card):
         
     def select(self, player, num):
         if num == 1:
-
             self.wait = 'select'
 
         elif num == 2:
-
             c, p = player.selected
             player.cast(p, c)
 
@@ -1090,7 +1093,7 @@ class SpellTrap(Card):
         self.get_cards_from_logs(player, 'cast')
         
     def ongoing(self, player):
-        for _ in self.get_cards_from_logs(player, 'cast'):
+        for c in self.get_cards_from_logs(player, 'cast'):
             player.lose(self, len(player.unplayed))
         
 class Curse(Card):
@@ -1183,14 +1186,11 @@ class Boomerang(Card):
             player.equip(self)
         
     def ongoing(self, player):
-        if self.game.get_event() != 'negative zone':
-            
+        if self.game.get_event() != 'negative zone':  
             attr = 'gain'
             key1 = 'lp'
-            key2 = 'gp'
-            
-        else:
-            
+            key2 = 'gp'   
+        else:   
             attr = 'lose'
             key1 = 'gp'
             key2 = 'lp'
@@ -1310,17 +1310,17 @@ class NegativeZone(Card):
         for log in [log for log in player.log.copy() if log.get('d') is False]:
             
             if log['t'] == 'gp':          
-                log['lp'] = player.lose(self, log['gp'] * 2, d=True) // 2
+                log['lp'] = player.lose(log['c'], log['gp'] * 2, d=True) // 2
                 log['t'] = 'lp'    
+                
             elif log['t'] == 'lp':   
-                log['gp'] = player.gain(self, log['lp'] * 2, d=True) // 2
+                log['gp'] = player.gain(log['c'], log['lp'] * 2, d=True) // 2
                 log['t'] = 'gp' 
+                
             elif log['t'] == 'sp':   
-                log['lp'] = player.lose(self, log['sp'] * 2, d=True) // 2
-                log['t'] = 'lp'  
-            elif log['t'] == 'rp':   
-                log['gp'] = player.gain(self, log['rp'] * 2, d=True) // 2
-                log['t'] = 'gp' 
+                log['gp'] = -player.give(log['c'], log['sp'] * 2, log['target'], d=True) // 2
+                log['t'] = 'give'  
+                
             elif log['t'] == 'give':
                 log['sp'] = player.steal(self, -log['gp'] * 2, log['target'], d=True) // 2
                 log['t'] = 'sp'
@@ -1683,10 +1683,8 @@ class SpellReverse(Card):
         
     def start(self, game):
         for p in game.players:
-            
             for c in p.spells.copy():
-                
-                p.cast(p, c)
+                p.cast(p, c, invisible=True)
                 
 class SunnyDay(Card):
     def __init__(self, game, uid):
@@ -1968,12 +1966,10 @@ class RattleSnake(Card):
         players = self.sort_players(player, lambda p: p.score and p.treasure)
         
         if len(players) > 1:
-
             self.deploy(players)
             player.ongoing.append(self)
             
         elif players:
-
             player.steal_random_card('treasure', players[0])
             
     def roll(self, player, roll):
@@ -2435,8 +2431,8 @@ class Bat(Card):
     def __init__(self, game, uid):
         super().__init__(game, uid, 'bat', tags=['animal', 'sky'])
         
-        self.option1 = Blank(self.game, 'draw item')
-        self.option2 = Blank(self.game, 'draw spell')
+        self.option1 = Blank(self.game, self.game.get_new_uid(), 'draw item')
+        self.option2 = Blank(self.game, self.game.get_new_uid(), 'draw spell')
         
     def get_selection(self, player):
         if self.mode == 0:
@@ -2627,14 +2623,11 @@ class TheVoid(Card):
         mult = True
         
     def ongoing(self, player):
-        if self.game.get_event() != 'negative zone':
-            
+        if self.game.get_event() != 'negative zone':  
             attr = 'gain'
             key1 = 'lp'
-            key2 = 'gp'
-            
-        else:
-            
+            key2 = 'gp'   
+        else:    
             attr = 'lose'
             key1 = 'gp'
             key2 = 'lp'
