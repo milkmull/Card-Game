@@ -57,7 +57,7 @@ def refresh_save():
     if builder.is_init():
         builder.reset(get_data('cards')[0])
     else:
-        set_reset()
+        builder.set_reset()
     
 def reload_save():
     set_save_data(load_save())
