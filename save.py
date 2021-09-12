@@ -1,15 +1,9 @@
 import os, json, copy
 
 def init():
-    import customsheet
     create_folders()
-    customsheet.test_init()
     globals()['SAVE_DATA'] = load_save()
     verify_data()
-
-def rewrite_card(info):
-    from builder import reset
-    reset(info)
 
 def create_folders():
     if not os.path.exists('img/temp'):
@@ -57,10 +51,13 @@ def refresh_save():
     update_save(save_data)
 
     for f in os.listdir('img/custom'):
-        if '0' not in f:
-            os.remove(f'img/custom/{f}')
+        os.remove(f'img/custom/{f}')
             
-    rewrite_card(get_data('cards')[0])
+    import builder
+    if builder.is_init():
+        builder.reset(get_data('cards')[0])
+    else:
+        set_reset()
     
 def reload_save():
     set_save_data(load_save())

@@ -26,6 +26,8 @@ def start():
     client.init()
     builder.init()
     ui.init()
+    
+    
 
     ui.menu(menu.main_menu)
         

@@ -13,6 +13,15 @@ from ui import *
 
 def init():
     globals()['CUSTOMSHEET'] = customsheet.get_sheet()
+    if RESET:
+        reset(save.get_data('cards')[0])
+        
+def is_init():
+    return 'CUSTOMSHEET' in globals()
+        
+def set_reset():
+    global RESET
+    RESET = True
     
 def reset(info):
     CUSTOMSHEET.reset()
@@ -421,7 +430,7 @@ class Builder:
         if image is not None:
             self.elements['card'].update_image(image)
 
-
+RESET = False
 
 
 
