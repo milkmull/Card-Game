@@ -47,6 +47,8 @@ def load_save():
     return save_data
     
 def refresh_save():
+    global RESET
+    
     save_data = get_blank_data()
     update_save(save_data)
 
@@ -57,7 +59,7 @@ def refresh_save():
     if builder.is_init():
         builder.reset(get_data('cards')[0])
     else:
-        builder.set_reset()
+        RESET = True
     
 def reload_save():
     set_save_data(load_save())
@@ -161,3 +163,4 @@ def verify_data():
         set_data('settings', settings)
         
 SAVE_DATA = {}
+RESET = False

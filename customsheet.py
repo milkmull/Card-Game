@@ -4,10 +4,13 @@ import save
 from constants import *
 
 def init():
+    global RESET
     if not os.path.exists('img/customsheet.png'):
         create_blank_sheet()
+        RESET = True
     if not os.path.exists('img/custom/0.png'):
         create_blank_custom()
+        RESET = True
     globals()['CUSTOMSHEET'] = Customsheet()
 
 def get_sheet():
@@ -57,3 +60,5 @@ class Customsheet:
         
     def new_id(self):
         return len(self.cards)
+        
+RESET = False
