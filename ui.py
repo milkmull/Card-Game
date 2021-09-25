@@ -1890,7 +1890,7 @@ class Pane:
                         o.rect.topleft = (self.rect.x + x + xpad, self.rect.y + y + ypad)       
                     else:
                         o.rect.midtop = (self.rect.centerx, self.rect.y + y + ypad)  
-                    self.rel_pos[o] = [o.rect.x - self.rect.x, o.rect.y - self.rect.y]
+                    self.rel_pos[id(o)] = [o.rect.x - self.rect.x, o.rect.y - self.rect.y]
 
                     y += o.rect.height + ypad
                     
@@ -1905,7 +1905,7 @@ class Pane:
                         o.rect.topleft = (self.rect.x + x + xpad, self.rect.y + y + ypad)   
                     else:
                         o.rect.topleft = (self.rect.x + x + xpad, self.rect.y + y + ypad)  
-                    self.rel_pos[o] = [o.rect.x - self.rect.x, o.rect.y - self.rect.y]
+                    self.rel_pos[id(o)] = [o.rect.x - self.rect.x, o.rect.y - self.rect.y]
                         
                     x += o.rect.width + xpad
                     
@@ -1959,13 +1959,13 @@ class Pane:
             if dir == 'd' and self.can_scroll_down():
                 for o in self.objects: 
                     o.rect.y -= 25  
-                    self.rel_pos[o][1] -= 25
+                    self.rel_pos[id(o)][1] -= 25
                 self.redraw()
 
             elif dir == 'u' and self.can_scroll_up():
                 for o in self.objects:
                     o.rect.y += 25
-                    self.rel_pos[o][1] += 25
+                    self.rel_pos[id(o)][1] += 25
                 self.redraw()
                 
     def redraw(self):
@@ -2028,7 +2028,7 @@ class Pane:
             
         if self.live:
             for o in self.objects:
-                rx, ry = self.rel_pos[o]
+                rx, ry = self.rel_pos[id(o)]
                 sx, sy = self.rect.topleft
                 o.rect.x = sx + rx
                 o.rect.y = sy + ry
