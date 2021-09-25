@@ -14,7 +14,7 @@ class Card:
         self.t_roll = -1
 
         self.cards = []
-        self.pids = []
+        self.players = []
         
         self.extra_card = None
         self.extra_player = None
@@ -61,7 +61,7 @@ class Card:
         c.t_coin = self.t_coin
         c.t_roll = self.t_roll
         
-        c.pids = self.pids.copy()
+        c.players = [game.get_player(p.pid) for p in self.players]
         c.cards = [o.sim_copy(game) for o in self.cards if o is not self]
         
         if self.extra_card:
@@ -134,9 +134,7 @@ class Michael(Card):
 
     def start(self, player):
         sp = 5 if self.game.current_player == 0 else 2
-
         for p in self.sort_players(player):
-
             player.steal(self, sp, p)
         
 class Dom(Card):
@@ -145,13 +143,9 @@ class Dom(Card):
         
     def start(self, player):
         for p in self.game.players:
-            
-            gp = 5 if p == player else 1
-            
+            gp = 5 if p == player else 1 
             for c in p.played:
-                
-                if 'animal' in c.tags:
-                    
+                if 'animal' in c.tags: 
                     player.gain(self, gp)
         
 class Jack(Card):
@@ -175,7 +169,6 @@ class Jack(Card):
             player.add_card(c, 'unplayed')
             
             for p, c in zip(self.sort_players(player), self.cards):
-            
                 p.add_card(c, 'unplayed')
             
 class Mary(Card):
@@ -184,9 +177,7 @@ class Mary(Card):
         
     def start(self, player):
         if self.game.check_last(player):
-        
-            for p in self.sort_players(player):
-                    
+            for p in self.sort_players(player):    
                 p.lose(self, 6)
                     
 class Daniel(Card):
@@ -197,7 +188,7 @@ class Daniel(Card):
         super().__init__(game, uid, 'daniel', tags=['human'])
         
     def start(self, player):
-        self.pids.clear()
+        self.players.clear()
         player.ongoing.append(self)
         
     def ongoing(self, player):
@@ -256,11 +247,8 @@ class GamblingBoi(Card):
         score = (len(player.played) - len(player.unplayed)) * 2
 
         if score < 0:
-        
             player.lose(self, -score)
-        
         elif score > 0:
-        
             player.gain(self, score)
             
 class Mom(Card):
@@ -272,23 +260,17 @@ class Mom(Card):
         
     def start(self, player):
         if player.has_card('landscapes', 'city'):
-            
             player.draw_cards('treasure')
-            
         player.add_request(self, 'flip')
         
     def coin(self, player, coin):
-        if coin:
-            
-            self.wait = 'select'
-            
-        else:
-            
+        if coin: 
+            self.wait = 'select' 
+        else: 
             player.lose(self, 4)
             
     def select(self, player, num):
         if num:
-            
             player.steal(self, 6, player.selected.pop(0))
             
 class Dad(Card):
@@ -656,7 +638,7 @@ class Dragon(Card):
         return self.sort_players(player, 'steal')
             
     def deploy(self, player):
-        self.pids.clear()
+        self.players.clear()
         self.cards.clear()
         
         for p in [p for p in self.sort_players(player) if p.treasure]:
@@ -664,7 +646,7 @@ class Dragon(Card):
             c = self.copy()
             p.add_request(c, 'flip')
             
-            self.pids.append(p.pid)
+            self.players.append(p)
             self.cards.append(c)
 
     def start(self, player):
@@ -675,23 +657,22 @@ class Dragon(Card):
         self.t_coin = coin
         
     def ongoing(self, player):
-        if self.pids:
+        if self.players:
             
             i = 0
         
-            while i in range(len(self.pids)):
+            while i in range(len(self.players)):
 
                 c = self.cards[i]
-                pid = self.pids[i]
-                p = self.game.get_player(pid)
-                
+                p = self.players[i]
+
                 if c.t_coin != -1:
                     
                     if not c.t_coin:
                         
                         player.steal_random_card('treasure', p)
                         
-                    self.pids.pop(i)
+                    self.players.pop(i)
                     self.cards.pop(i)
                     
                 else:
@@ -1555,7 +1536,7 @@ class Succosecc(Card):
                 
                 c = self.game.draw_cards('items')[0]
                 
-            self.pids.append(p.pid)
+            self.players.append(p)
             self.cards.append(c)
                 
         player.add_request(self, 'select')
@@ -1565,16 +1546,14 @@ class Succosecc(Card):
             
             c = player.selected.pop(0)
             self.cards.remove(c)
-            self.pids.remove(player.pid)
+            self.players.remove(player)
             
             random.shuffle(self.cards)
             
-            for pid, c in zip(self.pids, self.cards):
-                
-                p = self.game.get_player(pid)
+            for p, c in zip(self.players, self.cards):
                 p.add_card(c, 'items')
                 
-            self.pids.clear()
+            self.players.clear()
             self.cards.clear()
                 
 class Sunflower(Card):
@@ -1951,7 +1930,7 @@ class RattleSnake(Card):
         super().__init__(game, uid, 'rattle snake', tags=['animal', 'desert'])
         
     def deploy(self, players):
-        self.pids.clear()
+        self.players.clear()
         self.cards.clear()
         
         for p in players:
@@ -1959,7 +1938,7 @@ class RattleSnake(Card):
             c = self.copy()
             p.add_request(c, 'roll')
             
-            self.pids.append(p.pid)
+            self.players.append(p)
             self.cards.append(c)
         
     def start(self, player):
@@ -1978,24 +1957,22 @@ class RattleSnake(Card):
     def ongoing(self, player):
         i = 0
         
-        while i in range(len(self.pids)):
+        while i in range(len(self.players)):
             
             c = self.cards[i]
-            pid = self.pids[i]
-            p = self.game.get_player(pid)
+            p = self.players[i]
 
             if not p.treasure:
 
                 c.wait = None
-                self.pids.pop(i)
+                self.players.pop(i)
                 self.cards.pop(i)
                 
             else:
                 
                 i += 1
                 
-        if not self.pids:
-            
+        if not self.players:
             return True
 
         if all(c.t_roll != -1 for c in self.cards):
@@ -2004,12 +1981,8 @@ class RattleSnake(Card):
             
             players = []
 
-            for pid, c in zip(self.pids, self.cards):
-                
-                p = self.game.get_player(pid)
-
+            for p, c in zip(self.players, self.cards):
                 if c.t_roll == m and p.treasure:
-
                     players.append(p)
 
             if len(players) <= 1:
@@ -2403,15 +2376,12 @@ class Torpedo(Card):
         super().__init__(game, uid, 'torpedo', tags=['equipment'])
 
     def start(self, player):
-        self.pids.clear()
+        self.players.clear()
         player.equip(self)
         
     def coin(self, player, coin):
         if coin:
-            
-            pid, sp = self.pids
-            p = self.game.get_player(pid)
-            
+            p, sp = self.players
             player.steal(self, sp, p)
 
     def ongoing(self, player):
@@ -2421,7 +2391,7 @@ class Torpedo(Card):
             
             log = logs[-1]
             
-            self.pids = [log['target'].pid, log['sp']]
+            self.players = [log['target'], log['sp']]
             player.add_request(self, 'flip')
             player.discard_card(self)
             

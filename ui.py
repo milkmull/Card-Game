@@ -323,10 +323,20 @@ def rect_outline(img, color=(0, 0, 0), ol_size=2):
     ol.fill(color)
 
     w, h = img.get_size()
-    img = pg.transform.scale(img, (w - (ol_size * 2), h - (ol_size * 2)))
+    img = pg.transform.smoothscale(img, (w - (ol_size * 2), h - (ol_size * 2)))
     ol.blit(img, (ol_size, ol_size))
     
     return ol
+    
+#other--------------------------------------------------------------------
+
+def ccw(A, B, C):
+    return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+
+def intersect(A, B, C, D):
+    return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
+
+#-------------------------------------------------------------------------
 
 class Mover:
     def __init__(self):
@@ -522,6 +532,94 @@ class Mover:
         h = max(int(self.scale.y), 0)
         return (w, h)
 
+class Dragger:
+    held_list = []
+    
+    def start_held_list():
+        for o in Dragger.held_list:
+            o.start_held()
+            
+    def drop_held_list():
+        for o in Dragger.held_list:
+            o.drop()
+        Dragger.held_list.clear()
+        
+    def check_clear_list(p):
+        if not any(o.rect.collidepoint(p) for o in Dragger.held_list):
+            Dragger.drop_held_list()
+    
+    def __init__(self):
+        self._held = False
+        self._selected = False
+        self.hover = False
+        
+        self.rel_pos = [0, 0]
+        
+    def is_held(self):
+        return self._held
+        
+    def start_held(self):
+        self._held = True
+        self._selected = True
+        self.set_rel_pos(pg.mouse.get_pos())
+        
+    def add_to_held_list(self):
+        Dragger.held_list.append(self)
+        
+    def drop(self):
+        self._held = False
+        
+    def set_rel_pos(self, p):
+        px, py = p
+        sx, sy = self.rect.topleft
+        
+        self.rel_pos[0] = px - sx
+        self.rel_pos[1] = py - sy
+        
+    def events(self, input):
+        p = pg.mouse.get_pos()
+        for e in input:
+            if e.type == pg.MOUSEBUTTONDOWN:
+                if self.rect.collidepoint(p):
+                    if self in Dragger.held_list:
+                        Dragger.start_held_list()
+                    else:
+                        self.start_held()     
+                else:
+                    Dragger.check_clear_list(p)
+                    if not self._held:
+                        self._selected = False
+                break
+                    
+            elif e.type == pg.MOUSEBUTTONUP:
+                self.drop()
+                break
+                    
+        if self.rect.collidepoint(p):
+            self.hover = True
+        else:
+            self.hover = False
+            
+        if self in Dragger.held_list:
+            self._selected = True
+                
+    def update(self):
+        dx = 0
+        dy = 0
+
+        if self._held:
+            x0, y0 = self.rect.topleft
+            px, py = pg.mouse.get_pos()
+            rx, ry = self.rel_pos
+            self.rect.x = px - rx
+            self.rect.y = py - ry
+            x1, y1 = self.rect.topleft
+            
+            dx = x1 - x0
+            dy = y1 - y0
+            
+        return (dx, dy)
+
 class Image:
     def __init__(self, image):
         self.image = image
@@ -655,6 +753,71 @@ class FreeImage:
             if r.collidepoint(p):
                 
                 pg.draw.rect(win, (255, 0, 0), r)
+
+class Rect_Selector:
+    def __init__(self, func=lambda : None, color=(255, 0, 0), rad=2):
+        self.anchor = None
+
+        self.func = func
+
+        self.color = color
+        self.rad = rad
+        
+        self.group_rect = pg.Rect(0, 0, 0, 0)
+        self.selected = []
+        
+        self.pickup = False
+        self.init = False
+        
+    def get_selected(self, selection):
+        return [o for o in selection if self.group_rect.colliderect(o.rect)]
+
+    def check_pickup(self):
+        p = pg.mouse.get_pos()
+        
+        if any(e.rect.collidepoint(p) for e in self.selected):
+            for e in self.selected:
+                e.set_rel_pos(p)
+            self.pickup = True
+        
+    def events(self, input):
+        p = pg.mouse.get_pos()
+
+        for e in input:
+            if e.type == pg.MOUSEBUTTONDOWN and self.init:
+                if e.button == 1:
+                    self.anchor = p
+                    break
+            elif e.type == pg.MOUSEBUTTONUP:
+                if e.button == 1:
+                    if self.anchor is not None:
+                        self.func()
+                    self.anchor = None
+                    break
+        
+        self.init = True
+                
+    def update(self):
+        if self.anchor:
+        
+            mx, my = pg.mouse.get_pos()
+            ax, ay = self.anchor
+            
+            w = mx - ax
+            h = my - ay
+            
+            self.group_rect.size = (abs(w), abs(h))
+            self.group_rect.topleft = self.anchor
+            
+            if w < 0:
+                self.group_rect.right = ax
+            if h < 0:
+                self.group_rect.bottom = ay
+                
+    def draw(self, win):
+        if self.anchor:
+            points = (self.group_rect.topleft, self.group_rect.bottomleft, self.group_rect.bottomright, self.group_rect.topright)
+            pg.draw.lines(win, self.color, True, points, self.rad)
 
 class Textbox(Mover):
     def __init__(self, message, tsize=10, anchor='center', font='freesansbold.ttf', fgcolor=(255, 255, 255), bgcolor=None, olcolor=None, olrad=2):
@@ -920,7 +1083,7 @@ class Textbox(Mover):
                     current_line.append([word, word_surface, word_rect])
                     x += w + space
                     
-                if over_y:
+                if over_y and tsize > 1:
                     self.set_font_size(tsize - 1)
                     tsize = self.tsize
                     break
@@ -941,11 +1104,11 @@ class Textbox(Mover):
             r = pg.Rect(0, 0, 2, h)
             r.centery = bounding_rect.height // 2
 
-            dy = r.y - min_y
+            dy = max(r.y - min_y, 0)
             
             for line in rendered_lines: 
                 for info in line:
-                    info[2] = info[2].move(0, dy)
+                    info[2].move_ip(0, dy)
       
         for line in rendered_lines:
         
@@ -961,7 +1124,7 @@ class Textbox(Mover):
                 dx = r.x - min_x
                 
                 for info in line: 
-                    info[2] = info[2].move(dx, 0)
+                    info[2].move_ip(dx, 0)
 
             for word, surf, r in line:
                 image.blit(surf, r)
@@ -1196,6 +1359,7 @@ class Input:
         self.copy = [0, 0]
         self.cut = [0, 0]
         self.paste = [0, 0]
+        self.all = [0, 0]
         
         self.length = length
         self.check = check
@@ -1258,7 +1422,7 @@ class Input:
         passed = False
         if text is not None:
             if (all(31 < ord(char) < 127 for char in text) and all(self.check(char) for char in text)) or (self.fitted and text == '\n'):
-                if 0 <= len(text) < self.length:
+                if 0 <= len(text) <= self.length:
                       passed = True
         return passed
         
@@ -1335,7 +1499,6 @@ class Input:
             self.replace_selection('')
         else:
             m = self.textbox.get_message()
-            print(m)
             message = m[:self.index] + m[min(self.index + 1, len(m)):]
             self.update_message(message)
             self.set_index(self.index - 1)
@@ -1397,12 +1560,15 @@ class Input:
                         self.copy[0] = 1
                         self.cut[0] = 1
                         self.paste[0] = 1
+                        self.all[0] = 1
                     elif e.key == pg.K_c:
                         self.copy[1] = 1
                     elif e.key == pg.K_x:
                         self.cut[1] = 1
                     elif e.key == pg.K_v: 
                         self.paste[1] = 1
+                    elif e.key == pg.K_a:
+                        self.all[1] = 1
                         
                     elif e.key == pg.K_DELETE:
                         self.delete()
@@ -1447,12 +1613,15 @@ class Input:
                         self.copy[0] = 0
                         self.cut[0] = 0
                         self.paste[0] = 0 
+                        self.all[0] = 0
                     elif e.key == pg.K_c:
                         self.copy[1] = 0
                     elif e.key == pg.K_x:
                         self.cut[1] = 0
                     elif e.key == pg.K_v: 
                         self.paste[1] = 0
+                    elif e.key == pg.K_a:
+                        self.all[1] = 0
                         
         if all(self.copy):
             text = self.get_selection()
@@ -1473,6 +1642,10 @@ class Input:
             else:
                 self.send_keys(text)
             self.paste = [0, 0]
+            
+        elif all(self.all):
+            self.highlight_full()
+            self.all = [0, 0]
             
         elif self.backspace:
             self.back()
@@ -1505,6 +1678,7 @@ class Input:
             self.textbox.rect.topleft = self.rect.topleft
         else:
             self.textbox.rect.center = self.rect.center
+            self.textbox.rect.y += 1
                 
         self.textbox.update()
         
@@ -1678,6 +1852,7 @@ class Pane:
         self.live = live
         
         self.orientation_cache = {'xpad': 5, 'ypad': 5, 'dir': 'y', 'pack': False}
+        self.rel_pos = {}
         
     def set_live(self, live):
         self.live = live
@@ -1687,6 +1862,10 @@ class Pane:
             return all(objects[i] == self.objects[i] for i in range(len(objects)))
         else:
             return False
+            
+    def sort_objects(self, key):
+        objects = sorted(self.objects, key=key)
+        self.join_objects(objects, **self.orientation_cache)
   
     def join_objects(self, objects, xpad=5, ypad=5, dir='y', pack=False, force=False, scroll=False, move=False, key=None):
         if key is None:
@@ -1695,7 +1874,8 @@ class Pane:
             same = key(objects, self.objects)
 
         if not same or force:
-
+            self.rel_pos.clear()
+            
             x = 0
             y = 0
             
@@ -1704,18 +1884,14 @@ class Pane:
                 for o in objects:
                     
                     if pack:
-                    
                         if self.rect.y + y + ypad + o.rect.height > self.rect.bottom:
-
                             x += o.rect.width + xpad
-                            y = 0
-                            
-                        o.rect.topleft = (self.rect.x + x + xpad, self.rect.y + y + ypad)
-                            
+                            y = 0  
+                        o.rect.topleft = (self.rect.x + x + xpad, self.rect.y + y + ypad)       
                     else:
+                        o.rect.midtop = (self.rect.centerx, self.rect.y + y + ypad)  
+                    self.rel_pos[o] = [o.rect.x - self.rect.x, o.rect.y - self.rect.y]
 
-                        o.rect.midtop = (self.rect.centerx, self.rect.y + y + ypad)
-                        
                     y += o.rect.height + ypad
                     
             elif dir == 'x':
@@ -1723,17 +1899,13 @@ class Pane:
                 for o in objects:
 
                     if pack:
-
                         if self.rect.x + x + xpad + o.rect.width > self.rect.right:
-
                             x = 0
-                            y += o.rect.height + ypad
-                            
-                        o.rect.topleft = (self.rect.x + x + xpad, self.rect.y + y + ypad)
-                        
+                            y += o.rect.height + ypad  
+                        o.rect.topleft = (self.rect.x + x + xpad, self.rect.y + y + ypad)   
                     else:
-
-                        o.rect.topleft = (self.rect.x + x + xpad, self.rect.y + y + ypad)
+                        o.rect.topleft = (self.rect.x + x + xpad, self.rect.y + y + ypad)  
+                    self.rel_pos[o] = [o.rect.x - self.rect.x, o.rect.y - self.rect.y]
                         
                     x += o.rect.width + xpad
                     
@@ -1785,19 +1957,15 @@ class Pane:
         if self.objects:
   
             if dir == 'd' and self.can_scroll_down():
-
-                for o in self.objects:
-                    
-                    o.rect.y -= 25
-                    
+                for o in self.objects: 
+                    o.rect.y -= 25  
+                    self.rel_pos[o][1] -= 25
                 self.redraw()
 
             elif dir == 'u' and self.can_scroll_up():
-            
                 for o in self.objects:
-                    
                     o.rect.y += 25
-                
+                    self.rel_pos[o][1] += 25
                 self.redraw()
                 
     def redraw(self):
@@ -1857,6 +2025,13 @@ class Pane:
         
         for b in self.scroll_buttons:
             b.update()
+            
+        if self.live:
+            for o in self.objects:
+                rx, ry = self.rel_pos[o]
+                sx, sy = self.rect.topleft
+                o.rect.x = sx + rx
+                o.rect.y = sy + ry
         
     def draw(self, win):
         if not self.live:
@@ -2230,10 +2405,6 @@ class RGBSlider(Slider):
         win.blit(self.image, self.rect)
         pg.draw.rect(win, self.hcolor, self.handel)
 
-    
-    
-    
-    
     
     
     

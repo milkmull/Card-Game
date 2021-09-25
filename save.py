@@ -133,18 +133,18 @@ def new_card_id():
 def verify_data():
     username = get_data('username')
     if not isinstance(username, str):
-        refresh_save()
+        set_data('username', 'Player 0')
     
     port = get_data('port')
     if not isinstance(port, int):
-        refresh_save()
+        set_data('port', 5555)
         
     ips = get_data('ips')
     if not isinstance(ips, list):
-        refresh_save()
+        set_data('ips', [])
         
-    port = get_data('port')
-    if not isinstance(port, int):
+    cards = get_data('cards')
+    if not isinstance(cards, list):
         refresh_save()
         
     settings = get_data('settings')
