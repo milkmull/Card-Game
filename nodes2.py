@@ -14,8 +14,6 @@ def init():
     g = globals()
     g['logs'] = []
     
-    Info_Screen.make_port_box()
-    
 #log stuff--------------------------------------------------------------------
     
 def add_log(log):
@@ -541,120 +539,6 @@ def spread(nodes):
 
 #info screen-----------------------------------------------------------------------------
 
-class Info_Screen:
-    port_box = None
-    
-    @classmethod
-    def make_port_box(cls):
-        text_box = pg.Rect(0, 0, 150, 100)
-        surf = pg.Surface(text_box.size).convert()
-        surf.fill((1, 1, 1))
-        pg.draw.rect(surf, (0, 0, 0), pg.Rect(0, 20, 150, 80))
-        surf.set_colorkey((1, 1, 1))
-        cls.port_box = surf
-
-    def __init__(self, node):
-        self.node = node
-        
-        self.body_rect = pg.Rect(0, 0, 500, 500)
-        self.body_rect.center = (width // 2, height // 2)
-        self.inner_rect = self.body_rect.inflate(-100, -100)
-        
-        self.info = Textbox(node.info, fgcolor=(0, 0, 0))
-        self.info_box = pg.Rect(0, 0, 100, 100)
-        self.info_box.topleft = (self.body_rect.x + 10, self.body_rect.y + 10)
-        self.info.fit_text(self.info_box, centered=False)
-        self.info.rect.topleft = self.info_box.topleft
-        
-        self.port_data = []
-        for p in self.node.ports * 4:
-            if p.parent_port or 'flow' in p.types:
-                continue
-
-            data = {'text': [], 'port': p.port}
-            
-            color = allnodes.get_color(p.types)
-            data['color'] = color
-            r = Info_Screen.port_box.get_rect()
-            r.midleft = self.body_rect.midleft
-            data['rect'] = r
-
-            x, y = r.topleft
-            
-            title_rect = pg.Rect(x, y, r.width, 20)
-            title = Textbox(f'port {p.port}', fgcolor=(0, 0, 0))
-            title.fit_text(title_rect, tsize=15, centered=False)
-            title.rect.topleft = (x + 5, y)
-            data['text'].append(title)
-            #y += title_rect.height
-            
-            desc_rect = pg.Rect(x, y, r.width, 80)
-            desc = Textbox(self.node.ip1)
-            desc.fit_text(desc_rect, tsize=15, centered=False)
-            desc.rect.topleft = (x + 5, y + 25)
-            data['text'].append(desc)
-            y += desc_rect.height
-
-            self.port_data.append(data)
-            
-        self.set_port_pos()
-            
-    def set_port_pos(self):
-        ip = []
-        op = []
-        
-        for pd in self.port_data:
-            p = pd['port']
-            if p > 0:
-                ip.append(pd)
-            else:
-                op.append(pd)
-                
-        h = self.inner_rect.height
-        
-        step = h // (len(ip) + 1)
-        for i, y in enumerate(range(self.inner_rect.top + step, self.inner_rect.bottom, step)):
-            if i in range(len(ip)):
-                pd = ip[i]
-                r = pd['rect']
-                x0, y0 = r.topleft
-                r.center = (self.inner_rect.x, y)
-                x1, y1 = r.topleft
-                dx = x1 - x0
-                dy = y1 - y0
-                for tb in pd['text']:
-                    tb.rect.move_ip(dx, dy)
-                
-            
-        step = h // (len(op) + 1)
-        for i, y in enumerate(range(self.inner_rect.top + step, self.inner_rect.bottom, step)):
-            if i in range(len(op)):
-                pd = op[i]
-                r = pd['rect']
-                x0, y0 = r.topleft
-                r.center = (self.inner_rect.x, y)
-                x1, y1 = r.topleft
-                dx = x1 - x0
-                dy = y1 - y0
-                for tb in pd['text']:
-                    tb.rect.move_ip(dx, dy)
-
-    def draw(self, win):
-        pg.draw.rect(win, self.node.color, self.body_rect)
-        self.node.draw_at(win, self.body_rect.center)
-        self.info.draw(win)
-        
-        for pd in self.port_data:
-            c = pd['color']
-            r = pd['rect']
-            text = pd['text']
-            pg.draw.rect(win, c, r.inflate(6, 6))
-            win.blit(Info_Screen.port_box, r)
-            for tb in text:
-                tb.draw(win)
-            #win.blit(pd['image'], pd['rect'])
-            #pd['tb'].draw(win)
-
 def info_menu(n):
     screen = []
     n = type(n)(-1)
@@ -914,7 +798,7 @@ class Node_Editor:
         self.group_name = group_name
         
         b = Button((100, 20), 'save group node', func=self.save_group_node)
-        b.rect.midright = group_name.rect.midleft
+        b.rect.midleft = screen[-1].rect.midright
         b.rect.x -= 5
         b.rect.y += 5
         screen.append(b)
