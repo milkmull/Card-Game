@@ -1,0 +1,7 @@
+{
+    "test": {
+        "weight": 5,
+        "init": "Test",
+        "custom": true
+    }
+}

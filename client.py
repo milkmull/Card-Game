@@ -254,6 +254,7 @@ class Player:
         self.selected = []
         self.equipped = []
         self.ongoing = []
+        self.active_spells = []
         self.treasure = []
         self.spells = []
         self.landscapes = []
@@ -326,6 +327,7 @@ class Player:
         self.treasure.clear()
         self.spells.clear()
         self.landscapes.clear()
+        self.active_spells.clear()
         self.used_item = None
         
     def new_round(self):
@@ -334,6 +336,7 @@ class Player:
         self.selection.clear()
         self.ongoing.clear()
         self.landscapes.clear()
+        self.active_spells.clear()
         self.active_card = None
         
     def get_cards(self):
@@ -342,31 +345,14 @@ class Player:
     def get_spot(self):
         return self.client.get_spot(self.pid)
 
-    def play(self, uid):
-        for c in self.unplayed:
-
-            if c.uid == uid:
-                
-                self.unplayed.remove(c)
-                self.client.add_moving_card(self, original=c)
-                self.played.append(c)
-                
-                sound = SPRITESHEET.get_sound(c.name)
-                if sound:
-                    sound.play()
-                
-                break
+    def play(self, c):  
+        self.client.add_moving_card(self, original=c)
+        sound = SPRITESHEET.get_sound(c.name)
+        if sound:
+            sound.play()
          
     def new_deck(self, deck, cards):
         cards = [Card(name, uid) for name, uid in cards]
-        
-        #if deck == 'treasure':
-        #    
-        #    if len(cards) > len(self.treasure):
-        #        
-        #        r = self.get_spot().rect
-        #        self.client.add_particles(r, 100)
-
         setattr(self, deck, cards)
         
         if deck == 'selection' and self is self.client.main_p:
@@ -385,16 +371,8 @@ class Player:
                 self.coin = None   
             if self.dice == -1:   
                 self.dice = None
-         
-    def use_item(self, uid, name):
-        for c in self.items:
-            
-            if c.uid == uid:
                 
-                self.items.remove(c)
-
-                break
- 
+    def discard(self, name, uid, tags):
         c = Card(name, uid)
         c.set_olcolor(self.color)
         self.client.last_item = c
@@ -414,40 +392,7 @@ class Player:
                 
         card.set_olcolor(self.color)     
         target.ongoing.append(card)
-          
-    def discard(self, uid):
-        for c in self.equipped:
-            
-            if c.uid == uid:
-                
-                self.equipped.remove(c)
-                
-                break
-                
-        for c in self.ongoing:
-            
-            if c.uid == uid:
-                
-                self.ongoing.remove(c)
-                
-                break
-                
-        for c in self.items:
-            
-            if c.uid == uid:
-                
-                self.items.remove(c)
-                
-                break
-                
-        for c in self.spells:
-            
-            if c.uid == uid:
-                
-                self.spells.remove(c)
-                
-                break
-
+        
     def update_name(self, name):
         self.name = name
 
@@ -662,6 +607,7 @@ class Client:
         self.playing = True
         self.logs = {}
         self.log_queue = []
+        self.frame = 0
 
         self.pid = self.send('pid', threaded=False)
         self.colors = gen_colors(20)
@@ -887,6 +833,11 @@ class Client:
             objects = [p.score_card for p in players]
             self.elements['scores'].join_objects(objects, force=True)
 
+    def update_scores(self):
+        players = sorted(self.players, key=lambda p: p.score, reverse=True)
+        objects = [p.score_card for p in players]
+        self.elements['scores'].join_objects(objects, force=True)
+
     def update_panes(self):
         self.cards.clear()
 
@@ -906,7 +857,7 @@ class Client:
             self.cards += ps.add_cards('played', p.played)
             self.cards += ps.add_cards('active_card', [p.active_card] if p.active_card is not None else [])
             
-            cards = p.landscapes.copy() + p.ongoing.copy()
+            cards = p.landscapes.copy() + p.active_spells.copy()
             if self.status in ('game over', 'new game'):         
                 cards += [c.copy() for c in p.treasure] 
             self.cards += ps.add_cards('ongoing', cards)
@@ -1158,7 +1109,10 @@ class Client:
             self.events()
             self.update()
             self.draw()
- 
+            
+            if self.status == 'playing':
+                self.frame += 1
+
     def events(self):   
         p = pg.mouse.get_pos()
         self.input = pg.event.get()
@@ -1277,6 +1231,7 @@ class Client:
             
         self.update_panes()
         self.unpack_points()
+        self.update_scores()
             
         for p in self.points.copy():
             p.update()
@@ -1380,16 +1335,9 @@ class Client:
         self.exit()
         
     def get_info(self):
-        info = self.send('info', return_val=True)
-
-        if info:
-
-            scores, logs = info
-        
-            self.update_player_scores(scores)
-            
-            if logs:
-                self.log_queue += logs
+        logs = self.send('info', return_val=True)
+        if logs:
+            self.log_queue += logs
 
     def update_info(self):
         self.parse_logs(self.log_queue[:15])
@@ -1445,11 +1393,13 @@ class Client:
                     self.new_settings(log.get('settings'))
                     
             else:
-                
                 p = self.get_player_by_pid(pid)
                 
-                if type == 'play' and not log.get('d'):
-                    p.play(uid)
+                if type == 'play':
+                    p.play(Card(name, uid))
+                    
+                elif type == 'score':
+                    p.update_score(log['score'])
                     
                 elif type in ('gp', 'lp', 'give', 'sp'):
                     self.points_queue.append((p, log))
@@ -1457,14 +1407,11 @@ class Client:
                 elif type == 'nd':
                     p.new_deck(log.get('deck'), log.get('cards'))
                     
-                elif type == 'ui':
-                    p.use_item(uid, name)
+                elif type == 'disc':
+                    p.discard(name, uid, log.get('tags'))
                     
                 elif type == 'cast':
                     p.cast(Card(name, uid), self.get_player_by_pid(log.get('target')))
-                    
-                elif type == 'rs':
-                    p.discard(uid)
                     
                 elif type == 'cn':
                     p.update_name(log.get('name'))

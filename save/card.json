@@ -1,0 +1,64 @@
+{
+    "nodes": {
+        "0": {
+            "name": "Elif",
+            "pos": [
+                491,
+                263
+            ],
+            "val": null,
+            "contains": null,
+            "ports": {
+                "1": {
+                    "connection": null,
+                    "connection_port": null,
+                    "parent_port": null,
+                    "suppressed": false,
+                    "visible": true,
+                    "types": [
+                        "bool",
+                        "num",
+                        "ps",
+                        "cs",
+                        "ns",
+                        "bs",
+                        "player",
+                        "card"
+                    ]
+                },
+                "2": {
+                    "connection": null,
+                    "connection_port": null,
+                    "parent_port": null,
+                    "suppressed": false,
+                    "visible": true,
+                    "types": [
+                        "flow"
+                    ]
+                },
+                "-1": {
+                    "connection": null,
+                    "connection_port": null,
+                    "parent_port": null,
+                    "suppressed": false,
+                    "visible": true,
+                    "types": [
+                        "split",
+                        "flow"
+                    ]
+                },
+                "-2": {
+                    "connection": null,
+                    "connection_port": null,
+                    "parent_port": null,
+                    "suppressed": false,
+                    "visible": true,
+                    "types": [
+                        "flow"
+                    ]
+                }
+            }
+        }
+    },
+    "groups": {}
+}

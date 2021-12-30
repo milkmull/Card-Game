@@ -141,6 +141,43 @@ def yes_no(message, color1=(100, 100, 100), color2=(50, 50, 50), olcolor=(255, 2
     screen.append(b)
 
     return screen
+    
+def loading_screen(message='loading...', color1=(100, 100, 100), color2=(50, 50, 50), olcolor=(255, 255, 255)):
+    screen = []
+    
+    body = pg.Rect(0, 0, 300, 150)
+    upper = pg.Rect(0, 0, 300, 100)
+    lower = pg.Rect(0, 100, 300, 50)
+    text_rect = pg.Rect(0, 0, upper.width - 15, upper.height - 15)
+    outline = pg.Rect(0, 0, body.width + 10, body.height + 10)
+    
+    s = pg.Surface(outline.size).convert()
+    pg.draw.rect(s, olcolor, outline, border_radius=10)
+    body.center = outline.center
+    pg.draw.rect(s, color1, body, border_radius=10)
+    lower.bottomleft = body.bottomleft
+    pg.draw.rect(s, color2, lower, border_bottom_right_radius=10, border_bottom_left_radius=10)
+    i = Image(s)
+    i.rect.center = (WIDTH // 2, HEIGHT // 2)
+    screen.append(i)
+    
+    body.center = (WIDTH // 2, HEIGHT // 2)
+    upper.topleft = body.topleft
+    text_rect.center = upper.center
+    lower.bottomleft = body.bottomleft
+    
+    t = Textbox(message, olcolor=(0, 0, 0))
+    t.fit_text(text_rect, tsize=25)
+    t.rect.center = text_rect.center
+    screen.append(t)
+    
+    li = LoadingIcon()
+    li.rect.topright = body.topright
+    li.rect.top += 5
+    li.rect.right -= 5
+    screen.append(li)
+
+    return screen
 
 #menu mechanics------------------------------------------------------------------------
 
@@ -206,13 +243,17 @@ def check_refresh(elements, set_screen, args, kwargs):
                 
     return (elements, False)
 
-def menu(set_screen, args=[], kwargs={}, overlay=False):
+def menu(set_screen, args=[], kwargs={}, overlay=False, func=None, fargs=[], fkwargs={}):
     win = pg.display.get_surface()
     clock = pg.time.Clock()
     
     elements = set_screen(*args, **kwargs)
     skip = False
     input = []
+    
+    def exit():
+        pg.quit()
+        sys.exit()
     
     if overlay:
         s = pg.Surface(win.get_size()).convert_alpha()
@@ -226,13 +267,10 @@ def menu(set_screen, args=[], kwargs={}, overlay=False):
         
         input = pg.event.get()
         
-        for e in input:
-               
+        for e in input:     
             if e.type == pg.QUIT:
-                exit()
-                
+                exit() 
             elif e.type == pg.KEYDOWN:
-            
                 if e.key == pg.K_ESCAPE:
                     exit()
                     
@@ -271,10 +309,16 @@ def menu(set_screen, args=[], kwargs={}, overlay=False):
             if hasattr(e, 'draw'):
                 e.draw(win)
                 
+        if func:
+            exit = func(*fargs, **fkwargs)
+            if exit:
+                break
+                
         if overlay:
             pg.display.update([e.rect for e in elements])
         else:
             pg.display.flip()
+
 
 def transition(e1, e2):
     s1 = pg.Surface((WIDTH, HEIGHT)).convert()
@@ -317,6 +361,8 @@ def get_clip():
         text = ''
         
     return text
+    
+#drawing stuff------------------------------------------------------------
 
 def rect_outline(img, color=(0, 0, 0), ol_size=2):
     ol = img.copy()
@@ -330,12 +376,12 @@ def rect_outline(img, color=(0, 0, 0), ol_size=2):
     
 #other--------------------------------------------------------------------
 
-def ccw(A, B, C):
-    return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+def ccw(a, b, c):
+    return (c[1] - a[1]) * (b[0] - a[0]) > (b[1] - a[1]) * (c[0] - a[0])
 
-def intersect(A, B, C, D):
-    return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
-
+def intersect(a, b, c, d):
+    return ccw(a, c, d) != ccw(b, c, d) and ccw(a, b, c) != ccw(a, b, d)
+    
 #-------------------------------------------------------------------------
 
 class Mover:
@@ -532,107 +578,37 @@ class Mover:
         h = max(int(self.scale.y), 0)
         return (w, h)
 
-class Dragger:
-    held_list = []
-    
-    def start_held_list():
-        for o in Dragger.held_list:
-            o.start_held()
-            
-    def drop_held_list():
-        for o in Dragger.held_list:
-            o.drop()
-        Dragger.held_list.clear()
-        
-    def check_clear_list(p):
-        if not any(o.rect.collidepoint(p) for o in Dragger.held_list):
-            Dragger.drop_held_list()
-    
-    def __init__(self):
-        self._held = False
-        self._selected = False
-        self.hover = False
-        
-        self.rel_pos = [0, 0]
-        
-    def is_held(self):
-        return self._held
-        
-    def start_held(self):
-        self._held = True
-        self._selected = True
-        self.set_rel_pos(pg.mouse.get_pos())
-        
-    def add_to_held_list(self):
-        Dragger.held_list.append(self)
-        
-    def drop(self):
-        self._held = False
-        
-    def set_rel_pos(self, p):
-        px, py = p
-        sx, sy = self.rect.topleft
-        
-        self.rel_pos[0] = px - sx
-        self.rel_pos[1] = py - sy
-        
-    def events(self, input):
-        p = pg.mouse.get_pos()
-        for e in input:
-            if e.type == pg.MOUSEBUTTONDOWN:
-                if self.rect.collidepoint(p):
-                    if self in Dragger.held_list:
-                        Dragger.start_held_list()
-                    else:
-                        self.start_held()     
-                else:
-                    Dragger.check_clear_list(p)
-                    if not self._held:
-                        self._selected = False
-                break
-                    
-            elif e.type == pg.MOUSEBUTTONUP:
-                self.drop()
-                break
-                    
-        if self.rect.collidepoint(p):
-            self.hover = True
-        else:
-            self.hover = False
-            
-        if self in Dragger.held_list:
-            self._selected = True
-                
-    def update(self):
-        dx = 0
-        dy = 0
-
-        if self._held:
-            x0, y0 = self.rect.topleft
-            px, py = pg.mouse.get_pos()
-            rx, ry = self.rel_pos
-            self.rect.x = px - rx
-            self.rect.y = py - ry
-            x1, y1 = self.rect.topleft
-            
-            dx = x1 - x0
-            dy = y1 - y0
-            
-        return (dx, dy)
-
 class Image:
-    def __init__(self, image):
+    def __init__(self, image, bgcolor=None):
         self.image = image
         self.rect = self.image.get_rect()
+        self.bgcolor = bgcolor
         
-    def events(self, input):
-        pass
+    def set_background(self, color):
+        self.bgcolor = color
         
-    def update(self):
-        pass
+    def clear_background(self):
+        self.bgcolor = None
         
     def draw(self, win):
+        if self.bgcolor is not None:
+            pg.draw.rect(win, self.bgcolor, self.rect)
         win.blit(self.image, self.rect)
+        
+class Draw_Lines:
+    def __init__(self, points, color=(0, 0, 0), width=3):
+        self.points = points
+        self.color = color
+        self.width = width
+        
+    def set_color(self, color):
+        self.color = color
+        
+    def set_points(self, points):
+        self.points = points
+        
+    def draw(self, win):
+        pg.draw.lines(win, self.color, False, self.points, width=self.width)
 
 class FreeImage:
     def __init__(self, image, bound=None):
@@ -754,73 +730,290 @@ class FreeImage:
                 
                 pg.draw.rect(win, (255, 0, 0), r)
 
+class DraggerManager:
+    def __init__(self, draggers):
+        self.draggers = draggers
+        self.held_list = []
+        self.ctrl = False
+        
+        self.rs = Rect_Selector(self.draggers)
+        
+        self.log_queue = []
+        
+    def cancel(self):
+        self.rs.cancel()
+
+    def update_held_list(self, d):
+        if self.ctrl:
+            if d not in self.held_list:
+                self.held_list.append(d)
+                d.start_held()
+            else:
+                self.remove_held(d)
+        else:
+            if d not in self.held_list:
+                self.reset_held_list()
+                self.held_list.append(d)
+                d.start_held()
+                
+    def extend_held_list(self, selection):
+        for d in selection:
+            if d not in self.held_list:
+                self.held_list.append(d)
+                d.start_held()
+            
+    def start_held_list(self):
+        for d in self.held_list:
+            d.start_held()
+        
+    def reset_held_list(self):
+        for d in self.held_list:
+            d.deselect()
+        self.held_list.clear()
+            
+    def drop_held_list(self):
+        for d in self.held_list:
+            d.drop()
+        
+    def remove_held(self, d):
+        if d in self.held_list:
+            self.held_list.remove(d)
+            d.deselect()
+            
+    def select_all(self):
+        self.reset_held_list()
+        for d in self.draggers:
+            self.held_list.append(d)
+            d.select()
+            
+    def select_rect(self, r):
+        for d in self.draggers:
+            if d.rect.colliderect(r):
+                if d not in self.held_list:
+                    self.held_list.append(d)
+                    d.select()
+                    
+    def get_selected(self):
+        return self.held_list.copy()
+
+    def add_carry_log(self, carried):
+        log = {'t': 'carry', 'draggers': carried}
+        self.log_queue.append(log)
+        
+    def get_logs(self):
+        logs = self.log_queue.copy()
+        self.log_queue.clear()
+        return logs
+        
+    def get_next_log(self):
+        if self.log_queue:
+            return self.log_queue.pop(-1)
+
+    def events(self, input):
+        self.rs.events(input)
+        
+        p = pg.mouse.get_pos()
+        
+        click_down = False
+        click_up = False
+        a = False
+        
+        for e in input:
+            
+            if e.type == pg.MOUSEBUTTONDOWN:
+                click_down = True    
+            elif e.type == pg.MOUSEBUTTONUP:
+                click_up = True
+                
+            elif e.type == pg.KEYDOWN:
+                if (e.key == pg.K_RCTRL) or (e.key == pg.K_LCTRL):
+                    self.ctrl = True
+                elif e.key == pg.K_a:
+                    a = True
+            elif e.type == pg.KEYUP:
+                if (e.key == pg.K_RCTRL) or (e.key == pg.K_LCTRL):
+                    self.ctrl = False
+                    
+        if self.ctrl and a:
+            self.select_all()
+        elif click_up:
+            selected = self.rs.get_selected()
+            self.extend_held_list(selected)
+             
+        hit_any = False
+        
+        carried = {}
+             
+        for d in self.draggers:
+            if not getattr(d, 'visible', True):
+                continue
+            hit = d.rect.collidepoint(p)
+            d._hover = hit
+            if click_down:
+                if hit:
+                    self.update_held_list(d)
+                elif not self.ctrl:
+                    if d not in self.held_list:
+                        d._selected = False
+                        d.drop()
+            elif click_up:
+                dist = d.get_carry_dist()
+                if dist:
+                    carried[d] = dist
+                d.drop()
+                
+            if hit:
+                hit_any = True
+                
+        if carried:
+            self.add_carry_log(carried)
+                
+        if click_down and hit_any:
+            self.rs.cancel()
+                
+        if click_down:
+            if not hit_any:
+                self.reset_held_list()
+            elif not self.ctrl:
+                self.start_held_list()
+                
+    def update(self):
+        self.rs.update()
+        
+    def draw(self, win):
+        self.rs.draw(win)
+
+class Dragger:
+    def __init__(self):
+        self._held = False
+        self._selected = False
+        self._hover = False
+        self._stuck = False
+        self._rel_pos = [0, 0]
+        self._htime = 0
+        self._pickup = [0, 0]
+        
+    def is_held(self):
+        return self._held
+        
+    def set_stuck(self, stuck):
+        self._stuck = stuck
+        
+    def start_held(self):
+        if not self._stuck:
+            self._held = True
+            self._selected = True
+            self.set_rel_pos()
+            self._pickup = self.rect.center
+                
+    def drop(self):
+        self._held = False
+        self._htime = 0
+        self._pickup = self.rect.center
+        
+    def get_carry_dist(self):
+        x0, y0 = self._pickup
+        x1, y1 = self.rect.center
+        dx = x1 - x0
+        dy = y1 - y0
+        if dx or dy:
+            return (dx, dy)
+        
+    def select(self):
+        self._selected = True
+        
+    def deselect(self):
+        self._held = False
+        self._selected = False
+        self._htime = 0
+        
+    def set_rel_pos(self):
+        p = pg.mouse.get_pos()
+        px, py = p
+        sx, sy = self.rect.topleft
+        
+        self._rel_pos[0] = px - sx
+        self._rel_pos[1] = py - sy
+        
+    def update_htime(self):
+        if self._held and self._htime < 4:
+            self._htime += 1
+        return self._htime == 4
+
+    def update(self):        
+        dx = 0
+        dy = 0
+
+        if self._held and self.update_htime():
+            x0, y0 = self.rect.topleft
+            px, py = pg.mouse.get_pos()
+            rx, ry = self._rel_pos
+            self.rect.x = px - rx
+            self.rect.y = py - ry
+            x1, y1 = self.rect.topleft
+            
+            dx = x1 - x0
+            dy = y1 - y0
+            
+        return (dx, dy)
+
 class Rect_Selector:
-    def __init__(self, func=lambda : None, color=(255, 0, 0), rad=2):
+    def __init__(self, selection, color=(255, 0, 0), rad=2):
+        self.selection = selection
+        self.selected = []
         self.anchor = None
-
-        self.func = func
-
+        
         self.color = color
         self.rad = rad
+        self.rect = pg.Rect(0, 0, 0, 0)
         
-        self.group_rect = pg.Rect(0, 0, 0, 0)
-        self.selected = []
-        
-        self.pickup = False
-        self.init = False
-        
-    def get_selected(self, selection):
-        return [o for o in selection if self.group_rect.colliderect(o.rect)]
+    def cancel(self):
+        self.anchor = None
+        self.selected.clear()
 
-    def check_pickup(self):
-        p = pg.mouse.get_pos()
+    def update_selected(self):
+        self.selected = [s for s in self.selection if self.rect.colliderect(s.rect)]
         
-        if any(e.rect.collidepoint(p) for e in self.selected):
-            for e in self.selected:
-                e.set_rel_pos(p)
-            self.pickup = True
-        
+    def get_selected(self):
+        return self.selected.copy()
+
     def events(self, input):
         p = pg.mouse.get_pos()
-
+        
         for e in input:
-            if e.type == pg.MOUSEBUTTONDOWN and self.init:
+            if e.type == pg.MOUSEBUTTONDOWN:
                 if e.button == 1:
                     self.anchor = p
-                    break
+                break
             elif e.type == pg.MOUSEBUTTONUP:
                 if e.button == 1:
-                    if self.anchor is not None:
-                        self.func()
+                    self.update_selected()
                     self.anchor = None
-                    break
-        
-        self.init = True
+                break
                 
     def update(self):
         if self.anchor:
-        
             mx, my = pg.mouse.get_pos()
             ax, ay = self.anchor
             
             w = mx - ax
             h = my - ay
             
-            self.group_rect.size = (abs(w), abs(h))
-            self.group_rect.topleft = self.anchor
+            self.rect.size = (abs(w), abs(h))
+            self.rect.topleft = self.anchor
             
             if w < 0:
-                self.group_rect.right = ax
+                self.rect.right = ax
             if h < 0:
-                self.group_rect.bottom = ay
+                self.rect.bottom = ay
                 
     def draw(self, win):
         if self.anchor:
-            points = (self.group_rect.topleft, self.group_rect.bottomleft, self.group_rect.bottomright, self.group_rect.topright)
+            points = (self.rect.topleft, self.rect.bottomleft, self.rect.bottomright, self.rect.topright)
             pg.draw.lines(win, self.color, True, points, self.rad)
 
 class Textbox(Mover):
-    def __init__(self, message, tsize=10, anchor='center', font='freesansbold.ttf', fgcolor=(255, 255, 255), bgcolor=None, olcolor=None, olrad=2):
+    def __init__(self, message, tsize=10, anchor='center', font='arial.ttf', fgcolor=(255, 255, 255), bgcolor=None, olcolor=None, olrad=2):
         self.message = message
         self.original_message = message
         
@@ -981,7 +1174,8 @@ class Textbox(Mover):
             rect = image.get_rect()
             
         if self.bgcolor is not None:
-            bg = pg.Surface(rect.size).convert()
+            scaled = pg.Rect(0, 0, rect.width, rect.height)
+            bg = pg.Surface(scaled.size).convert()
             bg.fill(self.bgcolor)
             bg.blit(image, (0, 0))
             image = bg
@@ -1035,7 +1229,9 @@ class Textbox(Mover):
             
         self.new_image(image)
            
-    def fit_text(self, bounding_rect, tsize=None, centered=True):
+    def fit_text(self, bounding_rect, tsize=None, centered=True, new_message=None):
+        if new_message is not None:
+            self.message = new_message
         message = self.message
         
         if tsize is None:
@@ -1068,6 +1264,10 @@ class Textbox(Mover):
                 
                     word_surface, word_rect = self.render(word, get_rect=True)
                     w, h = word_rect.size
+                    
+                    if y + h > max_height:
+                        over_y = True
+                        break
                     
                     if x + w >= max_width:
                         x = 0
@@ -1335,7 +1535,7 @@ class Button:
         self.textbox.fit_text(self.text_rect)
 
 class Input:
-    def __init__(self, size, message='type here', tsize=30, color=(0, 0, 0, 0), tcolor=(255, 255, 255), length=99, check=lambda char: True, fitted=False):
+    def __init__(self, size, message='type here', tsize=30, color=(0, 0, 0, 0), tcolor=(255, 255, 255), length=99, check=lambda char: True, fitted=False, scroll=False):
         self.image = pg.Surface(size).convert_alpha()
         self.color = color
         self.image.fill(color)
@@ -1367,6 +1567,10 @@ class Input:
         self.timer = 0
         
         self.fitted = fitted
+        self.scroll = scroll
+        
+        self.last_message = message
+        self.logs = []
         
         self.textbox = Textbox(message, tsize=tsize, fgcolor=tcolor, anchor='topleft')
         self.update_message(self.textbox.get_message())
@@ -1401,6 +1605,11 @@ class Input:
             return self.textbox.get_message()[min(i, j):max(i, j)]
         return ''
         
+    def get_selected_chars(self):
+        chars = self.get_chars()
+        i, j = self.selection
+        return chars[min(i, j):max(i, j)]
+        
     def get_message(self):
         return self.textbox.get_message()
         
@@ -1413,15 +1622,26 @@ class Input:
                 self.textbox.update_message(message)
         
     def close(self):
-        self.active = False
-        if not self.textbox.get_message().strip():
-            self.textbox.reset()
-        self.selection.clear()
+        if self.active:
+            self.active = False
+            m = self.textbox.get_message()
+            if not m.strip():
+                self.textbox.reset()
+                m = self.textbox.get_message()
+            if self.last_message != m:
+                self.logs.append({'t': 'val', 'i': self, 'm': (self.last_message, m)})
+                self.last_message = m
+            self.selection.clear()
+        
+    def get_logs(self):
+        return_logs = self.logs.copy()
+        self.logs.clear()
+        return return_logs
         
     def check_message(self, text):
         passed = False
         if text is not None:
-            if (all(31 < ord(char) < 127 for char in text) and all(self.check(char) for char in text)) or (self.fitted and text == '\n'):
+            if (all(31 < ord(char) < 127 for char in text) and self.check(text)):# or (self.fitted and text == '\n'):
                 if 0 <= len(text) <= self.length:
                       passed = True
         return passed
@@ -1502,6 +1722,18 @@ class Input:
             message = m[:self.index] + m[min(self.index + 1, len(m)):]
             self.update_message(message)
             self.set_index(self.index - 1)
+        
+    def shift_textbox(self):
+        if self.textbox.rect.width < self.rect.width:
+            self.textbox.rect.midleft = self.rect.midleft
+        else:
+            chars = self.get_chars()
+            if self.index in range(len(chars)):
+                r = chars[self.index][1]
+                dx = r.x - self.textbox.rect.x
+                self.textbox.rect.midleft = self.rect.midleft
+                if dx > self.rect.width:
+                    self.textbox.rect.x = (self.textbox.rect.x - dx) + self.rect.width 
         
     def events(self, input):
         click = False
@@ -1675,7 +1907,10 @@ class Input:
             self.timer *= -1
 
         if not self.fitted:
-            self.textbox.rect.topleft = self.rect.topleft
+            if self.scroll:
+                self.shift_textbox()
+            else:
+                self.textbox.rect.topleft = self.rect.topleft
         else:
             self.textbox.rect.center = self.rect.center
             self.textbox.rect.y += 1
@@ -1697,7 +1932,7 @@ class Input:
             chars = self.get_chars()
             if chars:
                 if self.index in range(len(chars)):
-                    _, r, _ = chars[self.index]
+                    r = chars[self.index][1]
                     pg.draw.line(win, self.textbox.fgcolor, r.topleft, r.bottomleft, width=2)
             else:
                 r = self.textbox.get_text_rect(' ')
@@ -2044,7 +2279,74 @@ class Pane:
             self.scroll_buttons[0].draw(win)
         if self.can_scroll_down():
             self.scroll_buttons[1].draw(win)
+ 
+class Context_Manager:
+    def __init__(self, buttons, bgcolor=(255, 255, 255), width=100):
+        self.buttons = buttons  
+        height = sum(b.rect.height for b in self.buttons) + 10
+        self.rect = pg.Rect(0, 0, width, height)
+        self.image = pg.Surface(self.rect.size).convert()
+        self.image.fill((0, 0, 0))
+        pg.draw.rect(self.image, bgcolor, self.rect, border_radius=5)
+        self.image.set_colorkey((0, 0, 0))
         
+        self.visible = False
+        
+    def open(self):
+        p = pg.mouse.get_pos()
+        px, py = p
+        
+        if py - self.rect.height > 0:
+            self.rect.bottomleft = (px + 5, py - 5)
+        else:
+            self.rect.topleft = (px + 5, py + 5)
+        self.move()
+        self.visible = True
+        
+    def close(self):
+        self.visible = False
+        
+    def is_open(self):
+        return self.visible
+        
+    def set_args(self, args=[], kwargs={}):
+        for b in self.buttons:
+            b.set_args(args=args, kwargs=kwargs)
+        
+    def move(self):
+        x, y = self.rect.topleft
+        x += 5
+        y += 5
+        for b in self.buttons:
+            b.rect.topleft = (x, y)
+            y += b.rect.height
+            
+    def get_button_by_label(self, label):
+        for b in self.buttons:
+            if b.label == label:
+                return b
+        
+    def events(self, input):
+        if self.visible:
+            for b in self.buttons:
+                b.events(input)
+                
+        for e in input:
+            if e.type == pg.MOUSEBUTTONDOWN:
+                self.close()
+                break
+            
+    def update(self):
+        if self.visible:
+            for b in self.buttons:
+                b.update()
+        
+    def draw(self, win):
+        if self.visible:
+            win.blit(self.image, self.rect)
+            for b in self.buttons:
+                b.draw(win)
+
 class Popup(Pane):
     def __init__(self, size, slide_dir='u', label='', color=(0, 0, 0, 0), tsize=15, tcolor=(255, 255, 255)):
         super().__init__(size, label=label, color=color, tsize=tsize, tcolor=tcolor)
@@ -2405,7 +2707,20 @@ class RGBSlider(Slider):
         win.blit(self.image, self.rect)
         pg.draw.rect(win, self.hcolor, self.handel)
 
-    
+class LoadingIcon:
+    def __init__(self, rad=50, color=(0, 0, 255)):
+        self.rect = pg.Rect(0, 0, rad // 2, rad // 2)
+        
+        self.rad = rad
+        self.color = color
+        
+        self.angle = 0
+        
+    def update(self):
+        self.angle -= 0.1
+        
+    def draw(self, win):
+        pg.draw.arc(win, self.color, self.rect, self.angle, self.angle + 4.71239, width=4)
     
     
     

@@ -1,0 +1,514 @@
+{
+    "play": {
+        "michael": {
+            "weight": 1,
+            "init": "Michael"
+        },
+        "dom": {
+            "weight": 3,
+            "init": "Dom"
+        },
+        "jack": {
+            "weight": 1,
+            "init": "Jack"
+        },
+        "mary": {
+            "weight": 3,
+            "init": "Mary"
+        },
+        "daniel": {
+            "weight": 2,
+            "init": "Daniel"
+        },
+        "emily": {
+            "weight": 2,
+            "init": "Emily"
+        },
+        "gambling boi": {
+            "weight": 3,
+            "init": "GamblingBoi"
+        },
+        "mom": {
+            "weight": 2,
+            "init": "Mom"
+        },
+        "dad": {
+            "weight": 1,
+            "init": "Dad"
+        },
+        "aunt peg": {
+            "weight": 2,
+            "init": "AuntPeg"
+        },
+        "uncle john": {
+            "weight": 1,
+            "init": "UncleJohn"
+        },
+        "kristen": {
+            "weight": 1,
+            "init": "Kristen"
+        },
+        "joe": {
+            "weight": 1,
+            "init": "Joe"
+        },
+        "robber": {
+            "weight": 3,
+            "init": "Robber"
+        },
+        "ninja": {
+            "weight": 3,
+            "init": "Ninja"
+        },
+        "max the dog": {
+            "weight": 1,
+            "init": "MaxTheDog"
+        },
+        "basil the dog": {
+            "weight": 1,
+            "init": "BasilTheDog"
+        },
+        "copy cat": {
+            "weight": 2,
+            "init": "CopyCat"
+        },
+        "racoon": {
+            "weight": 2,
+            "init": "Racoon"
+        },
+        "fox": {
+            "weight": 2,
+            "init": "Fox"
+        },
+        "cow": {
+            "weight": 2,
+            "init": "Cow"
+        },
+        "shark": {
+            "weight": 1,
+            "init": "Shark"
+        },
+        "fish": {
+            "weight": 15,
+            "init": "Fish"
+        },
+        "pelican": {
+            "weight": 1,
+            "init": "Pelican"
+        },
+        "lucky duck": {
+            "weight": 1,
+            "init": "LuckyDuck"
+        },
+        "lady bug": {
+            "weight": 2,
+            "init": "LadyBug"
+        },
+        "mosquito": {
+            "weight": 2,
+            "init": "Mosquito"
+        },
+        "snail": {
+            "weight": 1,
+            "init": "Snail"
+        },
+        "dragon": {
+            "weight": 1,
+            "init": "Dragon"
+        },
+        "clam": {
+            "weight": 2,
+            "init": "Clam"
+        },
+        "cactus": {
+            "weight": 3,
+            "init": "Cactus"
+        },
+        "poison ivy": {
+            "weight": 2,
+            "init": "PoisonIvy"
+        },
+        "rose": {
+            "weight": 2,
+            "init": "Rose"
+        },
+        "uphalump": {
+            "weight": 1,
+            "init": "Uphalump"
+        },
+        "ghost": {
+            "weight": 2,
+            "init": "Ghost"
+        },
+        "mr. squash": {
+            "weight": 1,
+            "init": "MrSquash"
+        },
+        "mrs. squash": {
+            "weight": 1,
+            "init": "MrsSquash"
+        },
+        "sapling": {
+            "weight": 2,
+            "init": "Sapling"
+        },
+        "vines": {
+            "weight": 2,
+            "init": "Vines"
+        },
+        "zombie": {
+            "weight": 2,
+            "init": "Zombie"
+        },
+        "jumble": {
+            "weight": 1,
+            "init": "Jumble"
+        },
+        "demon water glass": {
+            "weight": 1,
+            "init": "DemonWaterGlass"
+        },
+        "succosecc": {
+            "weight": 1,
+            "init": "Succosecc"
+        },
+        "sunflower": {
+            "weight": 3,
+            "init": "Sunflower"
+        },
+        "lemon lord": {
+            "weight": 1,
+            "init": "LemonLord"
+        },
+        "wizard": {
+            "weight": 3,
+            "init": "Wizard"
+        },
+        "haunted oak": {
+            "weight": 1,
+            "init": "HauntedOak"
+        },
+        "office fern": {
+            "weight": 3,
+            "init": "OfficeFern"
+        },
+        "camel": {
+            "weight": 2,
+            "init": "Camel"
+        },
+        "rattle snake": {
+            "weight": 20,
+            "init": "RattleSnake"
+        },
+        "tumble weed": {
+            "weight": 3,
+            "init": "TumbleWeed"
+        },
+        "mummy": {
+            "weight": 2,
+            "init": "Mummy"
+        },
+        "pig": {
+            "weight": 2,
+            "init": "Pig"
+        },
+        "corn": {
+            "weight": 2,
+            "init": "Corn"
+        },
+        "bear": {
+            "weight": 2,
+            "init": "Bear"
+        },
+        "water lilly": {
+            "weight": 2,
+            "init": "WaterLilly"
+        },
+        "bat": {
+            "weight": 2,
+            "init": "Bat"
+        },
+        "sky flower": {
+            "weight": 2,
+            "init": "SkyFlower"
+        },
+        "garden snake": {
+            "weight": 2,
+            "init": "GardenSnake"
+        },
+        "big sand worm": {
+            "weight": 2,
+            "init": "BigSandWorm"
+        },
+        "lost palm tree": {
+            "weight": 2,
+            "init": "LostPalmTree"
+        },
+        "seaweed": {
+            "weight": 3,
+            "init": "Seaweed"
+        },
+        "scuba baby": {
+            "weight": 3,
+            "init": "ScubaBaby"
+        }
+    },
+    "items": {
+        "fishing pole": {
+            "weight": 4,
+            "init": "FishingPole"
+        },
+        "invisibility cloak": {
+            "weight": 2,
+            "init": "InvisibilityCloak"
+        },
+        "last turn pass": {
+            "weight": 4,
+            "init": "LastTurnPass"
+        },
+        "speed boost potion": {
+            "weight": 4,
+            "init": "SpeedBoostPotion"
+        },
+        "mirror": {
+            "weight": 2,
+            "init": "Mirror"
+        },
+        "sword": {
+            "weight": 20,
+            "init": "Sword"
+        },
+        "fertilizer": {
+            "weight": 3,
+            "init": "Fertilizer"
+        },
+        "treasure chest": {
+            "weight": 2,
+            "init": "TreasureChest"
+        },
+        "boomerang": {
+            "weight": 4,
+            "init": "Boomerang"
+        },
+        "bath tub": {
+            "weight": 2,
+            "init": "BathTub"
+        },
+        "detergent": {
+            "weight": 1,
+            "init": "Detergent"
+        },
+        "future orb": {
+            "weight": 1,
+            "init": "FutureOrb"
+        },
+        "knife": {
+            "weight": 4,
+            "init": "Knife"
+        },
+        "magic wand": {
+            "weight": 2,
+            "init": "MagicWand"
+        },
+        "lucky coin": {
+            "weight": 1,
+            "init": "LuckyCoin"
+        },
+        "sunglasses": {
+            "weight": 5,
+            "init": "Sunglasses"
+        },
+        "metal detector": {
+            "weight": 3,
+            "init": "MetalDetector"
+        },
+        "big rock": {
+            "weight": 2,
+            "init": "BigRock"
+        },
+        "unlucky coin": {
+            "weight": 2,
+            "init": "UnluckyCoin"
+        },
+        "torpedo": {
+            "weight": 2,
+            "init": "Torpedo"
+        },
+        "kite": {
+            "weight": 2,
+            "init": "Kite"
+        },
+        "balloon": {
+            "weight": 3,
+            "init": "Balloon"
+        },
+        "watering can": {
+            "weight": 2,
+            "init": "WateringCan"
+        },
+        "trap": {
+            "weight": 3,
+            "init": "Trap"
+        },
+        "flower pot": {
+            "weight": 2,
+            "init": "FlowerPot"
+        },
+        "bug net": {
+            "weight": 3,
+            "init": "BugNet"
+        }
+    },
+    "treasure": {
+        "mustard stain": {
+            "weight": 1,
+            "init": "MustardStain"
+        },
+        "gold": {
+            "weight": 1,
+            "init": "Gold"
+        },
+        "pearl": {
+            "weight": 4,
+            "init": "Pearl"
+        },
+        "gold coins": {
+            "weight": 10,
+            "init": "GoldCoins"
+        },
+        "bronze": {
+            "weight": 8,
+            "init": "Bronze"
+        },
+        "fools gold": {
+            "weight": 3,
+            "init": "FoolsGold"
+        },
+        "golden egg": {
+            "weight": 2,
+            "init": "GoldenEgg"
+        },
+        "magic bean": {
+            "weight": 2,
+            "init": "MagicBean"
+        }
+    },
+    "spells": {
+        "spell trap": {
+            "weight": 3,
+            "init": "SpellTrap"
+        },
+        "curse": {
+            "weight": 5,
+            "init": "Curse"
+        },
+        "treasure curse": {
+            "weight": 2,
+            "init": "TreasureCurse"
+        },
+        "item hex": {
+            "weight": 5,
+            "init": "ItemHex"
+        },
+        "luck": {
+            "weight": 1,
+            "init": "Luck"
+        },
+        "item leech": {
+            "weight": 4,
+            "init": "ItemLeech"
+        },
+        "mummys curse": {
+            "weight": 3,
+            "init": "MummysCurse"
+        },
+        "stardust": {
+            "weight": 2,
+            "init": "Stardust"
+        },
+        "north wind": {
+            "weight": 1,
+            "init": "NorthWind"
+        },
+        "the void": {
+            "weight": 1,
+            "init": "TheVoid"
+        }
+    },
+    "events": {
+        "flu": {
+            "weight": 2,
+            "init": "Flu"
+        },
+        "negative zone": {
+            "weight": 1,
+            "init": "NegativeZone"
+        },
+        "fishing trip": {
+            "weight": 2,
+            "init": "FishingTrip"
+        },
+        "item frenzy": {
+            "weight": 1,
+            "init": "ItemFrenzy"
+        },
+        "spell reverse": {
+            "weight": 2,
+            "init": "SpellReverse"
+        },
+        "sunny day": {
+            "weight": 2,
+            "init": "SunnyDay"
+        },
+        "parade": {
+            "weight": 2,
+            "init": "Parade"
+        },
+        "wind gust": {
+            "weight": 1,
+            "init": "WindGust"
+        },
+        "hunting season": {
+            "weight": 2,
+            "init": "HuntingSeason"
+        },
+        "harvest": {
+            "weight": 2,
+            "init": "Harvest"
+        }
+    },
+    "landscapes": {
+        "garden": {
+            "weight": 1,
+            "init": "Garden"
+        },
+        "desert": {
+            "weight": 1,
+            "init": "Desert"
+        },
+        "graveyard": {
+            "weight": 1,
+            "init": "Graveyard"
+        },
+        "city": {
+            "weight": 1,
+            "init": "City"
+        },
+        "farm": {
+            "weight": 1,
+            "init": "Farm"
+        },
+        "forest": {
+            "weight": 1,
+            "init": "Forest"
+        },
+        "water": {
+            "weight": 1,
+            "init": "Water"
+        },
+        "sky": {
+            "weight": 1,
+            "init": "Sky"
+        }
+    }
+}

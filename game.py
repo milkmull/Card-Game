@@ -1,7 +1,13 @@
 import random
+import json
+import importlib
 import save
-from cards import cards
+import func
+import new_card
 from player import Player
+
+def reload():
+    importlib.reload(new_card)
 
 class InfiniteLoop(Exception):
     pass
@@ -52,13 +58,21 @@ def sort_logs(log):
     
 def blank_player_info(pid):
     return {'name': f'player {pid}', 'description': '', 'tags': ['player'], 'image': 'img/user.png'}
-        
+  
+def get_card_data():
+    with open('save/cards.json', 'r') as f:
+        data = json.load(f)
+    return data
+  
 class Game:
-    def __init__(self, mode='online'):
+    def __init__(self, mode='online', cards=None):
         self.running = True
         
         self.settings = save.get_data('settings')
-        self.cards = cards.copy()
+        if cards is not None:
+            self.cards = cards
+        else:
+            self.cards = get_card_data()
         
         self.uid = 0
         self.pid = 0
@@ -70,6 +84,7 @@ class Game:
         self.log = []
         self.master_log = []
         self.logs = {}
+        self.frame = 0
         
         self.mem = []
         self.counter = 0
@@ -91,7 +106,6 @@ class Game:
         self.new_status('waiting')
 
         if self.mode == 'single':
-            
             player_info = save.get_data('cards')[0]
             player_info['name'] = save.get_data('username')
             self.new_player(0, player_info)
@@ -103,11 +117,12 @@ class Game:
 #copy stuff---------------------------------------------------------------------------------------------------
 
     def copy(self):
-        g = Game('turbo')
+        g = Game(mode='turbo')
         
         g.uid = self.uid
         
         g.settings = self.settings.copy()
+        g.cards = self.cards.copy()
 
         g.turn = self.turn
         g.current_turn = self.current_turn
@@ -123,7 +138,6 @@ class Game:
         g.main_p = g.players[g.current_player]
             
         for i in range(len(self.players)):
-            
             g.players[i].start_copy(g, self.players[i])
 
         g.discard = [c.light_sim_copy(g) for c in self.discard[:3]]
@@ -136,6 +150,7 @@ class Game:
 
     def new_game(self):
         self.clear_logs()
+        self.frame = 0
         self.add_log({'t': 'res'})
         
         if self.mode == 'single':
@@ -184,6 +199,7 @@ class Game:
 
     def new_round(self):
         self.clear_logs()
+        self.frame = 0
         self.add_log({'t': 'nr'})
         
         self.shuffle_players() 
@@ -214,16 +230,12 @@ class Game:
  
     def reset(self):
         self.new_status('waiting')
-
-        for p in self.players:
-            
-            p.reset()
-            
+        for p in self.players: 
+            p.reset()   
         self.add_log({'t': 'res'})
  
     def start(self, pid):
         if (pid == 0 and len(self.players) > 1) or self.mode == 'single':
-
             self.new_game()
             
     def isinit(self):
@@ -237,15 +249,11 @@ class Game:
     def add_cpus(self):
         self.pid = 1
 
-        for _ in range(self.get_setting('cpus')):
-            
+        for _ in range(self.get_setting('cpus')):  
             player_info = blank_player_info(self.pid)
-            
             p = Player(self, self.pid, self.get_setting('ss'), player_info, auto=True)
             self.players.append(p)      
-            
             self.add_log({'t': 'add', 'pid': p.pid})
-
             self.pid += 1
             
     def new_player(self, pid, player_info):
@@ -268,7 +276,7 @@ class Game:
             return True
             
         else:
-            
+        
             return False
             
     def remove_player(self, pid):
@@ -335,7 +343,6 @@ class Game:
         
     def shuffle_players(self):
         random.shuffle(self.players)
-        
         self.add_log({'t': 'ord', 'ord': [p.pid for p in self.players]})
 
 #card stuff---------------------------------------------------------------------------------------
@@ -347,52 +354,37 @@ class Game:
      
     def draw_cards(self, deck='play', num=1):
         deck = self.cards[deck]
-        weights = [val[0] for val in deck.values()]
+        weights = [val['weight'] for val in deck.values()]
         
         cards = random.choices(list(deck.keys()), weights=weights, k=num)
         
         for i, card in enumerate(cards):
+            cards[i] = self.get_card(card)
 
-            cards[i] = deck[card][1](self, self.get_new_uid())
-            
-        test = [c.name for c in cards]
-            
         return cards
         
-    def get_card(self, name):
+    def get_card(self, name, uid=None):
+        if uid is None:
+            uid = self.get_new_uid()
         for deck in self.cards.values():
-        
             info = deck.get(name)
-            
-            if info is not None:
-                
-                card = info[1](self, self.get_new_uid())
-
+            if info is not None:  
+                if info.get('custom'):
+                    card = getattr(new_card, info['init'])(self, uid)
+                else:
+                    card = getattr(func, info['init'])(self, uid)
                 return card
-  
-    def transform(self, old_card, const):
-        uid = old_card.uid
-        new_card = const(self, uid)
-        
-        if old_card != new_card:
-
-            info = self.find_card_deep(old_card)
-
-            if info:
-
-                owner, attr, i = info
-                getattr(owner, attr)[i] = new_card
-                self.add_log({'t': 'tf', 'c': old_card, 'name': new_card.name})
-
-                return self.transform(old_card, const)
-                
-            else:
-                
-                return new_card
-                
-        else:
             
-            return new_card
+    def transform(self, c1, name):
+        c2 = self.get_card(name, uid=c1.uid)
+        owner = self.find_owner(c1)
+        if owner and c2:
+            owner.replace_card(c1, c2) 
+        return c2
+                   
+    def swap(self, c1, c2):
+        self.transform(c1, c2.name)
+        self.transform(c2, c1.name)
        
     def find_card_deep(self, card):
         for p in self.players:
@@ -417,38 +409,37 @@ class Game:
                 if c == card:
                     return (p, 'spells', i)
                     
-            for i, c in enumerate(p.ongoing):
-                if c == card:
-                    return (p, 'ongoing', i)
-                    
             for i, c in enumerate(p.landscapes):
                 if c == card:
                     return (p, 'landscapes', i)
-                    
-    def swap(self, c1, c2):
-        self.transform(c1, type(c2))
-        self.transform(c2, type(c1))
                  
     def find_card(self, player, uid):
-        for c in player.played + player.unplayed + player.get_spells() + player.items + player.spells + player.treasure + player.equipped + player.selection + player.landscapes:
-            
+        for c in player.played + player.unplayed + player.active_spells + player.items + player.spells + player.treasure + player.equipped + player.selection + player.landscapes:  
             if c.get_id() == uid:
                 
                 return c
    
     def find_owner(self, c):
-        return next((p for p in self.players if c in p.played), None)
+        p = None
+        for p in self.players:
+            if p.find_card_deck(c):
+                return p
         
     def get_discarded_items(self):
         return [c.copy() for c in self.discard if 'item' in c.tags or 'equipment' in c.tags]
+        
+    def get_discard(self):
+        return self.discard.copy()
         
     def check_exists(self, uid):
         return any(self.find_card(p, uid) for p in self.players)
         
     def restore(self, c):
+        restored = False
         if c in self.discard:
-        
             self.discard.remove(c)
+            restored = True
+        return restored
             
     def get_last_item(self):
         i = self.get_discarded_items()
@@ -462,6 +453,10 @@ class Game:
     
     def get_event(self):
         return self.event.name if hasattr(self, 'event') else None
+    
+    def is_event(self, name):
+        if hasattr(self, 'event'):
+            return self.event.name == name 
   
 #shop stuff---------------------------------------------------------------------------------------
         
@@ -501,6 +496,7 @@ class Game:
 
     def add_log(self, log):
         log['u'] = 'g'
+        log['frame'] = self.frame
         self.log.append(log)
 
     def clear_logs(self):
@@ -521,9 +517,7 @@ class Game:
         else:
             info = logs
 
-        scores = self.get_scores()
-
-        return [scores, info]
+        return info
                 
     def update_game_logs(self):
         for key in self.logs:
@@ -538,18 +532,10 @@ class Game:
         p = self.get_player(pid)
         
         for key in self.logs:
-            
             sublog = self.logs[key]
             sublog += p.log
             
         p.log.clear()
-
-    def check_logs(self, pid):
-        sublog = self.logs[pid]
-        
-        scores = {p.pid: p.score for p in self.players}
-        
-        return (len(sublog), scores)
         
     def get_startup_log(self):
         logs = []
@@ -561,6 +547,9 @@ class Game:
             logs.append({'u': p.pid, 't': 'cn', 'pid': p.pid, 'name': p.name})
             
         logs.append({'u': 'g', 't': 'ord', 'ord': [p.pid for p in self.players]})
+
+        for log in logs:
+            log['frame'] = self.frame
 
         return logs
 
@@ -598,6 +587,7 @@ class Game:
             self.counter = 0
  
         if (self.mode == 'turbo' and self.counter > 100) or (not self.mode != 'turbo' and self.counter > 9999):
+            #print(self.main_p.ongoing, self.main_p.requests, self.main_p.active_card)
             raise InfiniteLoop
           
     def send(self, data):
@@ -678,7 +668,7 @@ class Game:
 #settings stuff---------------------------------------------------------------------------------------
 
     def get_active_names(self):
-        card_names = [key for group in cards for key in cards[group]]
+        card_names = [name for deck in self.cards for name in self.cards[deck]]
         player_names = [p.name for p in self.players]
         return card_names + player_names
 
@@ -699,16 +689,16 @@ class Game:
    
     def main(self):
         if self.status != 'waiting':
-
             for p in self.players:
                 if p.auto: 
                     p.auto_update()
       
-        if not self.mode == 'turbo':            
+        if self.mode != 'turbo':            
             self.update_game_logs()  
         else:
             self.master_log += self.log
             self.log.clear()
+        self.frame += 1
             
         self.check_loop()
 

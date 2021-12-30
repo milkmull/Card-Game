@@ -144,7 +144,7 @@ cards = {
                     
                     'mirror': (2, Mirror, ('item',)),
                     
-                    'sword': (2, Sword, ('equipment',)),
+                    'sword': (20, Sword, ('equipment',)),
                     
                     'fertilizer': (3, Fertilizer, ('item',)),
                     
@@ -156,7 +156,7 @@ cards = {
                     
                     'detergent': (1, Detergent, ('item',)),
                     
-                    'future orb': (0, FutureOrb, ('item',)),
+                    'future orb': (1, FutureOrb, ('item',)),
                     
                     'knife': (4, Knife, ('item',)),
                     

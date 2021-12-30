@@ -1,0 +1,48 @@
+
+finishing touches:
+	move all nodes onto screen
+	suppress all open ports
+	right click context menu (copy, paste, group, ungroup)
+	finalize sorting
+	rename group nodes
+	rework wire spacing
+	
+node stuff:
+	fix checkindex tag	
+	test infinite range in card builder (if min > max)
+	transform logging from inside info screen
+	negative numbers as gain input
+	give node
+
+game stuff:
+	rework main game loop
+	error "play" button active when no cards left to play, pressing causes error
+	
+errors:
+	string freezes when trying to fit text if text is too small
+	testing blank card
+
+timeline:
+	choose card type
+	error checks
+	create card test simulator, test environment replay game from logs to see where failure occurred
+	finish controlls (enter to select top search result)
+	add controlls (zoom and scroll or collision)
+	make alternate search method and criteria
+	write descriptions, make tags for searching, show port defaults 
+	make guide for card names, decks, tags, logs
+	polish ui
+	hook up to main card builder
+	create templates
+	finish main card builder
+	hook up to main game
+	send and recieve custom cards, turn on and off custom cards in game, toggle cards in settings
+	clean up code
+	error check linux on pi
+	release beta
+	finish playing effects
+	sound effects + custom for custom cards
+	
+	
+	
+	
