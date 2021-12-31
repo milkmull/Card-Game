@@ -11,10 +11,14 @@ import save
 from constants import *
 from ui import *
 
+import nodes2
+
 def init():
     globals()['CUSTOMSHEET'] = customsheet.get_sheet()
     if save.RESET or customsheet.RESET:
         reset(save.get_data('cards')[0])
+    else:
+        nodes2.init()
         
 def is_init():
     return 'CUSTOMSHEET' in globals()
@@ -100,6 +104,12 @@ def save_card(card, suppress=False):
         new_message('card saved!', 2000)
     
     CUSTOMSHEET.refresh()
+
+def get_save_data(card, node_editor):
+    data = card.get_info()
+    data['node_data'] = nodes2.get_save_data()
+    for k, v in data.items():
+        print(f'{k}: {v}')
 
 class Card:
     def __init__(self, name='Title', description='description', tags='tags', color=[161, 195, 161], id=None, image=''):
@@ -248,19 +258,6 @@ class Card:
             e.draw(image)
 
         return image
-
-    def write(self, start_node):
-        tabs = 0
-        with open(self.file, 'w+') as f:
-            
-            CLASS = self.title_text.title().replace(' ', '')
-            NAME = self.title_text.lower()
-            TYPES = '[]'
-            
-            f.write(def_line.format(CLASS, NAME, TYPES))
-            tabs = 2
-            
-            parse_node(f, tabs, start_node)
             
     def events(self, input):
         for e in self.elements.values():
@@ -297,13 +294,13 @@ class Builder:
     def __init__(self, card_info):
         self.screen = pg.display.get_surface()
         self.frame = pg.Surface((width, height)).convert()
-        
         self.clock = pg.time.Clock()
-        
         self.running = True
         
         self.cam = VideoCapture()
         self.recording = False
+        
+        self.node_editor = nodes2.Node_Editor()
 
         self.elements = {'card': Card(**card_info)}
         
@@ -345,10 +342,14 @@ class Builder:
         b.rect.topleft = self.elements['save'].rect.bottomleft
         b.rect.y += 20
         self.elements['quit'] = b
+        
+        b = Button((100, 40), 'node editor', func=self.node_editor.run)
+        b.rect.topleft = self.elements['quit'].rect.bottomleft
+        b.rect.y += 20
+        self.elements['node_editor'] = b
 
     def run(self):
         while self.running:
-            
             self.clock.tick(fps)
             
             self.events()
@@ -367,6 +368,9 @@ class Builder:
                 
                 if e.key == pg.K_ESCAPE:
                     self.running = False
+                    
+                elif e.key == pg.K_s:
+                    get_save_data(self.elements['card'], self.node_editor)
                     
             elif e.type == pg.MOUSEBUTTONDOWN:
                 pass

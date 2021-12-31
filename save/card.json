@@ -1,29 +1,43 @@
 {
     "nodes": {
         "0": {
-            "name": "Elif",
+            "name": "Player",
             "pos": [
-                491,
-                263
+                330,
+                221
+            ],
+            "val": null,
+            "contains": null,
+            "ports": {
+                "-1": {
+                    "connection": 1,
+                    "connection_port": 1,
+                    "parent_port": null,
+                    "suppressed": false,
+                    "visible": false,
+                    "types": [
+                        "player"
+                    ]
+                }
+            }
+        },
+        "1": {
+            "name": "SetExtraPlayer",
+            "pos": [
+                513,
+                305
             ],
             "val": null,
             "contains": null,
             "ports": {
                 "1": {
-                    "connection": null,
-                    "connection_port": null,
+                    "connection": 0,
+                    "connection_port": -1,
                     "parent_port": null,
                     "suppressed": false,
-                    "visible": true,
+                    "visible": false,
                     "types": [
-                        "bool",
-                        "num",
-                        "ps",
-                        "cs",
-                        "ns",
-                        "bs",
-                        "player",
-                        "card"
+                        "player"
                     ]
                 },
                 "2": {
@@ -43,22 +57,32 @@
                     "suppressed": false,
                     "visible": true,
                     "types": [
-                        "split",
-                        "flow"
-                    ]
-                },
-                "-2": {
-                    "connection": null,
-                    "connection_port": null,
-                    "parent_port": null,
-                    "suppressed": false,
-                    "visible": true,
-                    "types": [
                         "flow"
                     ]
                 }
             }
         }
     },
-    "groups": {}
+    "groups": {
+        "2": {
+            "pos": [
+                421,
+                263
+            ],
+            "nodes": [
+                0,
+                1
+            ],
+            "rel_node_pos": {
+                "0": [
+                    -91,
+                    -42
+                ],
+                "1": [
+                    92,
+                    42
+                ]
+            }
+        }
+    }
 }

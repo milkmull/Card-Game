@@ -6,14 +6,6 @@ from ui import Textbox, Dragger, rect_outline, intersect, Input
 
 def init():
     g = globals()
-    g['NODES'] = []
-    g['WIRES'] = []
-    g['ID'] = 0
-    g['ACTIVE_NODE'] = None
-    g['comparison_types'] = ['bool', 'num', 'ps', 'cs', 'ns', 'bs', 'player', 'card']
-    g['logs'] = []
-    g['desc_cache'] = {}
-
     names = []
     for k in g:
         v = g[k]
@@ -21,346 +13,197 @@ def init():
             names.append(k)     
     g['NAMES'] = names
     
-#log stuff-------------------------------------------------------------------
+class Manager:
+    manager = None
+    @classmethod
+    def set_manager(cls, m):
+        cls.manager = m
 
-def add_log(log):
-    global logs
-    logs.append(log)
-    
-def get_logs():
-    global logs
-    return_logs = logs.copy()
-    logs.clear()
-    return return_logs
-
-#----------------------------------------------------------------------------
-    
-def reset():
-    global NODES
-    global WIRES
-    global ID
-    for n in NODES.copy():
-        n.delete()
-    WIRES.clear()
-    ID = 0
-    
-def get_new_id():
-    global ID
-    id = ID
-    ID += 1
-    return id
-
-def set_loaded_id():
-    global NODES
-    global ID
-    ID = max(n.id for n in NODES) + 1
-    
-def new_wire(op, ip):
-    global WIRES
-    w = Wire(op, ip)
-    WIRES.append(w)
-    
-def del_wire(w):
-    global WIRES
-    WIRES.remove(w)
-    
-def add_node(n):
-    global NODES
-    NODES.append(n)
-    
-def del_node(n, method='del', d=False):
-    global NODES
-    if n in NODES:
-        NODES.remove(n)
-        if not d:
-            add_log({'t': 'del', 'node': n, 'm': method})
+class Mapping:
+    def find_chunk(n, nodes):
+        nodes.append(n)
         
-def get_node(name, nodes=[], id=None, val=None, pos=None, held=True):
-    g = globals()
-    
-    if len(NODES) == 50:
-        return
-    
-    if id is None:
-        id = get_new_id()
-        
-    if name == 'GroupNode':
-        n = g[name](id, nodes)
-    elif val is not None:
-        n = g[name](id, val=str(val))
-    else:
-        n = g[name](id)
-        
-    if pos is None and held:
-        pos = pg.mouse.get_pos()
-    if pos:
-        n.rect.center = pos
-        n.set_port_pos()
-    
-    if held:
-        n.start_held()
-        
-    add_node(n)
-    add_log({'t': 'add', 'node': n})
-    return n
-        
-def exists(name):
-    global NODES
-    return any(n.name == name for n in NODES)
-
-def get_active_node():
-    global ACTIVE_NODE
-    return ACTIVE_NODE
-    
-def set_active_node(n):
-    global ACTIVE_NODE
-    ACTIVE_NODE = n
-    
-def close_active_node():
-    global ACTIVE_NODE
-    if ACTIVE_NODE:
-        ACTIVE_NODE.end_connect()
-        ACTIVE_NODE = None
-
-def get_comparison_types():
-    global comparison_types
-    return comparison_types.copy()
-
-def get_color(types):
-    if not types:
-        return (0, 0, 0)
-    main_type = types[0]
-    if main_type == 'bool' in types:
-        return (255, 255, 0)
-    elif main_type == 'player' in types:
-        return (255, 0, 0)
-    elif main_type  in ('cs', 'ps', 'ns', 'bs'):
-        return (0, 255, 0)
-    elif main_type == 'log' in types:
-        return (255, 128, 0)
-    elif main_type == 'num' in types:
-        return (0, 0, 255)
-    elif main_type == 'string' in types:
-        return (255, 0, 255)
-    elif main_type == 'card' in types:
-        return (145, 30, 180)
-    elif main_type == 'split' in types:
-        return (128, 128, 128)
-    elif main_type == 'flow' in types:
-        return (255, 255, 255)
-    else:
-        return (100, 100, 100)
-        
-def get_contains_color(types):
-    if 'ps' in types and 'cs' in types:
-        return (0, 255, 0)
-    elif 'ps' in types:
-        return (255, 0, 0)
-    elif 'cs' in types:
-        return (145, 30, 180)
-    elif 'ns' in types:
-        return (0, 0, 255)
-    elif 'bs' in types:
-        return (255, 255, 0)
-    else:
-        return (0, 255, 0)
-
-def get_desc(desc):
-    global desc_cache
-    if desc not in desc_cache:
-        desc_cache[desc] = Textbox(desc, tsize=15, bgcolor=(0, 0, 0))
-    return desc_cache[desc]
-
-#other---------------------------------------------------------------------------
-
-def get_dashed_line(points, step=3):
-    dashed_points = []
-    for i in range(len(points) - 1):
-        p0 = points[i]
-        p1 = points[i + 1]
-        x0, y0 = p0
-        x1, y1 = p1
-        
-        if y0 == y1:
-            y = y0
-            if x0 > x1:
-                s = -step
-            else:
-                s = step
-            for x in range(x0, x1, s):
-                dashed_points.append((x, y))
-        elif x0 == x1:
-            x = x0
-            if y0 > y1:
-                s = -step
-            else:
-                s = step
-            for y in range(y0, y1, s):
-                dashed_points.append((x, y))
-    return dashed_points
-
-#mapping stuff-------------------------------------------------------------------
-
-def find_chunck(n, nodes):
-    nodes.append(n)
-    
-    for ip in n.get_input_ports():
-        if ip.connection:
-            connected_node = ip.connection_port.get_visible_node()
-            if connected_node not in nodes:
-                find_chunck(connected_node, nodes)
-    
-    for op in n.get_output_ports():
-        if op.connection:
-            connected_node = op.connection_port.get_visible_node()
-            if connected_node not in nodes:
-                find_chunck(connected_node, nodes)
-                
-    return nodes
-
-def map_ports(n, ports, skip_ip=False, skip_op=False, all_ports=False, out_type=None, in_type=None): 
-    if not skip_ip:
-        for ip in n.get_input_ports():
-            if not in_type or (in_type and in_type in ip.types):
-                if ip not in ports:
-                    if ip.connection:
-                        ports.append(ip)
-                        op = ip.connection_port
-                        if op not in ports:
-                            map_ports(op.node, ports, skip_ip=skip_ip, skip_op=skip_op, all_ports=all_ports, out_type=out_type, in_type=in_type)
-                    elif all_ports:
-                        ports.append(ip)
-            
-    if not skip_op:
-        for op in n.get_output_ports():
-            if not out_type or (out_type and out_type in ip.types):
-                if op not in ports:
-                    if op.connection:
-                        ports.append(op)
-                        ip = op.connection_port
-                        if ip not in ports:
-                            map_ports(ip.node, ports, skip_ip=skip_ip, skip_op=skip_op, all_ports=all_ports, out_type=out_type, in_type=in_type) 
-                    elif all_ports:
-                        ports.append(op)
-                
-    return ports
-
-def trace_flow(n, nodes, dir):
-    nodes.append(n)
-    
-    if dir == -1:
         for ip in n.get_input_ports():
             if ip.connection:
-                if 'flow' in ip.types and ip.connection not in nodes:
-                    trace_flow(ip.connection, nodes, dir=dir)
-                    
-    elif dir == 1:
+                connected_node = ip.connection_port.get_visible_node()
+                if connected_node not in nodes:
+                    Mapping.find_chunk(connected_node, nodes)
+        
         for op in n.get_output_ports():
             if op.connection:
-                if 'flow' in op.types and op.connection not in nodes:
-                    trace_flow(op.connection, nodes, dir=dir)
+                connected_node = op.connection_port.get_visible_node()
+                if connected_node not in nodes:
+                    Mapping.find_chunk(connected_node, nodes)
                     
-    return nodes
+        return nodes
 
-def find_parent_func(n):
-    nodes = trace_flow(n, [], -1)
-    for n in nodes:
-        if n.type == 'func':
-            return n
-            
-#connect-------------------------------------------------------------------------
-
-def connect(p0, p1, force=False, d=False):
-    n0 = p0.node
-    n1 = p1.node
-    
-    if (any(t in p1.types for t in p0.types) or force) and p0.is_output() != p1.is_output():
-    
-        p0.connect(n1, p1)
-        p1.connect(n0, p0)
-        
-        local_funcs, scope_output, loop_output = check_bad_connection(n0, n1)
-        can_connect0 = n0.can_connect(p0, n1, p1)
-        can_connect1 = n1.can_connect(p1, n0, p0)
-        if not can_connect0 or not can_connect1 or (len(local_funcs) > 1 or scope_output or loop_output):
-            p0.clear()
-            p1.clear()
-            
-        else:
-            new_wire(p0, p1)
-            if hasattr(n0, 'on_connect'):
-                n0.on_connect(p0)
-            if hasattr(n1, 'on_connect'):
-                n1.on_connect(p1) 
-            if not d:
-                add_log({'t': 'conn', 'nodes': (n0, n1), 'ports': (p0, p1)})
-
-    p0.close_wire()
-    p1.close_wire()
-    n0.prune_extra_ports()
-    n1.prune_extra_ports()
-    
-def disconnect(p0, p1, d=False):
-    n0 = p0.node
-    n1 = p1.node
-    
-    if not d:
-        add_log({'t': 'disconn', 'ports': (p0, p1), 'nodes': (n0, n1)})
-        
-    p0.wire.clip()
-        
-    p0.connection = None
-    p0.connection_port = None
-    p0.wire = None
-    if p0.parent_port:
-        n0.prune_extra_ports()
-    
-    p1.connection = None
-    p1.connection_port = None
-    p1.wire = None
-    if p1.parent_port:
-        n1.prune_extra_ports()
-   
-def check_bad_connection(n0, n1):   
-    local_funcs = set()
-    scope_output = set()
-    loop_output = set()
-    
-    nodes = find_chunck(n0, [])
-    local_funcs = set(n for n in nodes if n.type == 'func')
-
-    for n in nodes:
-        out_port = None
-        split_port = None
-        check_ports = []
-        for op in n.get_output_ports():
-            if 'split' in op.types:
-                split_port = op
-                if op.connection:
-                    check_ports.append(op)
-            elif 'flow' in op.types:
-                out_port = op
-            elif op.connection:
-                check_ports.append(op)
+    def map_ports(n, ports, skip_ip=False, skip_op=False, all_ports=False, out_type=None, in_type=None): 
+        if not skip_ip:
+            for ip in n.get_input_ports():
+                if not in_type or (in_type and in_type in ip.types):
+                    if ip not in ports:
+                        if ip.connection:
+                            ports.append(ip)
+                            op = ip.connection_port
+                            if op not in ports:
+                                Mapping.map_ports(op.node, ports, skip_ip=skip_ip, skip_op=skip_op, all_ports=all_ports, out_type=out_type, in_type=in_type)
+                        elif all_ports:
+                            ports.append(ip)
                 
-        if split_port and check_ports:
-            for op in check_ports:
-                ports = map_ports(op.connection, check_ports.copy(), all_ports=True, in_type='flow')
-                if out_port in ports:
-                    scope_output.add(op)
+        if not skip_op:
+            for op in n.get_output_ports():
+                if not out_type or (out_type and out_type in ip.types):
+                    if op not in ports:
+                        if op.connection:
+                            ports.append(op)
+                            ip = op.connection_port
+                            if ip not in ports:
+                                Mapping.map_ports(ip.node, ports, skip_ip=skip_ip, skip_op=skip_op, all_ports=all_ports, out_type=out_type, in_type=in_type) 
+                        elif all_ports:
+                            ports.append(op)
+                    
+        return ports
 
-    opp = n0.get_output_ports()     
-    for op in opp:
-        if op.connection:
-            ports = map_ports(op.connection, [], skip_ip=True)
-            if any(op in ports for op in opp):
-                loop_output.add(op)
-            
-    return (local_funcs, scope_output, loop_output)
+    def trace_flow(n, nodes, dir):
+        nodes.append(n)
+        
+        if dir == -1:
+            for ip in n.get_input_ports():
+                if ip.connection:
+                    if 'flow' in ip.types and ip.connection not in nodes:
+                        Mapping.trace_flow(ip.connection, nodes, dir=dir)
+                        
+        elif dir == 1:
+            for op in n.get_output_ports():
+                if op.connection:
+                    if 'flow' in op.types and op.connection not in nodes:
+                        Mapping.trace_flow(op.connection, nodes, dir=dir)
+                        
+        return nodes
 
-#--------------------------------------------------------------------------------
+    def find_parent_func(n):
+        nodes = Mapping.trace_flow(n, [], -1)
+        for n in nodes:
+            if n.type == 'func':
+                return n
+
+    def find_lead(nodes):
+        lead = nodes[0]
+        for n in nodes:
+            for op in n.get_output_ports():
+                if 'flow' in op.types:
+                    ips = n.get_input_ports()
+                    if not ips:
+                        return n
+                    else:
+                        for ip in ips:
+                            if 'flow' in ip.types and not ip.connection:
+                                return n
+                elif not n.get_input_ports():
+                    lead = n
+                    
+        return lead
+
+    def map_flow(n, nodes, columns, column=0):
+        if column not in columns:
+            columns[column] = [n]
+        else:
+            columns[column].append(n)
+        nodes.remove(n)
+
+        for ip in n.get_input_ports()[::-1]:
+            if 'flow' not in ip.types and ip.connection:
+                connected_node = ip.connection_port.get_visible_node()
+                if connected_node in nodes:
+                    Mapping.map_flow(connected_node, nodes, columns, column=column - 1)
+                    
+        opp = n.get_output_ports()
+        opp.sort(key=lambda p: p.get_true_port(), reverse=True)
+        
+        for op in opp[::-1]:
+            if 'flow' in op.types and op.connection:
+                connected_node = op.connection_port.get_visible_node()
+                if connected_node in nodes:
+                    Mapping.map_flow(connected_node, nodes, columns, column=column + 1)
+                
+        for op in opp:
+            if 'flow' not in op.types and op.connection:
+                connected_node = op.connection_port.get_visible_node()
+                if connected_node in nodes:
+                    in_flow = connected_node.get_in_flow()
+                    if in_flow:
+                        if in_flow.connection:
+                            if in_flow.connection in nodes:
+                                continue
+                    Mapping.map_flow(connected_node, nodes, columns, column=column + 1)
+                
+        return columns
+        
+    def check_bad_connection(n0, n1):   
+        local_funcs = set()
+        scope_output = set()
+        loop_output = set()
+        
+        nodes = Mapping.find_chunk(n0, [])
+        local_funcs = set(n for n in nodes if n.type == 'func')
+
+        for n in nodes:
+            out_port = None
+            split_port = None
+            check_ports = []
+            for op in n.get_output_ports():
+                if 'split' in op.types:
+                    split_port = op
+                    if op.connection:
+                        check_ports.append(op)
+                elif 'flow' in op.types:
+                    out_port = op
+                elif op.connection:
+                    check_ports.append(op)
+                    
+            if split_port and check_ports:
+                for op in check_ports:
+                    ports = Mapping.map_ports(op.connection, check_ports.copy(), all_ports=True, in_type='flow')
+                    if out_port in ports:
+                        scope_output.add(op)
+
+        opp = n0.get_output_ports()     
+        for op in opp:
+            if op.connection:
+                ports = Mapping.map_ports(op.connection, [], skip_ip=True)
+                if any(op in ports for op in opp):
+                    loop_output.add(op)
+                
+        return (local_funcs, scope_output, loop_output)
 
 class Wire:
+    @staticmethod
+    def get_dashed_line(points, step=3):
+        dashed_points = []
+        for i in range(len(points) - 1):
+            p0 = points[i]
+            p1 = points[i + 1]
+            x0, y0 = p0
+            x1, y1 = p1
+            
+            if y0 == y1:
+                y = y0
+                if x0 > x1:
+                    s = -step
+                else:
+                    s = step
+                for x in range(x0, x1, s):
+                    dashed_points.append((x, y))
+            elif x0 == x1:
+                x = x0
+                if y0 > y1:
+                    s = -step
+                else:
+                    s = step
+                for y in range(y0, y1, s):
+                    dashed_points.append((x, y))
+        return dashed_points
+
     def __init__(self, p0, p1):
         if p0.port < 0:
             self.op = p0
@@ -374,7 +217,7 @@ class Wire:
         self.points = self.find_points()
 
         self.bad = False
-        self.dashed_points = get_dashed_line(self.points)
+        self.dashed_points = Wire.get_dashed_line(self.points)
         
         self.last_pos_out = self.op.rect.center
         self.last_pos_in = self.ip.rect.center
@@ -402,7 +245,7 @@ class Wire:
                 return in_flow.wire.is_bad()
                 
     def clip(self):
-        del_wire(self)
+        Manager.manager.del_wire(self)
         
     def find_points(self): 
         onode = self.op.get_visible_node()
@@ -481,13 +324,13 @@ class Wire:
         current_pos_in = self.ip.rect.center
         if update_points or (self.last_pos_out != current_pos_out or self.last_pos_in != current_pos_in):
             self.points = self.find_points()
-            self.dashed_points = get_dashed_line(self.points)
+            self.dashed_points = Wire.get_dashed_line(self.points)
         self.last_pos_out = current_pos_out
         self.last_pos_in = current_pos_in
 
     def draw(self, win):
         if self.op.visible and self.ip.visible:
-            c = get_color(self.op.types)
+            c = self.op.get_color()
             if not self.bad:
                 pg.draw.lines(win, c, False, self.points, width=2)
             else:
@@ -497,6 +340,75 @@ class Wire:
                     pg.draw.line(win, c, p0, p1, width=2)
 
 class Port:
+    comparison_types = ['bool', 'num', 'string', 'ps', 'cs', 'ns', 'bs', 'player', 'card']
+    desc_cache = {}
+    
+    @classmethod
+    def get_comparison_types(cls):
+        return cls.comparison_types.copy()
+        
+    @classmethod
+    def get_desc(cls, desc):
+        if desc not in cls.desc_cache:
+            cls.desc_cache[desc] = Textbox(desc, tsize=15, bgcolor=(0, 0, 0))
+        return cls.desc_cache[desc]
+        
+    @staticmethod
+    def new_connection(p0, p1, force=False, d=False):
+        n0 = p0.node
+        n1 = p1.node
+        
+        if (any(t in p1.types for t in p0.types) or force) and p0.is_output() != p1.is_output():
+        
+            p0.connect(n1, p1)
+            p1.connect(n0, p0)
+            
+            local_funcs, scope_output, loop_output = Mapping.check_bad_connection(n0, n1)
+            can_connect0 = n0.can_connect(p0, n1, p1)
+            can_connect1 = n1.can_connect(p1, n0, p0)
+            if not can_connect0 or not can_connect1 or (len(local_funcs) > 1 or scope_output or loop_output):
+                p0.clear()
+                p1.clear()
+                
+            else:
+                Manager.manager.new_wire(p0, p1)
+                if hasattr(n0, 'on_connect'):
+                    n0.on_connect(p0)
+                if hasattr(n1, 'on_connect'):
+                    n1.on_connect(p1) 
+                if not d:
+                    Manager.manager.add_log({'t': 'conn', 'nodes': (n0, n1), 'ports': (p0, p1)})
+
+        p0.close_wire()
+        p1.close_wire()
+        n0.prune_extra_ports()
+        n1.prune_extra_ports()
+    
+    @staticmethod
+    def disconnect(p0, p1, d=False):
+        n0 = p0.node
+        n1 = p1.node
+        
+        if not d:
+            Manager.manager.add_log({'t': 'disconn', 'ports': (p0, p1), 'nodes': (n0, n1)})
+            
+        if p0.wire:
+            p0.wire.clip()
+        if p1.wire:
+            p1.wire.clip()
+            
+        p0.connection = None
+        p0.connection_port = None
+        p0.wire = None
+        if p0.parent_port:
+            n0.prune_extra_ports()
+        
+        p1.connection = None
+        p1.connection_port = None
+        p1.wire = None
+        if p1.parent_port:
+            n1.prune_extra_ports()
+   
     def __init__(self, port, types, desc=None):
         self.port = port
         self.types = types
@@ -520,7 +432,7 @@ class Port:
             desc = ''
         elif not desc:
             desc = self.types[0]
-        self.desc = get_desc(desc)
+        self.desc = Port.get_desc(desc)
         
     def __str__(self):
         return f"{self.port}: name: {getattr(self.connection, 'name', None)}, id: {getattr(self.connection, 'id', None)}"
@@ -543,7 +455,49 @@ class Port:
         if self.group_node:
             self.group_node.ports.append(p)
         return p
-       
+        
+#color stuff-------------------------------------------------------------------
+        
+    def get_color(self):
+        if not self.types:
+            return (0, 0, 0)
+        main_type = self.types[0]
+        if main_type == 'bool':
+            return (255, 255, 0)
+        elif main_type == 'player':
+            return (255, 0, 0)
+        elif main_type in ('cs', 'ps', 'ns', 'bs'):
+            return (0, 255, 0)
+        elif main_type == 'log':
+            return (255, 128, 0)
+        elif main_type == 'num':
+            return (0, 0, 255)
+        elif main_type == 'string':
+            return (255, 0, 255)
+        elif main_type == 'card':
+            return (145, 30, 180)
+        elif main_type == 'split':
+            return (128, 128, 128)
+        elif main_type == 'flow':
+            return (255, 255, 255)
+        else:
+            return (100, 100, 100)
+     
+    def get_contains_color(self):
+        types = self.types
+        if 'ps' in types and 'cs' in types:
+            return (0, 255, 0)
+        elif 'ps' in types:
+            return (255, 0, 0)
+        elif 'cs' in types:
+            return (145, 30, 180)
+        elif 'ns' in types:
+            return (0, 0, 255)
+        elif 'bs' in types:
+            return (255, 255, 0)
+        else:
+            return (0, 255, 0)
+
 #visibility stuff-------------------------------------------------------------------
 
     def is_visible(self):
@@ -552,10 +506,13 @@ class Port:
     def set_visibility(self, visible):
         self.visible = visible
         
-    def set_suppressed(self, suppressed):
-        if not self.suppressed:
-            self.clear()
-        self.suppressed = suppressed
+    def set_suppressed(self, suppressed, d=False):
+        if self.suppressed != suppressed:
+            if not self.suppressed:
+                self.clear()
+            self.suppressed = suppressed
+            if not d:
+                Manager.manager.add_log({'t': 'suppress', 's': suppressed, 'p': self})
          
     def get_visible_node(self):
         if self.group_node:
@@ -617,7 +574,7 @@ class Port:
         if self.connection:
             p0 = self
             p1 = self.connection_port
-            disconnect(p0, p1)
+            Port.disconnect(p0, p1)
 
     def is_open(self):
         return self.connection is None
@@ -637,7 +594,6 @@ class Port:
 
 class Node(Dragger):
     isnode = True
-
     def __init__(self, id, name, ports, pos=(width // 2, height // 2), val=None, type=None, color=(100, 100, 100)):
         self.id = id
         self.name = name
@@ -657,7 +613,6 @@ class Node(Dragger):
         self.image = self.get_image()
 
         self.rect = self.image.get_rect()
-        print(self.rect.size)
         self.rect.center = pos
         self.big_rect = pg.Rect(0, 0, self.rect.width + 10, self.rect.height + 10)
         self.big_rect.center = self.rect.center
@@ -674,7 +629,7 @@ class Node(Dragger):
         return self.name
         
     def copy(self):
-        return get_node(type(self).__name__)
+        return Manager.manager.get_node(type(self).__name__)
         
     def is_group(self):
         return isinstance(self, GroupNode)
@@ -901,12 +856,11 @@ class Node(Dragger):
         for p in self.ports.copy():
             p.clear()
             
-    def delete(self, d=False):
+    def delete(self):
         self.close_all()
         self.clear_connections()
         if hasattr(self, 'input'):
             self.input.close()
-        del_node(self, d=d)
   
     def prune_extra_ports(self):
         for p in self.ports.copy():
@@ -917,7 +871,7 @@ class Node(Dragger):
     def new_output_port(self, parent):
         p = parent.copy()
         self.set_stuck(True)
-        set_active_node(self)
+        Manager.manager.set_active_node(self)
         return p
  
     def create_in_indicator(self, port):
@@ -932,10 +886,10 @@ class Node(Dragger):
         else:
             return 
 
-        n = get_node(name)
+        n = Manager.manager.get_node(name)
         op = n.get_port(-1)
         op.open_wire()
-        connect(op, port)
+        Port.new_connection(op, port)
         return n
 
     def get_active_port(self):
@@ -952,7 +906,7 @@ class Node(Dragger):
         for p in self.get_extra_ports():
             if port.port == p.parent_port:
                 p.set_suppressed(not p.suppressed)
-        
+
     def can_connect(self, p0, n1, p1):
         return True
         
@@ -971,7 +925,7 @@ class Node(Dragger):
                 elif not port.connection and port.types:
                     port.open_wire() 
                     self.set_stuck(True)
-                    set_active_node(self)                            
+                    Manager.manager.set_active_node(self)                            
                 elif 'flow' not in port.types:
                     self.new_output_port(port)
                         
@@ -983,7 +937,7 @@ class Node(Dragger):
         if button == 1:
             if self.can_transform() and hit and dub_click and not port:
                 log = {'t': 'transform', 'n': self}
-                add_log(log)
+                Manager.manager.add_log(log)
                 t0 = {p.port: p.types.copy() for p in self.ports}
                 self.transform()
                 t1 = {p.port: p.types.copy() for p in self.ports}
@@ -992,20 +946,20 @@ class Node(Dragger):
     def click_up(self, button, hit, port):
         if port:
             
-            an = get_active_node()
+            an = Manager.manager.get_active_node()
             
             if button == 1:
                 if an and an is not self:
                     if not port.connection:
                         p0 = an.get_active_port()
                         p1 = port
-                        connect(p0, p1)
-                        close_active_node()
+                        Port.new_connection(p0, p1)
+                        Manager.manager.close_active_node()
                     elif 'flow' not in port.types:
                         p0 = self.new_output_port(port)
                         p1 = an.get_active_port()
-                        connect(p0, p1)
-                        close_active_node()
+                        Port.new_connection(p0, p1)
+                        Manager.manager.close_active_node()
 
             elif button == 3:
                 self.suppress_port(port)
@@ -1058,7 +1012,7 @@ class Node(Dragger):
                 logs = self.input.get_logs()
                 if logs:
                     for log in logs:
-                        add_log(log)
+                        Manager.manager.add_log(log)
         
 #draw stuff-------------------------------------------------------------------
         
@@ -1076,12 +1030,12 @@ class Node(Dragger):
                     r = p.rect.width // 2
                 else:
                     r = 3
-                pg.draw.circle(win, get_color(p.types), p.rect.center, r)
+                pg.draw.circle(win, p.get_color(), p.rect.center, r)
                 
                 if not p.suppressed:
                     contains = p.get_contains()
                     if contains:
-                        pg.draw.circle(win, get_contains_color(p.types), p.rect.center, r - 2)
+                        pg.draw.circle(win, p.get_contains_color(), p.rect.center, r - 2)
                         
                 if p.rect.collidepoint(mp):
                     p.desc.rect.centerx = p.rect.centerx
@@ -1102,15 +1056,15 @@ class Node(Dragger):
         for p in self.ports:
             p_rect = p.rect.move(dx, dy)
             r = p_rect.width // 2
-            pg.draw.circle(surf, get_color(p.types), p_rect.center, r)
+            pg.draw.circle(surf, p.get_color(), p_rect.center, r)
             contains = p.get_contains()
             if contains:
-                pg.draw.circle(surf, get_contains_color(p.types), p_rect.center, r - 2)
+                pg.draw.circle(surf, p.get_contains_color(), p_rect.center, r - 2)
 
     def draw_wire(self, win):
         p = self.get_active_port()
         if p:
-            pg.draw.line(win, get_color(p.types), p.rect.center, pg.mouse.get_pos(), width=3)
+            pg.draw.line(win, p.get_color(), p.rect.center, pg.mouse.get_pos(), width=3)
             
 class GroupNode(Node):
     def __init__(self, id, nodes, name='group'):
@@ -1118,19 +1072,22 @@ class GroupNode(Node):
         ports = self.get_group_ports(nodes)
         super().__init__(id, name, ports)
         self.set_self_pos()
-        self.rel_node_pos = self.get_rel_node_pos(nodes)
+        self.set_rel_node_pos()
         
     def reset_ports(self):
         self.ports = self.get_group_ports(self.nodes)
         self.set_port_pos()
    
-    def get_rel_node_pos(self, nodes):
+    def set_rel_node_pos(self):
         rel_node_pos = {}
         x0, y0 = self.rect.center
-        for n in nodes:
+        for n in self.nodes:
             x1, y1 = n.rect.center
-            rel_node_pos[n.id] = [x1 - x0, y1 - y0]
-        return rel_node_pos
+            rel_node_pos[n] = (x1 - x0, y1 - y0)
+        self.rel_node_pos = rel_node_pos
+        
+    def get_rel_node_pos(self):
+        return {n.id: pos for n, pos in self.rel_node_pos.items()}
         
     def get_group_ports(self, nodes):
         ipp = []
@@ -1163,13 +1120,8 @@ class GroupNode(Node):
         self.rect.centerx = sum(n.rect.centerx for n in self.nodes) // len(self.nodes)
         self.rect.centery = sum(n.rect.centery for n in self.nodes) // len(self.nodes)
         self.set_port_pos()
-       
-    def delete(self, d=False):
-        for n in self.nodes:
-            n.delete(d=d)
-        del_node(self, d=d)
-        
-    def ungroup(self, d=False):
+
+    def ungroup(self):
         sx, sy = self.rect.center
         for n in self.nodes:
             n.set_visibility(True)
@@ -1177,17 +1129,16 @@ class GroupNode(Node):
                 if p.types:
                     p.set_visibility(True)
                 p.group_node = None
-            rx, ry = self.rel_node_pos[n.id]
+            rx, ry = self.rel_node_pos[n]
             n.rect.center = (sx + rx, sy + ry)
             n.set_port_pos()
             n.drop()
-        del_node(self, method='ug', d=d)
         
     def new_output_port(self, parent):
         n = parent.node
         p = parent.copy()
         self.set_stuck(True)
-        set_active_node(n)
+        Manager.manager.set_active_node(n)
         return p
         
     def update(self):
@@ -1213,7 +1164,7 @@ class If(Node):
     ip1 = 'This boolean argument decides if the split path is run or skipped'
     op2 = "This out-flow port can be wired to an 'elif' node or an 'else' node."
     def __init__(self, id):
-        super().__init__(id, 'if', [Port(1, get_comparison_types(), desc='condition'), Port(2, ['flow']), Port(-1, ['split', 'flow']), Port(-2, ['flow'])])
+        super().__init__(id, 'if', [Port(1, Port.get_comparison_types(), desc='condition'), Port(2, ['flow']), Port(-1, ['split', 'flow']), Port(-2, ['flow'])])
         
     def get_default(self, p):
         if p == 1:
@@ -1230,7 +1181,7 @@ class Elif(Node):
     ip2 = "This in-flow port can only be wired to the out-flow of an 'if' node or another 'elif' node."
     op2 = "This out-flow port can be wired to an additional 'elif' node or an 'else' node."
     def __init__(self, id):
-        super().__init__(id, 'elif', [Port(1, get_comparison_types(), desc='condition'), Port(2, ['flow']), Port(-1, ['split', 'flow']), Port(-2, ['flow'])])
+        super().__init__(id, 'elif', [Port(1, Port.get_comparison_types(), desc='condition'), Port(2, ['flow']), Port(-1, ['split', 'flow']), Port(-2, ['flow'])])
  
     def can_connect(self, p0, n1, p1):
         if p0.port == 2:
@@ -1311,7 +1262,7 @@ class And(Node):
     ip2 = 'Boolean input (y)'
     op1 = "If x is True and y is True, this port will output True, otherwise it will output False."
     def __init__(self, id):
-        super().__init__(id, 'and', [Port(1, get_comparison_types(), desc='x'), Port(2, get_comparison_types(), desc='y'), Port(-1, ['bool'], desc='x and y')])
+        super().__init__(id, 'and', [Port(1, Port.get_comparison_types(), desc='x'), Port(2, Port.get_comparison_types(), desc='y'), Port(-1, ['bool'], desc='x and y')])
         
     def get_default(self, p):
         return 'True'
@@ -1327,7 +1278,7 @@ class Or(Node):
     ip2 = 'Boolean input (y)'
     op1 = "If x is True or y is True or both x and y are True, this port will output True, otherwise it will output False."
     def __init__(self, id):
-        super().__init__(id, 'or', [Port(1, get_comparison_types(), desc='x'), Port(2, get_comparison_types(), desc='y'), Port(-1, ['bool'], desc='x or y')])
+        super().__init__(id, 'or', [Port(1, Port.get_comparison_types(), desc='x'), Port(2, Port.get_comparison_types(), desc='y'), Port(-1, ['bool'], desc='x or y')])
         
     def get_default(self, p):
         return 'True'
@@ -1341,7 +1292,7 @@ class Not(Node):
     ip1 = 'Boolean input'
     op1 = "If the input is True, this port will output False. If it is False it will output True."
     def __init__(self, id):
-        super().__init__(id, 'not', [Port(1, get_comparison_types(), desc='x'), Port(-1, ['bool'], desc='not x')])
+        super().__init__(id, 'not', [Port(1, Port.get_comparison_types(), desc='x'), Port(-1, ['bool'], desc='not x')])
         
     def get_default(self, p):
         return 'True'
@@ -1357,7 +1308,7 @@ class Equal(Node):
     ip2 = 'value y'
     op1 = "True if x and y are equal, otherwise False."
     def __init__(self, id):
-        types = get_comparison_types()
+        types = Port.get_comparison_types()
         types = types[1:] + [types[0], 'string']
         super().__init__(id, 'equal', [Port(1, types, desc='x'), Port(2, types.copy(), desc='y'), Port(-1, ['bool'], desc='x == y')])
         
@@ -1669,7 +1620,7 @@ class Break(Node):
         
         ip = self.get_port(1)
         if ip.connection:
-            ports = map_ports(self, [], skip_op=True, in_type='flow')
+            ports = Mapping.map_ports(self, [], skip_op=True, in_type='flow')
             for p in ports:
                 if p.connection:
                     if p.connection.name in ('for', 'zipped for') and 'split' in p.connection_port.types:
@@ -1691,7 +1642,7 @@ class Continue(Node):
         
         ip = self.get_port(1)
         if ip.connection:
-            ports = map_ports(self, [], skip_op=True, in_type='flow')
+            ports = Mapping.map_ports(self, [], skip_op=True, in_type='flow')
             for p in ports:
                 if p.connection:
                     if p.connection.name in ('for', 'zipped for') and 'split' in p.connection_port.types:
@@ -2153,12 +2104,12 @@ class StartFlip(Node):
         return "player.add_request(self, 'flip')\n"
         
     def on_connect(self, p):
-        if p.port == 2 and not exists('flip'):
-            get_node('Flip')
+        if p.port == 1 and not Manager.manager.exists('flip'):
+            Manager.manager.get_node('Flip')
             
     def check_errors(self):
         text = ''
-        if not exists('flip'):
+        if not Manager.manager.exists('flip'):
             text = 'a flip node must be added to process flip results'
         return text
 
@@ -2192,12 +2143,12 @@ class StartRoll(Node):
         return "player.add_request(self, 'roll')\n"
         
     def on_connect(self, p):
-        if p.port == 2 and not exists('roll'):
-            get_node('Roll')
+        if p.port == 2 and not Manager.manager.exists('roll'):
+            Manager.manager.get_node('Roll')
             
     def check_errors(self):
         text = ''
-        if not exists('roll'):
+        if not Manager.manager.exists('roll'):
             text = 'a roll node must be added to process roll results'
         return text
         
@@ -2225,10 +2176,10 @@ class StartSelect(Node):
         
     def on_connect(self, p):
         if p.port == 2:
-            if not exists('get selection'):
-                get_node('GetSelection', pos=(self.rect.centerx + self.rect.width + 5, self.rect.centery), held=False)
-            if not exists('select'):
-                get_node('Select', pos=(self.rect.centerx, self.rect.centery + self.rect.height + 25), held=False)
+            if not Manager.manager.exists('get selection'):
+                Manager.manager.get_node('GetSelection', pos=(self.rect.centerx + self.rect.width + 5, self.rect.centery), held=False)
+            if not Manager.manager.exists('select'):
+                Manager.manager.get_node('Select', pos=(self.rect.centerx, self.rect.centery + self.rect.height + 25), held=False)
 
     def get_text(self):
         pf = find_parent_func(self)
@@ -2239,21 +2190,21 @@ class StartSelect(Node):
         
     def check_errors(self):
         text = ''
-        if not exists('get selection'):
+        if not Manager.manager.exists('get selection'):
             text = 'a get selection node must be added to initiate selection process'
-        elif not exists('select'):
+        elif not Manager.manager.exists('select'):
             text = 'a select node must be added to process player selection'
         return text
             
 class GetSelection(Node):
-    info = "This node is a function. It is used to put together a list of player of cards for the player to select from."
-    tips = "Be careful when initiating a dice roll within a 'Roll' process. It's possible to create an endless loop of rolls which will result in an 'InfiniteLoop' error being raised."
+    info = "This node is used to put together a list of players or cards for the player to select from. This process will only activate if a 'Start Select' node is present somewhere in a separate process. After this process returns a list, the selection that the player makes can be assessed in a separate process using a 'Select' node."
+    tips = "Two lists are provided at ports -1 and -2. These lists can be used to add values to and will be automatically returned after the process. If you wish to return a different list, it must be done using the 'Return List' node. This will override the default lists."
     op1 = "This port will output the result of the dice roll as a numeric value. The value will be in the range 1 to 6."
     def __init__(self, id):
         super().__init__(id, 'get selection', [Port(-1, ['ps'], desc='selection'), Port(-2, ['cs'], desc='selection'), Port(-3, ['flow'])], type='func') 
             
     def get_start(self):
-        ports = map_ports(self, [], skip_ip=True)
+        ports = Mapping.map_ports(self, [], skip_ip=True)
         for p in ports:
             if 'flow' in p.types:
                 if p.connection.name == 'return list':
@@ -2265,7 +2216,7 @@ class GetSelection(Node):
         return '\n\tdef get_selection(self, player):\n'
         
     def get_end(self):
-        ports = map_ports(self, [], skip_ip=True)
+        ports = Mapping.map_ports(self, [], skip_ip=True)
         for p in ports:
             if 'flow' in p.types:
                 if p.connection.name == 'return list':
@@ -2278,7 +2229,7 @@ class GetSelection(Node):
             
     def check_errors(self):
         text = ''
-        if exists('start selection') and not exists('select'):
+        if Manager.manager.exists('start selection') and not Manager.manager.exists('select'):
             text = 'a select node must be added to process player selection'
         return text
         
@@ -2291,7 +2242,7 @@ class ReturnList(Node):
         
         ip = self.get_port(2)
         if ip.connection:
-            ports = map_ports(self, [], skip_op=True)
+            ports = Mapping.map_ports(self, [], skip_op=True)
             for p in ports:
                 if p.connection.name == 'get selection':
                     break
@@ -2322,7 +2273,7 @@ class Select(Node):
             
     def check_errors(self):
         text = ''
-        if exists('start selection') and not exists('get select'):
+        if Manager.manager.exists('start selection') and not Manager.manager.exists('get select'):
             text = 'a get selection node must be added to initiate selection process'
         return text
   
@@ -2335,7 +2286,7 @@ class ReturnBool(Node):
         
         ip = self.get_port(2)
         if ip.connection:
-            ports = map_ports(self, [], skip_op=True)
+            ports = Mapping.map_ports(self, [], skip_op=True)
             for p in ports:
                 if p.connection.name in ('can use', 'can cast'):
                     break
@@ -2382,7 +2333,7 @@ class CanUse(Node):
         return '\n\tdef can_use(self, player):\n'
         
     def get_end(self):
-        ports = map_ports(self, [], skip_ip=True)
+        ports = Mapping.map_ports(self, [], skip_ip=True)
         for p in ports:
             if 'flow' in p.types:
                 if p.connection.name == 'return bool':
@@ -2400,12 +2351,12 @@ class StartOngoing(Node):
 
     def on_connect(self, p):
         if p.port == 1:
-            if not exists('init ongoing'):
-                get_node('InitOngoing', pos=(self.rect.centerx + self.rect.width + 5, self.rect.centery), held=False)
-            if not exists('add to ongoing'):
-                get_node('AddToOg', pos=(self.rect.centerx + (self.rect.width * 2) + 15, self.rect.centery), held=False)
-            if not exists('ongoing'):
-                get_node('Ongoing', pos=(self.rect.centerx, self.rect.centery + self.rect.height + 5), held=False)
+            if not Manager.manager.exists('init ongoing'):
+                Manager.manager.get_node('InitOngoing', pos=(self.rect.centerx + self.rect.width + 5, self.rect.centery), held=False)
+            if not Manager.manager.exists('add to ongoing'):
+                Manager.manager.get_node('AddToOg', pos=(self.rect.centerx + (self.rect.width * 2) + 15, self.rect.centery), held=False)
+            if not Manager.manager.exists('ongoing'):
+                Manager.manager.get_node('Ongoing', pos=(self.rect.centerx, self.rect.centery + self.rect.height + 5), held=False)
                 
     def get_text(self):
         return "self.start_ongoing(player)\n"
@@ -2609,7 +2560,7 @@ class CheckIndex(Node):
 
 class Splitter(Node):
     def __init__(self, id):
-        super().__init__(id, 'splitter', [Port(1, get_comparison_types(), desc='value'), Port(-1, [], desc='value'), Port(-2, [], desc='value')])
+        super().__init__(id, 'splitter', [Port(1, Port.get_comparison_types(), desc='value'), Port(-1, [], desc='value'), Port(-2, [], desc='value')])
         
     def update(self):
         super().update()

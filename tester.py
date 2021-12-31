@@ -17,9 +17,10 @@ class TestClient(client.Client):
         self.playing = False
 
 def init():
-    spritesheet.init()
-    client.init()
-    save.init()
+    pass
+    #spritesheet.init()
+    #client.init()
+    #save.init()
 
 def get_card_data():
     with open('save/cards.json', 'r') as f:
