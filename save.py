@@ -1,166 +1,213 @@
 import os, json, copy
 
 def init():
-    create_folders()
-    globals()['SAVE_DATA'] = load_save()
-    verify_data()
+    globals()['SAVE'] = Save()
 
-def create_folders():
-    if not os.path.exists('img/temp'):
-        os.mkdir('img/temp')
-    if not os.path.exists('img/custom'):
-        os.mkdir('img/custom')
-    if not os.path.exists('save'):
-        os.mkdir('save')
+def get_save():
+    return globals().get('SAVE')
 
-def get_save_data():
-    return globals()['SAVE_DATA']
-    
-def set_save_data(save_data):
-    globals()['SAVE_DATA'] = save_data
-
-def get_blank_data():
-    save_data = {'username': 'Player 0', 'port': 5555, 'ips': [],
-             'settings': {'rounds': 3, 'ss': 20, 'cards': 5, 'items': 3, 'spells': 1, 'cpus': 1, 'diff': 4},
-             'cards': [{'name': 'Player 0', 'description': 'description', 'tags': ['player'], 
-                        'image': 'img/user.png', 'color': [161, 195, 161], 'id': 0}]}
+class Save:
+    @staticmethod
+    def create_folders():
+        if not os.path.exists('img/temp'):
+            os.mkdir('img/temp')
+        if not os.path.exists('img/custom'):
+            os.mkdir('img/custom')
+        if not os.path.exists('save'):
+            os.mkdir('save')
+            
+    @staticmethod
+    def get_blank_data():
+        save_data = {'username': 'Player 0', 'port': 5555, 'ips': [],
+         'settings': {'rounds': 3, 'ss': 20, 'cards': 5, 'items': 3, 'spells': 1, 'cpus': 1, 'diff': 4},
+         'cards': [{'name': 'Player 0', 'description': 'description', 'tags': ['player'], 
+                    'image': 'img/user.png', 'color': [161, 195, 161], 'id': 0, 'node_data': {}}]}
                       
-    return save_data
-
-def update_save(save_data):
-    with open('save/save.json', 'w') as f:
-        json.dump(save_data, f, indent=4)
+        return save_data
         
-    set_save_data(save_data)
+    @staticmethod
+    def get_blank_card_data():
+        return {'name': 'Player 0', 'description': 'description', 'tags': ['player'], 
+                'image': 'img/user.png', 'color': [161, 195, 161], 'id': 0, 'node_data': {}}
+                
+    @staticmethod
+    def get_card_data():
+        with open('save/cards.json', 'r') as f:
+            data = json.load(f)
+        return data
 
-def load_save():
-    save_data = get_blank_data()
-    try:
-        with open('save/save.json', 'r') as f:
-            save_data = json.load(f)       
-    except:
-        refresh_save() 
-    finally:
-        if 'f' in locals():
-            f.close()
+    def __init__(self):
+        self.save_data = None
+        self.card_data = None
+        self.reset = False
+        
+        Save.create_folders()
+        self.load_save()
+        self.verify_data()
+        
+    def load_save(self):
+        try:
+            with open('save/save.json', 'r') as f:
+                save_data = json.load(f)  
+            self.save_data = save_data
+        except:
+            self.reset_save() 
+        finally:
+            if 'f' in locals():
+                f.close()
+        
+    def reset_save(self):
+        self.save_data = Save.get_blank_data()
+        self.update_save()
 
-    return save_data
-    
-def refresh_save():
-    global RESET
-    
-    save_data = get_blank_data()
-    update_save(save_data)
-
-    for f in os.listdir('img/custom'):
-        os.remove(f'img/custom/{f}')
+        for f in os.listdir('img/custom'):
+            os.remove(f'img/custom/{f}')
+                
+        import customsheet
+        sheet = customsheet.get_sheet()
+        if sheet:
+            sheet.reset()
+        
+    def update_save(self):
+        with open('save/save.json', 'w') as f:
+            json.dump(self.save_data, f, indent=4)
+        
+    def verify_data(self):
+        username = self.get_data('username')
+        if not isinstance(username, str):
+            self.set_data('username', 'Player 0')
+        
+        port = self.get_data('port')
+        if not isinstance(port, int):
+            self.set_data('port', 5555)
             
-    import builder
-    if builder.is_init():
-        builder.reset(get_data('cards')[0])
-    else:
-        RESET = True
-    
-def reload_save():
-    set_save_data(load_save())
-    
-def get_data(key):
-    save_data = get_save_data()
-    val = copy.deepcopy(save_data.get(key))
+        ips = self.get_data('ips')
+        if not isinstance(ips, list):
+            self.set_data('ips', [])
+            
+        cards = self.get_data('cards')
+        if not isinstance(cards, list):
+            self.reset_save()
+            
+        settings = self.get_data('settings')
+        if not isinstance(settings, dict):
+            self.reset_save()
 
-    return val
-    
-def set_data(key, val):
-    save_data = get_save_data()
-    
-    if save_data[key] != val: 
-        save_data[key] = val
+        base_settings = {'rounds': range(1, 6), 'ss': range(5, 51), 'cards': range(1, 11),
+                         'items': range(0, 6), 'spells': range(0, 4), 'cpus': range(1, 15), 'diff': range(0, 5)}
+        
+        if any(key not in settings for key in base_settings):
+            settings = {'rounds': 3, 'ss': 20, 'cards': 5, 'items': 3, 'spells': 1, 'cpus': 1, 'diff': 4}
+            self.set_data('settings', settings)
+            
+        elif any(settings.get(key) not in base_settings[key] for key in base_settings):
+            settings = {'rounds': 3, 'ss': 20, 'cards': 5, 'items': 3, 'spells': 1, 'cpus': 1, 'diff': 4}
+            self.set_data('settings', settings)
+        
+    def get_data(self, key):
+        val = copy.deepcopy(self.save_data.get(key))
+        return val
+        
+    def set_data(self, key, val):
+        if self.save_data[key] != val: 
+            self.save_data[key] = val
+            self.update_save()
+        
+    def update_ips(self, entry):
+        ips = self.get_data('ips')
+        if entry not in ips:
+            ips.append(entry)
+            self.set_data('ips', ips)
+        
+    def del_ips(self, entry):
+        ips = self.get_data('ips')
+        if entry in ips:
+            ips.remove(entry)
+            self.set_data('ips', ips)
+        
+    def update_cards(self, entry):
+        update = False
+        cards = self.get_data('cards')
 
-        update_save(save_data)
-    
-def update_ips(entry):
-    ips = get_data('ips')
+        for i, c in enumerate(cards):
+            if c['id'] == entry['id']:
+                cards[i] = entry
+                update = True
+                break
 
-    if entry not in ips:
-    
-        ips.append(entry)
-        set_data('ips', ips)
-
-def del_ips(entry):
-    ips = get_data('ips')
-    
-    if entry in ips:
-    
-        ips.remove(entry)
-        set_data('ips', ips)
- 
-def update_cards(entry):
-    update = False
-    cards = get_data('cards')
-
-    for i, c in enumerate(cards):
-        if c['id'] == entry['id']:
-            cards[i] = entry
+        if not update and entry not in cards:
+            cards.append(entry)
             update = True
-            break
-
-    if not update and entry not in cards:
-        cards.append(entry)
-        update = True
-            
-    if update:
-        set_data('cards', cards)
+                
+        if update:
+            self.set_data('cards', cards)
       
-def del_card(entry):
-    file = 'img/custom/{}.png'
-    cards = get_data('cards')
-    
-    if entry in cards:
-        i = cards.index(entry)
-        cards.remove(entry)
-        os.remove(file.format(entry['id']))
+    def del_card(self, entry):
+        file = 'img/custom/{}.png'
+        cards = self.get_data('cards')
         
-    for i in range(i, len(cards)):
-        cards[i]['id'] -= 1
-        id = cards[i]['id']
-        os.rename(file.format(id + 1), file.format(id))
+        if entry in cards:
+            i = cards.index(entry)
+            cards.remove(entry)
+            os.remove(file.format(entry['id']))
+            
+        for i in range(i, len(cards)):
+            cards[i]['id'] -= 1
+            id = cards[i]['id']
+            old_image_path = file.format(id + 1)
+            new_image_path = file.format(id)
+            os.rename(old_image_path, new_image_path)
+            cards[i]['image'] = new_image_path
+            
+        self.set_data('cards', cards)
         
-    set_data('cards', cards)
-    
-def new_card_id():
-    return len(get_data('cards'))
-
-def verify_data():
-    username = get_data('username')
-    if not isinstance(username, str):
-        set_data('username', 'Player 0')
-    
-    port = get_data('port')
-    if not isinstance(port, int):
-        set_data('port', 5555)
+    def new_card_id(self):
+        return len(self.get_data('cards'))
         
-    ips = get_data('ips')
-    if not isinstance(ips, list):
-        set_data('ips', [])
+    def get_new_card_data(self):
+        data = Save.get_blank_card_data()
+        data['id'] = self.new_card_id()
+        return data
         
-    cards = get_data('cards')
-    if not isinstance(cards, list):
-        refresh_save()
+    def get_custom_card_data(self):
+        data = {}
+        cards = self.get_data('cards')
+        for c in cards:
+            data[c['name']] = {'weight': c['weight'], 'classname': c['classname'], 'custom': True, 'published': c['published']}
+        return data
         
-    settings = get_data('settings')
-    if not isinstance(settings, dict):
-        refresh_save()
-
-    base_settings = {'rounds': range(1, 6), 'ss': range(5, 51), 'cards': range(1, 11),
-                     'items': range(0, 6), 'spells': range(0, 4), 'cpus': range(1, 15), 'diff': range(0, 5)}
-    
-    if any(key not in settings for key in base_settings):
-        settings = {'rounds': 3, 'ss': 20, 'cards': 5, 'items': 3, 'spells': 1, 'cpus': 1, 'diff': 4}
-        set_data('settings', settings)
+    def get_all_card_data(self):
+        data = Save.get_card_data()
+        data['play'].update(self.get_custom_card_data())
+        return data
         
-    elif any(settings.get(key) not in base_settings[key] for key in base_settings):
-        settings = {'rounds': 3, 'ss': 20, 'cards': 5, 'items': 3, 'spells': 1, 'cpus': 1, 'diff': 4}
-        set_data('settings', settings)
+    def get_playable_card_data(self):
+        data = Save.get_card_data()
+        cards = self.get_data('cards')
+        for c in cards:
+            if c['published'] and c['id']:
+                data['play'][c['name']] = {'weight': c['weight'], 'classname': c['classname'], 'custom': True}
+        return data
         
-SAVE_DATA = {}
-RESET = False
+    def publish_card(self, text):
+        with open('custom_cards.py', 'a') as f:
+            print(len(f))
+            f.write(text)
+            print(len(f))
+                    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        

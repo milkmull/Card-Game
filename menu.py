@@ -14,6 +14,7 @@ from constants import *
 from ui import *
 
 def init():
+    globals()['SAVE'] = save.get_save()
     globals()['SPRITESHEET'] = spritesheet.get_sheet()
     globals()['CUSTOMSHEET'] = customsheet.get_sheet()
     
@@ -43,7 +44,7 @@ def main_menu(args=[]):
     btn.rect.y += 5
     screen.append(btn)
     
-    btn = Button((200, 30), 'find local game', (0, 0, 0), (100, 100, 100), func=connect, args=['', save.get_data('port')])
+    btn = Button((200, 30), 'find local game', (0, 0, 0), (100, 100, 100), func=connect, args=['', SAVE.get_data('port')])
     btn.rect.midtop = screen[-1].rect.midbottom
     btn.rect.y += 5
     screen.append(btn)
@@ -77,7 +78,7 @@ def settings_menu():
     text.rect.midbottom = text.rect.midtop
     screen.append(text)
     
-    text = Input((200, 30), save.get_data('username'), color=(0, 0, 0), tcolor=(255, 255, 255), length=12)
+    text = Input((200, 30), SAVE.get_data('username'), color=(0, 0, 0), tcolor=(255, 255, 255), length=12)
     text.rect.midleft = screen[-1].rect.midright
     screen.append(text)
 
@@ -86,12 +87,12 @@ def settings_menu():
     text.rect.y = screen[-1].rect.bottom + 5
     screen.append(text)
     
-    text = Input((200, 30), str(save.get_data('port')), color=(0, 0, 0), tcolor=(255, 255, 255), 
+    text = Input((200, 30), str(SAVE.get_data('port')), color=(0, 0, 0), tcolor=(255, 255, 255), 
                                                    check=lambda char: char.isnumeric(), length=5)
     text.rect.midleft = screen[-1].rect.midright
     screen.append(text)
 
-    b = Button((200, 30), 'reset save data', func=refresh_save, tag='refresh')
+    b = Button((200, 30), 'reset save data', func=reset_save, tag='refresh')
     b.rect.centerx = width // 2
     b.rect.y = screen[-1].rect.bottom
     b.rect.y += b.rect.height
@@ -118,14 +119,11 @@ def select_host_menu():
     screen.append(p)
     
     buttons = []
-
-    for entry in save.get_data('ips'):
-
+    for entry in SAVE.get_data('ips'):
         btn = Button((300, 30), entry['name'] + ': ' + entry['ip'], (0, 0, 0), (100, 100, 100), func=menu,
                      args=[join_game_menu], kwargs={'args': [entry['name'], entry['ip']]}, tag='refresh')
         buttons.append(btn)
-        screen.append(btn)
-        
+        screen.append(btn)  
     p.join_objects(buttons)
 
     btn = Button((200, 30), 'new entry', (0, 0, 0), (100, 100, 100), func=menu, args=[new_entry_menu], tag='refresh')
@@ -241,7 +239,7 @@ def join_game_menu(name, ip):
     text.rect.right = width // 2
     screen.append(text)
     
-    input = Input((100, 20), str(save.get_data('port')), tsize=20)
+    input = Input((100, 20), str(SAVE.get_data('port')), tsize=20)
     input.rect.midleft = screen[-1].rect.midright
     screen.append(input)
     
@@ -253,7 +251,7 @@ def join_game_menu(name, ip):
     btn.rect.centerx = width // 2
     screen.append(btn)
     
-    btn = Button((200, 30), 'delete', (0, 0, 0), (255, 0, 0), func=save.del_ips,
+    btn = Button((200, 30), 'delete', (0, 0, 0), (255, 0, 0), func=SAVE.del_ips,
                  args=[{'name': name, 'ip': ip}], tag='break')
     btn.rect.midtop = screen[-1].rect.midbottom
     btn.rect.y += 5
@@ -276,7 +274,7 @@ def builder_menu():
     p.rect.y = 70
     screen.append(p)
 
-    cards = save.get_data('cards').copy()
+    cards = SAVE.get_data('cards').copy()
     
     buttons = []
     for c in cards:
@@ -287,7 +285,7 @@ def builder_menu():
         
     p.join_objects(buttons)
         
-    b = Button((200, 30), 'new', func=run_builder, tag='refresh')
+    b = Button((200, 30), 'new', func=run_builder, args=[SAVE.get_new_card_data()], tag='refresh')
     b.rect.midbottom = (width // 2, height)
     b.rect.y -= b.rect.height * 2
     screen.append(b)
@@ -346,11 +344,10 @@ def get_public_ip():
         
     return ip
     
-def refresh_save():
+def reset_save():
     r = menu(yes_no, args=['Are you sure you want to reset your save data?'], overlay=True)
     if r:
-        save.refresh_save()
-        CUSTOMSHEET.refresh()
+        SAVE.reset_save()
 
 #main--------------------------------------------------------------------
 
@@ -394,7 +391,7 @@ def start_game():
         except subprocess.TimeoutExpired:
             pass
 
-        net = network.Network(get_local_ip(), save.get_data('port'))
+        net = network.Network(get_local_ip(), SAVE.get_data('port'))
         c = client.Client(net, 'online')
         c.run()
         
@@ -431,14 +428,14 @@ def save_user_settings(button, username_field, port_field):
     username = username_field.get_message()
     port = int(port_field.get_message())
     
-    save.set_data('username', username)
+    SAVE.set_data('username', username)
     
     if port < 1023:
         menu(notice, args=['Port value too small. Please enter a value between 1023 and 65535.'], overlay=True)
     elif port > 65535:
         menu(notice, args=['Port value too large. Please enter a value between 1023 and 65535.'], overlay=True)
     else:
-        save.set_data('port', port)
+        SAVE.set_data('port', port)
         menu(notice, args=['Changes saved.'], overlay=True)
         button.set_tag('break')
         
@@ -451,12 +448,11 @@ def join_game(ip, field):
 def new_entry(name_field, ip_field):
     name = name_field.get_message()
     ip = ip_field.get_message()
-
-    save.update_ips({'name': name, 'ip': ip})
+    SAVE.update_ips({'name': name, 'ip': ip})
     
 #builder-----------------------------------------------------------------------
 
-def run_builder(card_info={}):
+def run_builder(card_info):
     b = builder.Builder(card_info)
     b.run()
     b.cam.close()
@@ -466,45 +462,4 @@ def del_card(entry):
     if not r:
         return
 
-    sheet = CUSTOMSHEET.sheet
-    cards = CUSTOMSHEET.cards
-    
-    id = entry['id']
-    
-    if id == 0:
-        return
-        
-    if len(cards) < 10:
-        surf = pg.Surface((sheet.get_width() - 375, 525)).convert()
-        x = id * 375
-        surf.blit(sheet, (0, 0), (0, 0, x, 525))
-        surf.blit(sheet, (x, 0), (x + 375, 0, sheet.get_width() - (x + 375), 525))
-
-    else:
-        if (len(cards) - 1) % 9 == 0:
-            size = (375 * 9, sheet.get_height() - 525)
-        else:
-            size = (375 * 9, sheet.get_height())
-            
-        surf = pg.Surface(size).convert()
-        found = False
-        
-        for row in range(sheet.get_height() // 525):
-            
-            if not found:
-                if id // 9 == row:           
-                    x = (id % 9) * 375
-                    y = row * 525
-                    surf.blit(sheet, (0, y), (0, y, x, 525))
-                    surf.blit(sheet, (x, y), (x + 375, y, sheet.get_width() - (x + 375), 525))
-                    found = True
-                else:
-                    surf.blit(sheet, (0, row * 525), (0, row * 525, sheet.get_width(), 525))
-            else:
-                surf.blit(sheet, (8 * 375, (row - 1) * 525), (0, row * 525, 375, 525))
-                surf.blit(sheet, (0, row * 525), (375, row * 525, 8 * 375, 525))
-    
-    pg.image.save(surf, 'img/customsheet.png')
-    save.del_card(entry)
-    
-    CUSTOMSHEET.refresh()
+    CUSTOMSHEET.del_card(entry)

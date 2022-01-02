@@ -1,7 +1,7 @@
 import os
 from constants import *
 from ui import rect_outline
-from builder import build_card
+from custom_card_base import Card
 import pygame as pg
 
 def init():
@@ -43,7 +43,7 @@ class Spritesheet:
         tags = info['tags']
         image = info['image']
 
-        img = build_card(name, description, tags, color=color, image=image)
+        img = Card.build_card(name, description, tags, color=color, image=image)
         self.extras[name] = img
         
     def remove_player_card(self, name):
@@ -67,7 +67,7 @@ class Spritesheet:
             if name in self.extras:
                 img = self.extras[name]
             else:
-                img = build_card(name, '', ['extra'], color=color)
+                img = Card.build_card(name, '', ['extra'], color=color)
                 self.extras[name] = img
                 
         else:

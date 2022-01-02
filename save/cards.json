@@ -2,513 +2,513 @@
     "play": {
         "michael": {
             "weight": 1,
-            "init": "Michael"
+            "classname": "Michael"
         },
         "dom": {
             "weight": 3,
-            "init": "Dom"
+            "classname": "Dom"
         },
         "jack": {
             "weight": 1,
-            "init": "Jack"
+            "classname": "Jack"
         },
         "mary": {
             "weight": 3,
-            "init": "Mary"
+            "classname": "Mary"
         },
         "daniel": {
             "weight": 2,
-            "init": "Daniel"
+            "classname": "Daniel"
         },
         "emily": {
             "weight": 2,
-            "init": "Emily"
+            "classname": "Emily"
         },
         "gambling boi": {
             "weight": 3,
-            "init": "GamblingBoi"
+            "classname": "GamblingBoi"
         },
         "mom": {
             "weight": 2,
-            "init": "Mom"
+            "classname": "Mom"
         },
         "dad": {
             "weight": 1,
-            "init": "Dad"
+            "classname": "Dad"
         },
         "aunt peg": {
             "weight": 2,
-            "init": "AuntPeg"
+            "classname": "AuntPeg"
         },
         "uncle john": {
             "weight": 1,
-            "init": "UncleJohn"
+            "classname": "UncleJohn"
         },
         "kristen": {
             "weight": 1,
-            "init": "Kristen"
+            "classname": "Kristen"
         },
         "joe": {
             "weight": 1,
-            "init": "Joe"
+            "classname": "Joe"
         },
         "robber": {
             "weight": 3,
-            "init": "Robber"
+            "classname": "Robber"
         },
         "ninja": {
             "weight": 3,
-            "init": "Ninja"
+            "classname": "Ninja"
         },
         "max the dog": {
             "weight": 1,
-            "init": "MaxTheDog"
+            "classname": "MaxTheDog"
         },
         "basil the dog": {
             "weight": 1,
-            "init": "BasilTheDog"
+            "classname": "BasilTheDog"
         },
         "copy cat": {
             "weight": 2,
-            "init": "CopyCat"
+            "classname": "CopyCat"
         },
         "racoon": {
             "weight": 2,
-            "init": "Racoon"
+            "classname": "Racoon"
         },
         "fox": {
             "weight": 2,
-            "init": "Fox"
+            "classname": "Fox"
         },
         "cow": {
             "weight": 2,
-            "init": "Cow"
+            "classname": "Cow"
         },
         "shark": {
             "weight": 1,
-            "init": "Shark"
+            "classname": "Shark"
         },
         "fish": {
             "weight": 15,
-            "init": "Fish"
+            "classname": "Fish"
         },
         "pelican": {
             "weight": 1,
-            "init": "Pelican"
+            "classname": "Pelican"
         },
         "lucky duck": {
             "weight": 1,
-            "init": "LuckyDuck"
+            "classname": "LuckyDuck"
         },
         "lady bug": {
             "weight": 2,
-            "init": "LadyBug"
+            "classname": "LadyBug"
         },
         "mosquito": {
             "weight": 2,
-            "init": "Mosquito"
+            "classname": "Mosquito"
         },
         "snail": {
             "weight": 1,
-            "init": "Snail"
+            "classname": "Snail"
         },
         "dragon": {
             "weight": 1,
-            "init": "Dragon"
+            "classname": "Dragon"
         },
         "clam": {
             "weight": 2,
-            "init": "Clam"
+            "classname": "Clam"
         },
         "cactus": {
             "weight": 3,
-            "init": "Cactus"
+            "classname": "Cactus"
         },
         "poison ivy": {
             "weight": 2,
-            "init": "PoisonIvy"
+            "classname": "PoisonIvy"
         },
         "rose": {
             "weight": 2,
-            "init": "Rose"
+            "classname": "Rose"
         },
         "uphalump": {
             "weight": 1,
-            "init": "Uphalump"
+            "classname": "Uphalump"
         },
         "ghost": {
             "weight": 2,
-            "init": "Ghost"
+            "classname": "Ghost"
         },
         "mr. squash": {
             "weight": 1,
-            "init": "MrSquash"
+            "classname": "MrSquash"
         },
         "mrs. squash": {
             "weight": 1,
-            "init": "MrsSquash"
+            "classname": "MrsSquash"
         },
         "sapling": {
             "weight": 2,
-            "init": "Sapling"
+            "classname": "Sapling"
         },
         "vines": {
             "weight": 2,
-            "init": "Vines"
+            "classname": "Vines"
         },
         "zombie": {
             "weight": 2,
-            "init": "Zombie"
+            "classname": "Zombie"
         },
         "jumble": {
             "weight": 1,
-            "init": "Jumble"
+            "classname": "Jumble"
         },
         "demon water glass": {
             "weight": 1,
-            "init": "DemonWaterGlass"
+            "classname": "DemonWaterGlass"
         },
         "succosecc": {
             "weight": 1,
-            "init": "Succosecc"
+            "classname": "Succosecc"
         },
         "sunflower": {
             "weight": 3,
-            "init": "Sunflower"
+            "classname": "Sunflower"
         },
         "lemon lord": {
             "weight": 1,
-            "init": "LemonLord"
+            "classname": "LemonLord"
         },
         "wizard": {
             "weight": 3,
-            "init": "Wizard"
+            "classname": "Wizard"
         },
         "haunted oak": {
             "weight": 1,
-            "init": "HauntedOak"
+            "classname": "HauntedOak"
         },
         "office fern": {
             "weight": 3,
-            "init": "OfficeFern"
+            "classname": "OfficeFern"
         },
         "camel": {
             "weight": 2,
-            "init": "Camel"
+            "classname": "Camel"
         },
         "rattle snake": {
             "weight": 20,
-            "init": "RattleSnake"
+            "classname": "RattleSnake"
         },
         "tumble weed": {
             "weight": 3,
-            "init": "TumbleWeed"
+            "classname": "TumbleWeed"
         },
         "mummy": {
             "weight": 2,
-            "init": "Mummy"
+            "classname": "Mummy"
         },
         "pig": {
             "weight": 2,
-            "init": "Pig"
+            "classname": "Pig"
         },
         "corn": {
             "weight": 2,
-            "init": "Corn"
+            "classname": "Corn"
         },
         "bear": {
             "weight": 2,
-            "init": "Bear"
+            "classname": "Bear"
         },
         "water lilly": {
             "weight": 2,
-            "init": "WaterLilly"
+            "classname": "WaterLilly"
         },
         "bat": {
             "weight": 2,
-            "init": "Bat"
+            "classname": "Bat"
         },
         "sky flower": {
             "weight": 2,
-            "init": "SkyFlower"
+            "classname": "SkyFlower"
         },
         "garden snake": {
             "weight": 2,
-            "init": "GardenSnake"
+            "classname": "GardenSnake"
         },
         "big sand worm": {
             "weight": 2,
-            "init": "BigSandWorm"
+            "classname": "BigSandWorm"
         },
         "lost palm tree": {
             "weight": 2,
-            "init": "LostPalmTree"
+            "classname": "LostPalmTree"
         },
         "seaweed": {
             "weight": 3,
-            "init": "Seaweed"
+            "classname": "Seaweed"
         },
         "scuba baby": {
             "weight": 3,
-            "init": "ScubaBaby"
+            "classname": "ScubaBaby"
         }
     },
     "items": {
         "fishing pole": {
             "weight": 4,
-            "init": "FishingPole"
+            "classname": "FishingPole"
         },
         "invisibility cloak": {
             "weight": 2,
-            "init": "InvisibilityCloak"
+            "classname": "InvisibilityCloak"
         },
         "last turn pass": {
             "weight": 4,
-            "init": "LastTurnPass"
+            "classname": "LastTurnPass"
         },
         "speed boost potion": {
             "weight": 4,
-            "init": "SpeedBoostPotion"
+            "classname": "SpeedBoostPotion"
         },
         "mirror": {
             "weight": 2,
-            "init": "Mirror"
+            "classname": "Mirror"
         },
         "sword": {
             "weight": 20,
-            "init": "Sword"
+            "classname": "Sword"
         },
         "fertilizer": {
             "weight": 3,
-            "init": "Fertilizer"
+            "classname": "Fertilizer"
         },
         "treasure chest": {
             "weight": 2,
-            "init": "TreasureChest"
+            "classname": "TreasureChest"
         },
         "boomerang": {
             "weight": 4,
-            "init": "Boomerang"
+            "classname": "Boomerang"
         },
         "bath tub": {
             "weight": 2,
-            "init": "BathTub"
+            "classname": "BathTub"
         },
         "detergent": {
             "weight": 1,
-            "init": "Detergent"
+            "classname": "Detergent"
         },
         "future orb": {
             "weight": 1,
-            "init": "FutureOrb"
+            "classname": "FutureOrb"
         },
         "knife": {
             "weight": 4,
-            "init": "Knife"
+            "classname": "Knife"
         },
         "magic wand": {
             "weight": 2,
-            "init": "MagicWand"
+            "classname": "MagicWand"
         },
         "lucky coin": {
             "weight": 1,
-            "init": "LuckyCoin"
+            "classname": "LuckyCoin"
         },
         "sunglasses": {
             "weight": 5,
-            "init": "Sunglasses"
+            "classname": "Sunglasses"
         },
         "metal detector": {
             "weight": 3,
-            "init": "MetalDetector"
+            "classname": "MetalDetector"
         },
         "big rock": {
             "weight": 2,
-            "init": "BigRock"
+            "classname": "BigRock"
         },
         "unlucky coin": {
             "weight": 2,
-            "init": "UnluckyCoin"
+            "classname": "UnluckyCoin"
         },
         "torpedo": {
             "weight": 2,
-            "init": "Torpedo"
+            "classname": "Torpedo"
         },
         "kite": {
             "weight": 2,
-            "init": "Kite"
+            "classname": "Kite"
         },
         "balloon": {
             "weight": 3,
-            "init": "Balloon"
+            "classname": "Balloon"
         },
         "watering can": {
             "weight": 2,
-            "init": "WateringCan"
+            "classname": "WateringCan"
         },
         "trap": {
             "weight": 3,
-            "init": "Trap"
+            "classname": "Trap"
         },
         "flower pot": {
             "weight": 2,
-            "init": "FlowerPot"
+            "classname": "FlowerPot"
         },
         "bug net": {
             "weight": 3,
-            "init": "BugNet"
+            "classname": "BugNet"
         }
     },
     "treasure": {
         "mustard stain": {
             "weight": 1,
-            "init": "MustardStain"
+            "classname": "MustardStain"
         },
         "gold": {
             "weight": 1,
-            "init": "Gold"
+            "classname": "Gold"
         },
         "pearl": {
             "weight": 4,
-            "init": "Pearl"
+            "classname": "Pearl"
         },
         "gold coins": {
             "weight": 10,
-            "init": "GoldCoins"
+            "classname": "GoldCoins"
         },
         "bronze": {
             "weight": 8,
-            "init": "Bronze"
+            "classname": "Bronze"
         },
         "fools gold": {
             "weight": 3,
-            "init": "FoolsGold"
+            "classname": "FoolsGold"
         },
         "golden egg": {
             "weight": 2,
-            "init": "GoldenEgg"
+            "classname": "GoldenEgg"
         },
         "magic bean": {
             "weight": 2,
-            "init": "MagicBean"
+            "classname": "MagicBean"
         }
     },
     "spells": {
         "spell trap": {
             "weight": 3,
-            "init": "SpellTrap"
+            "classname": "SpellTrap"
         },
         "curse": {
             "weight": 5,
-            "init": "Curse"
+            "classname": "Curse"
         },
         "treasure curse": {
             "weight": 2,
-            "init": "TreasureCurse"
+            "classname": "TreasureCurse"
         },
         "item hex": {
             "weight": 5,
-            "init": "ItemHex"
+            "classname": "ItemHex"
         },
         "luck": {
             "weight": 1,
-            "init": "Luck"
+            "classname": "Luck"
         },
         "item leech": {
             "weight": 4,
-            "init": "ItemLeech"
+            "classname": "ItemLeech"
         },
         "mummys curse": {
             "weight": 3,
-            "init": "MummysCurse"
+            "classname": "MummysCurse"
         },
         "stardust": {
             "weight": 2,
-            "init": "Stardust"
+            "classname": "Stardust"
         },
         "north wind": {
             "weight": 1,
-            "init": "NorthWind"
+            "classname": "NorthWind"
         },
         "the void": {
             "weight": 1,
-            "init": "TheVoid"
+            "classname": "TheVoid"
         }
     },
     "events": {
         "flu": {
             "weight": 2,
-            "init": "Flu"
+            "classname": "Flu"
         },
         "negative zone": {
             "weight": 1,
-            "init": "NegativeZone"
+            "classname": "NegativeZone"
         },
         "fishing trip": {
             "weight": 2,
-            "init": "FishingTrip"
+            "classname": "FishingTrip"
         },
         "item frenzy": {
             "weight": 1,
-            "init": "ItemFrenzy"
+            "classname": "ItemFrenzy"
         },
         "spell reverse": {
             "weight": 2,
-            "init": "SpellReverse"
+            "classname": "SpellReverse"
         },
         "sunny day": {
             "weight": 2,
-            "init": "SunnyDay"
+            "classname": "SunnyDay"
         },
         "parade": {
             "weight": 2,
-            "init": "Parade"
+            "classname": "Parade"
         },
         "wind gust": {
             "weight": 1,
-            "init": "WindGust"
+            "classname": "WindGust"
         },
         "hunting season": {
             "weight": 2,
-            "init": "HuntingSeason"
+            "classname": "HuntingSeason"
         },
         "harvest": {
             "weight": 2,
-            "init": "Harvest"
+            "classname": "Harvest"
         }
     },
     "landscapes": {
         "garden": {
             "weight": 1,
-            "init": "Garden"
+            "classname": "Garden"
         },
         "desert": {
             "weight": 1,
-            "init": "Desert"
+            "classname": "Desert"
         },
         "graveyard": {
             "weight": 1,
-            "init": "Graveyard"
+            "classname": "Graveyard"
         },
         "city": {
             "weight": 1,
-            "init": "City"
+            "classname": "City"
         },
         "farm": {
             "weight": 1,
-            "init": "Farm"
+            "classname": "Farm"
         },
         "forest": {
             "weight": 1,
-            "init": "Forest"
+            "classname": "Forest"
         },
         "water": {
             "weight": 1,
-            "init": "Water"
+            "classname": "Water"
         },
         "sky": {
             "weight": 1,
-            "init": "Sky"
+            "classname": "Sky"
         }
     }
 }

@@ -4,6 +4,7 @@ import difflib
 import pygame as pg
 
 import save
+from custom_card_base import Card
 import allnodes
 import tester
 from ui import *
@@ -13,6 +14,13 @@ from constants import *
 def init():
     allnodes.init()
     tester.init()
+    globals()['SAVE'] = save.get_save()
+    
+class Builder:
+    builder = None
+    @classmethod
+    def set_builder(cls, b):
+        cls.builder = b
 
 #visual stuff-----------------------------------------------------------------------
 
@@ -304,25 +312,10 @@ def load_group_data():
     return data
 
 #testing stuff--------------------------------------------------------------------
-
-def run_tester():
-    t = tester.Tester()
-    menu(loading_screen, kwargs={'message': 'testing card...'}, func=step_test, fargs=[t])
-    t.process()
-    messages = t.get_error_messages()
-    #print(t.get_error_lines())
-    menu(error_screen, args=[messages])
-    #for err in messages:
-    #    print(err)
-        
+    
 def step_test(t):
     t.step_sim()
     return t.get_sims() == 100
-    
-def test_run():
-    text = tester.test_run()
-    if text:
-        menu(notice, args=[text])
 
 #sorting stuff-------------------------------------------------------------------------
 
@@ -344,11 +337,12 @@ def move_nodes(nodes, c):
 #node editor--------------------------------------------------------------------------
 
 class Node_Parser:
-    def __init__(self, nodes):
+    def __init__(self, card, nodes):
+        self.card = card
         self.nodes = nodes
         self.start_node = next((n for n in self.nodes if n.name == 'start'), None)
         
-        self.header = "from card_base import *\n\nclass Test(Card):\n\tdef __init__(self, game, uid):\n\t\tsuper().__init__(game, uid, 'test', tags=[])\n"
+        self.header = f"from card_base import *\n\nclass {self.card.classname}(Card):\n\tdef __init__(self, game, uid):\n\t\tsuper().__init__(game, uid, '{self.card.name}', tags=[])\n"
         self.dec_line = ''
 
         self.funcs = {}
@@ -443,12 +437,14 @@ class Node_Parser:
                 if not op.is_open():
                     self.parse_nodes(op.connection, func=func, tabs=tabs)
 
-class Node_Editor:
-    def __init__(self):
+class Node_Editor:        
+    def __init__(self, card):
         self.screen = pg.display.get_surface()
+        self.camera = self.screen.get_rect()
         self.clock = pg.time.Clock()
         
-        self.camera = self.screen.get_rect()
+        self.card = card
+
         self.offset = [0, 0]
 
         self.id = 0
@@ -481,6 +477,11 @@ class Node_Editor:
         self.ctimer = 40
         
         self.running = True
+        
+        allnodes.Manager.set_manager(self)
+        
+        if self.card.node_data:
+            self.load_save_data(self.card.node_data)
         
 #visual stuff--------------------------------------------------------------------
         
@@ -515,14 +516,25 @@ class Node_Editor:
         b.rect.topleft = (5, 5)
         screen.append(b)
    
-        b = Button((100, 20), 'test', func=run_tester)
+        b = Button((100, 20), 'test', func=self.run_tester)
         b.rect.topleft = screen[-1].rect.bottomleft
         b.rect.top += 5
         screen.append(b)
+
+        def test_run():
+            text = tester.test_run(self.card)
+            if text:
+                menu(notice, args=[text])
         
         b = Button((100, 20), 'test game', func=test_run)
         b.rect.topleft = screen[-1].rect.bottomleft
         b.rect.top += 5
+        screen.append(b)
+                
+        b = Button((100, 20), 'publish card', func=self.publish)
+        b.rect.top = 5
+        b.rect.midleft = screen[-1].rect.midright
+        b.rect.y += 5
         screen.append(b)
         
         b = Button((100, 20), 'load', func=self.load_progress)
@@ -765,6 +777,33 @@ class Node_Editor:
         self.search_bar.rect.bottomleft = (width, 0)
         self.search_window.rect.topleft = self.search_bar.rect.bottomright
 
+#testing stuff----------------------------------------------------------------------
+
+    def run_tester(self):
+        t = tester.Tester(self.card)
+        menu(loading_screen, kwargs={'message': 'testing card...'}, func=step_test, fargs=[t])
+        t.process()
+        messages = t.get_error_messages()
+        #print(t.get_error_lines())
+        menu(error_screen, args=[messages])
+        #for err in messages:
+        #    print(err)
+        
+    def publish(self):
+        text = self.run_parser()
+        
+        t = tester.Tester(self.card)
+        menu(loading_screen, kwargs={'message': 'testing card...'}, func=step_test, fargs=[t])
+        t.process()
+        messages = t.get_error_messages()
+        if messages:
+            menu(error_screen, args=[messages])
+            return
+            
+        SAVE.publish_card(text)
+        
+        menu(notice, args=['Card has been published successfully!'])
+
 #base node stuff--------------------------------------------------------------------
 
     def reset(self):
@@ -929,6 +968,9 @@ class Node_Editor:
         return nodes
 
     def unpack_data(self, data):
+        if not data:
+            return
+            
         nodes = {}
         id_map = {}
 
@@ -997,14 +1039,27 @@ class Node_Editor:
 
         return nodes
 
+    def load_save_data(self, data):
+        self.reset()
+        nodes = self.unpack_data(data)
+        if nodes:
+            for n in nodes:
+                n.drop()
+
 #saving stuff--------------------------------------------------------------------
+
+    def get_save_data(self):
+        return pack_data(self.nodes)
 
     def save_progress(self):
         if not self.nodes:
             return   
         save_data = pack_data(self.nodes)
-        with open('save/card.json', 'w') as f:
-            json.dump(save_data, f, indent=4)
+        if not Builder.builder:
+            with open('save/card.json', 'w') as f:
+                json.dump(save_data, f, indent=4)
+        else:
+            Builder.builder.save_progress()
 
     def save_group_node(self):
         gn = None
@@ -1020,16 +1075,13 @@ class Node_Editor:
         save_group_node(name, gn)
 
     def run_parser(self):
-        np = Node_Parser(self.nodes)
+        np = Node_Parser(self.card, self.nodes)
         out = np.get_text()
 
-        with open('new_card.py', 'w') as f:
+        with open('testing_card.py', 'w') as f:
             f.write(out)  
-        with open('save/custom_cards.json', 'r') as f:
-            cards = json.load(f)
-        cards['test'] = {'weight': 5, 'init': 'Test', 'custom': True}
-        with open('save/custom_cards.json', 'w') as f:
-            json.dump(cards, f, indent=4)
+            
+        return out
 
 #other stuff--------------------------------------------------------------------
 
@@ -1291,13 +1343,13 @@ if __name__ == '__main__':
     pg.init()
     pg.display.set_mode((width, height))
     
+    save.init()
     init()
     uinit()
     
     #menu(info_menu, args=[allnodes.Deploy(0)])
     
-    ne = Node_Editor()
-    allnodes.Manager.set_manager(ne)
+    ne = Node_Editor(Card())
     ne.run()
             
     pg.quit()

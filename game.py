@@ -1,13 +1,17 @@
 import random
 import json
 import importlib
+
 import save
 import func
-import new_card
+import testing_card
 from player import Player
 
-def reload():
-    importlib.reload(new_card)
+def init():
+    globals()['SAVE'] = save.get_save()
+
+def load_testing_card():
+    importlib.reload(testing_card)
 
 class InfiniteLoop(Exception):
     pass
@@ -60,15 +64,13 @@ def blank_player_info(pid):
     return {'name': f'player {pid}', 'description': '', 'tags': ['player'], 'image': 'img/user.png'}
   
 def get_card_data():
-    with open('save/cards.json', 'r') as f:
-        data = json.load(f)
-    return data
+    return SAVE.get_playable_card_data()
   
 class Game:
     def __init__(self, mode='online', cards=None):
         self.running = True
         
-        self.settings = save.get_data('settings')
+        self.settings = SAVE.get_data('settings')
         if cards is not None:
             self.cards = cards
         else:
@@ -106,8 +108,8 @@ class Game:
         self.new_status('waiting')
 
         if self.mode == 'single':
-            player_info = save.get_data('cards')[0]
-            player_info['name'] = save.get_data('username')
+            player_info = SAVE.get_data('cards')[0]
+            player_info['name'] = SAVE.get_data('username')
             self.new_player(0, player_info)
             self.add_cpus()
 
@@ -117,12 +119,11 @@ class Game:
 #copy stuff---------------------------------------------------------------------------------------------------
 
     def copy(self):
-        g = Game(mode='turbo')
+        g = Game(mode='turbo', cards=self.cards.copy())
         
         g.uid = self.uid
         
         g.settings = self.settings.copy()
-        g.cards = self.cards.copy()
 
         g.turn = self.turn
         g.current_turn = self.current_turn
@@ -302,18 +303,13 @@ class Game:
         dif = (len(self.players) - 1) - self.get_setting('cpus')
         
         if dif > 0:
-            
-            for i in range(dif):
-                
+            for i in range(dif): 
                 p = players[i]
                 self.remove_player(p.pid)
                 
-        elif dif < 0:
-            
-            for p in self.players.copy():
-                
-                if p.auto:
-                    
+        elif dif < 0: 
+            for p in self.players.copy():   
+                if p.auto:    
                     self.remove_player(p.pid)
                     
             self.add_cpus()
@@ -370,9 +366,12 @@ class Game:
             info = deck.get(name)
             if info is not None:  
                 if info.get('custom'):
-                    card = getattr(new_card, info['init'])(self, uid)
+                    if not info.get('test'):
+                        card = getattr(new_card, info['classname'])(self, uid)
+                    else:
+                        card = getattr(testing_card, info['classname'])(self, uid)
                 else:
-                    card = getattr(func, info['init'])(self, uid)
+                    card = getattr(func, info['classname'])(self, uid)
                 return card
             
     def transform(self, c1, name):
@@ -679,8 +678,8 @@ class Game:
         return self.settings[setting]
         
     def update_settings(self):
-        save.reload_save()
-        self.settings = save.get_data('settings')  
+        #save.reload_save()
+        self.settings = SAVE.get_data('settings')  
         if self.mode == 'single':
             self.balance_cpus()
         self.add_log({'t': 'set', 'settings': self.get_settings()})

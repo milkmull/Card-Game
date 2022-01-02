@@ -8,6 +8,7 @@ import spritesheet
 import customsheet
 
 import client
+import game
 import builder
 import menu
 
@@ -24,6 +25,7 @@ def start():
     customsheet.init()
     menu.init()
     client.init()
+    game.init()
     builder.init()
     ui.init()
     

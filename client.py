@@ -10,6 +10,7 @@ from ui import *
 from particles import *
 
 def init():
+    globals()['SAVE'] = save.get_save()
     globals()['SPRITESHEET'] = spritesheet.get_sheet()
 
 #menus-----------------------------------------------------------------
@@ -212,7 +213,7 @@ def gen_colors(num):
 
 def save_game_settings(client, counters):
     settings = {c.tag: c.get_current_option() for c in counters}  
-    save.set_data('settings', settings)
+    SAVE.set_data('settings', settings)
     client.update_settings(settings)
     
 #-----------------------------------------------------------------------------------
@@ -1092,7 +1093,7 @@ class Client:
         self.playing = False   
   
     def set_name(self):
-        name = save.get_data('username')
+        name = SAVE.get_data('username')
         self.main_p.update_name(name)
         self.send(f'name,{name}')
             

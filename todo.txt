@@ -21,6 +21,9 @@ game stuff:
 errors:
 	string freezes when trying to fit text if text is too small
 	testing blank card
+	
+other:
+	restore card image data from customsheet
 
 timeline:
 	choose card type

@@ -17,33 +17,33 @@ class TestClient(client.Client):
         self.playing = False
 
 def init():
-    pass
-    #spritesheet.init()
-    #client.init()
+    globals()['SAVE'] = save.get_save()
+    game.init()
+    spritesheet.init()
+    client.init()
     #save.init()
 
-def get_card_data():
-    with open('save/cards.json', 'r') as f:
-        data = json.load(f)
-    with open('save/custom_cards.json', 'r') as f:
-        custom_data = json.load(f)
-    data['play'].update(custom_data)
-    return data
-
 class Tester:
-    def __init__(self, settings=None, cards=get_card_data()):
-        game.reload()
-        self.settings = settings
-        self.cards = cards
+    @staticmethod
+    def get_cards(c):
+        cards = SAVE.get_playable_card_data()
+        cards['play'][c.name] = {'weight': 5, 'classname': c.classname, 'custom': True, 'test': True}
+        return cards
+        
+    def __init__(self, card):
+        self.card = card
+        self.cards = Tester.get_cards(card)
         
         self.sims = 0
         self.errors = []
         
+        game.load_testing_card()
+  
     def get_errors(self):
         return self.errors
         
     def get_error_messages(self):
-        return [err.split('\n')[-2] for err in self.errors]
+        return [err.splitlines()[-2] for err in self.errors]
         
     def get_error_lines(self):
         lines = []
@@ -99,9 +99,9 @@ class Tester:
     def process(self):
         self.filter_errors()
     
-def test_run():
+def test_run(card):
     text = ''
-    g = game.Game(mode='single', cards=get_card_data())
+    g = game.Game(mode='single', cards=Tester.get_cards(card))
     c = TestClient(g)
     try:
         c.run()
