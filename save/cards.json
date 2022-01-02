@@ -197,7 +197,7 @@
             "classname": "Camel"
         },
         "rattle snake": {
-            "weight": 20,
+            "weight": 2,
             "classname": "RattleSnake"
         },
         "tumble weed": {
