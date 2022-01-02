@@ -36,7 +36,13 @@ class Base_Sheet:
         pg.image.save(surf, self.path)
         self.refresh_sheet()
         
+    def check_name(self, name):
+        return name in self.names
+        
     def get_image(self, name, size=None):
+        if not self.check_name(name):
+            return
+            
         i = self.names.index(name)
         x, y = ((i % 9) * 375, (i // 9) * 525)
         

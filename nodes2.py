@@ -342,7 +342,8 @@ class Node_Parser:
         self.nodes = nodes
         self.start_node = next((n for n in self.nodes if n.name == 'start'), None)
         
-        self.header = f"from card_base import *\n\nclass {self.card.classname}(Card):\n\tdef __init__(self, game, uid):\n\t\tsuper().__init__(game, uid, '{self.card.name}', tags=[])\n"
+        self.import_line = 'from card_base import *'
+        self.header = f"\n\nclass {self.card.classname}(Card):\n\tdef __init__(self, game, uid):\n\t\tsuper().__init__(game, uid, '{self.card.name}', tags=[])\n"
         self.dec_line = ''
 
         self.funcs = {}
@@ -788,21 +789,6 @@ class Node_Editor:
         menu(error_screen, args=[messages])
         #for err in messages:
         #    print(err)
-        
-    def publish(self):
-        text = self.run_parser()
-        
-        t = tester.Tester(self.card)
-        menu(loading_screen, kwargs={'message': 'testing card...'}, func=step_test, fargs=[t])
-        t.process()
-        messages = t.get_error_messages()
-        if messages:
-            menu(error_screen, args=[messages])
-            return
-            
-        SAVE.publish_card(text)
-        
-        menu(notice, args=['Card has been published successfully!'])
 
 #base node stuff--------------------------------------------------------------------
 
@@ -817,7 +803,7 @@ class Node_Editor:
         return id
         
     def set_loaded_id(self):
-        self.id = max(n.id for n in self.nodes) + 1
+        self.id = max([n.id for n in self.nodes], default=-1) + 1
         
 #wire stuff--------------------------------------------------------------------
         
@@ -1054,12 +1040,13 @@ class Node_Editor:
     def save_progress(self):
         if not self.nodes:
             return   
-        save_data = pack_data(self.nodes)
-        if not Builder.builder:
+        node_data = pack_data(self.nodes)
+        if self.card.name == '__test__':
             with open('save/card.json', 'w') as f:
-                json.dump(save_data, f, indent=4)
+                json.dump(node_data, f, indent=4)
         else:
-            Builder.builder.save_progress()
+            self.card.set_node_data(node_data)
+            self.card.save()
 
     def save_group_node(self):
         gn = None
@@ -1079,9 +1066,27 @@ class Node_Editor:
         out = np.get_text()
 
         with open('testing_card.py', 'w') as f:
-            f.write(out)  
+            f.write(np.import_line + out)  
             
         return out
+
+    def publish(self):
+        text = self.run_parser()
+        
+        t = tester.Tester(self.card)
+        menu(loading_screen, kwargs={'message': 'testing card...'}, func=step_test, fargs=[t])
+        t.process()
+        messages = t.get_error_messages()
+        if messages:
+            menu(error_screen, args=[messages])
+            return
+            
+        node_data = pack_data(self.nodes)
+        self.card.set_node_data(node_data)
+        SAVE.publish_card(self.card, text)
+        self.card.save(suppress=True)
+        
+        menu(notice, args=['Card has been published successfully!'])
 
 #other stuff--------------------------------------------------------------------
 
@@ -1349,7 +1354,7 @@ if __name__ == '__main__':
     
     #menu(info_menu, args=[allnodes.Deploy(0)])
     
-    ne = Node_Editor(Card())
+    ne = Node_Editor(Card(name='__test__'))
     ne.run()
             
     pg.quit()

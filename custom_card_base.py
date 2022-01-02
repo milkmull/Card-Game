@@ -1,7 +1,8 @@
 import os
+
 import pygame as pg
 
-from ui import rect_outline, Input
+from ui import rect_outline, Input, menu, notice, new_message
 
 card_width = 375
 card_height = 525
@@ -10,24 +11,16 @@ card_size = (375, 525)
 
 class Card:
     @staticmethod
-    def build_card(name, description, tags, color=(161, 195, 161), image='img/user.png', id=None):
-        name = name.title()
-        
-        if len(tags) > 1: 
-            tags = str(tags).replace("'", '')
-        elif tags: 
-            tags = tags[0]
-        else:
-            tags = ''
-        c = Card(name=name, description=description, tags=tags, color=color, id=id, image=image)
-
+    def build_card(info):
+        c = Card(**info)
         return c.get_card_image()
         
-    def __init__(self, name='Title', description='description', tags='tags', color=[161, 195, 161], id=None, image='', node_data={}, weight=1, published=False, **kwargs):
+    def __init__(self, name='Title', description='description', tags='tags', color=[161, 195, 161], id=None, image='', node_data={}, weight=1, published=False, lines=(0, 0), **kwargs):
         self.id = id
         self.node_data = node_data
         self.weight = weight
         self.published = published
+        self.lines = lines
         
         self.rects = {}
         self.textboxes = {}
@@ -102,7 +95,7 @@ class Card:
       
     @property
     def name(self):
-        return self.elements['name'].get_message()
+        return self.elements['name'].get_message().lower()
         
     @property
     def description(self):
@@ -148,9 +141,9 @@ class Card:
         return f'img/custom/{self.id}.png'
     
     def get_info(self):
-        return {'name': self.name, 'description': self.description, 'tags': self.tags, 
-                'color': self.color, 'image': self.get_image_path(), 'id': self.id, 'node_data': self.node_data,
-                'weight': self.weight, 'classname': self.classname, 'custom': True, 'published': self.published}
+        return {'name': self.name, 'description': self.description, 'tags': self.tags, 'color': self.color, 
+                'image': self.get_image_path(), 'id': self.id, 'node_data': self.node_data, 'weight': self.weight, 
+                'classname': self.classname, 'custom': True, 'published': self.published, 'lines': self.lines}
             
     def update_color(self, rgb, val):
         self.color[rgb] = val
@@ -160,9 +153,15 @@ class Card:
         if self.node_data != node_data:
             self.node_data = node_data
             self.published = False
+            
+    def set_lines(self, s, e):
+        self.lines = (s, e)
         
-    def publish(self):
+    def publish(self, s, e):
+        self.set_lines(s, e)
         self.published = True
+        import game
+        game.load_custom_cards()
             
     def update_image(self, img):
         self.pic = pg.transform.smoothscale(img, self.rects['pic'].size)
@@ -199,3 +198,19 @@ class Card:
         
         for e in self.elements.values():
             e.draw(win)
+            
+    def save(self, suppress=False):
+        import customsheet
+        CUSTOMSHEET = customsheet.get_sheet()
+        if not CUSTOMSHEET:
+            return
+        saved = CUSTOMSHEET.save_card(self)
+        if not suppress:
+            if not saved:
+                menu(notice, args=['A card with that name already exists.'], overlay=True)
+                return
+            else:
+                new_message('card saved!', 2000)
+        return saved
+        
+    

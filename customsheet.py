@@ -23,8 +23,7 @@ class Customsheet(Base_Sheet):
         return img
     
     def __init__(self):
-        names = [c['name'] for c in self.cards]
-        super().__init__(names, 'img/customsheet.png')
+        super().__init__(tuple(c['name'] for c in self.cards), 'img/customsheet.png')
         if self.failed_to_load():
             self.create_blank_sheet()
             self.restore_data()
@@ -36,6 +35,10 @@ class Customsheet(Base_Sheet):
         self.create_blank_sheet()
         c = Card(**self.cards[0])
         self.save_card(c)
+        
+    def refresh(self):
+        self.names = tuple(c['name'] for c in self.cards)
+        self.refresh_sheet()
         
     @property
     def cards(self):
@@ -55,7 +58,7 @@ class Customsheet(Base_Sheet):
     def restore_data(self):
         data = self.cards
         for d in data:
-            c = Card(name=d['name'], description=d['description'], tags=d['tags'], color=d['color'], id=d['id'], image=d['image'])
+            c = Card(**d)
             self.save_card(c)
             
     def get_card_image(self, path):
@@ -69,9 +72,6 @@ class Customsheet(Base_Sheet):
             if not loaded:
                 pg.image.save(image, path)
         return image
-        
-    def refresh_names(self):
-        self.names = [c['name'] for c in self.cards]
         
     def get_id(self, name):
         if name in self.names:
@@ -109,7 +109,7 @@ class Customsheet(Base_Sheet):
         pg.image.save(card.pic, card.get_image_path())
         self.resave_sheet(surf)        
         SAVE.update_cards(card.get_info())
-        self.refresh_names()
+        self.refresh()
         return True
         
     def del_card(self, entry):        

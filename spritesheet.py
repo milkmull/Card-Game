@@ -1,10 +1,17 @@
 import os
+
+import save
+
+from spritesheet_base import Base_Sheet
+
+
 from constants import *
 from ui import rect_outline
 from custom_card_base import Card
 import pygame as pg
 
 def init():
+    globals()['SAVE'] = save.get_save()
     globals()['SPRITESHEET'] = Spritesheet()
 
 def get_sheet():
@@ -23,60 +30,41 @@ def load_sounds():
             continue
         
     return sounds
-
+    
 class Spritesheet:
     def __init__(self):
-        self.names = NAMES
-        self.sheet = pg.image.load('img/spritesheet.png').convert()
+        self.spritesheet = Base_Sheet(NAMES, 'img/spritesheet.png')
+        self.customsheet = Base_Sheet(SAVE.get_custom_names(), 'img/customsheet.png')
         self.extras = {'back': pg.image.load('img/back.png').convert()}
         self.sounds = load_sounds()
         
-    def add_extra(self, name):
-        self.extras[name] = create_text(name)
-        
     def check_name(self, name):
-        return any(n == name for n in self.names)
+        return self.spritesheet.check_name(name) or self.customsheet.check_name(name) or name in self.extras
 
-    def add_player_card(self, info, color):
-        name = info['name']
-        description = info['description']
-        tags = info['tags']
-        image = info['image']
-
-        img = Card.build_card(name, description, tags, color=color, image=image)
-        self.extras[name] = img
+    def add_extra(self, info):
+        image = Card.build_card(info)
+        self.extras[info['name']] = image
+        return image
         
-    def remove_player_card(self, name):
+    def remove_extra(self, name):
         if name in self.extras:
             del self.extras[name]
- 
-    def get_image_by_name(self, name):
-        i = self.names.index(name)
-        x, y = ((i % 9) * 375, (i // 9) * 525)
-        
-        img = pg.Surface((375, 525)).convert()
-        img.blit(self.sheet, (0, 0), (x, y, 375, 525))
-
-        return img
-
-    def get_image(self, name, color=(255, 255, 255), scale=(cw, ch), olcolor=None):
-        scale = [int(s) for s in scale]
-        
-        if not self.check_name(name):
             
-            if name in self.extras:
-                img = self.extras[name]
-            else:
-                img = Card.build_card(name, '', ['extra'], color=color)
-                self.extras[name] = img
-                
-        else:
-            
-            img = self.get_image_by_name(name)
-            
-        img = pg.transform.smoothscale(img, scale)
+    def get_image(self, name, scale=(0, 0), olcolor=None):
+        scale = tuple(int(s) for s in scale)
         
-        if scale == [cw, ch] and olcolor is not None:
+        img = self.spritesheet.get_image(name)
+        if not img:
+            img = self.customsheet.get_image(name)
+            if not img:
+                if name in self.extras:
+                    img = self.extras[name]
+                else:
+                    img = self.add_extra({'name': name, 'description': 'extra'})     
+            
+        if any(scale):
+            img = pg.transform.smoothscale(img, scale)
+        elif olcolor is not None:
             img = rect_outline(img, color=olcolor)
 
         return img

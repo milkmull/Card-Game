@@ -4,6 +4,7 @@ import importlib
 
 import save
 import func
+import custom_cards
 import testing_card
 from player import Player
 
@@ -12,6 +13,9 @@ def init():
 
 def load_testing_card():
     importlib.reload(testing_card)
+    
+def load_custom_cards():
+    importlib.reload(custom_cards)
 
 class InfiniteLoop(Exception):
     pass
@@ -367,7 +371,7 @@ class Game:
             if info is not None:  
                 if info.get('custom'):
                     if not info.get('test'):
-                        card = getattr(new_card, info['classname'])(self, uid)
+                        card = getattr(custom_cards, info['classname'])(self, uid)
                     else:
                         card = getattr(testing_card, info['classname'])(self, uid)
                 else:

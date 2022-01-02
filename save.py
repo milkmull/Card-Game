@@ -67,6 +67,9 @@ class Save:
         sheet = customsheet.get_sheet()
         if sheet:
             sheet.reset()
+            
+        with open('custom_cards.py', 'w') as f:
+            f.write('from card_base import *\n')
         
     def update_save(self):
         with open('save/save.json', 'w') as f:
@@ -145,22 +148,38 @@ class Save:
     def del_card(self, entry):
         file = 'img/custom/{}.png'
         cards = self.get_data('cards')
+        text_shift_start = 0
+        text_shift = 0
+
+        image_shift_start = cards.index(entry)
+        cards.remove(entry)
+        os.remove(file.format(entry['id']))
         
-        if entry in cards:
-            i = cards.index(entry)
-            cards.remove(entry)
-            os.remove(file.format(entry['id']))
+        s, e = entry['lines']
+        if s or e:
+            with open('custom_cards.py', 'r') as f:
+                lines = f.readlines()
+            lines = lines[:s] + lines[e:]
+            with open('custom_cards.py', 'w') as f:
+                f.writelines(lines)
+            text_shift_start = e
+            text_shift = -(e - s)
             
-        for i in range(i, len(cards)):
-            cards[i]['id'] -= 1
-            id = cards[i]['id']
-            old_image_path = file.format(id + 1)
-            new_image_path = file.format(id)
-            os.rename(old_image_path, new_image_path)
-            cards[i]['image'] = new_image_path
+        for i, card in enumerate(cards):
+            if i >= image_shift_start:
+                card['id'] -= 1
+                id = card['id']
+                old_image_path = file.format(id + 1)
+                new_image_path = file.format(id)
+                os.rename(old_image_path, new_image_path)
+                card['image'] = new_image_path
+            if text_shift:
+                s, e = card['lines']
+                if (s or e) and s >= text_shift_start:
+                    card['lines'] = (s + text_shift, e + text_shift)
             
         self.set_data('cards', cards)
-        
+
     def new_card_id(self):
         return len(self.get_data('cards'))
         
@@ -189,14 +208,41 @@ class Save:
                 data['play'][c['name']] = {'weight': c['weight'], 'classname': c['classname'], 'custom': True}
         return data
         
-    def publish_card(self, text):
-        with open('custom_cards.py', 'a') as f:
-            print(len(f))
+    def get_custom_names(self):
+        return tuple(c['name'] for c in self.get_data('cards'))
+        
+    def publish_card(self, card, text):
+        shift_start = 0
+        shift = 0
+        s, e = card.lines
+
+        with open('custom_cards.py', 'r') as f:
+            lines = f.readlines()
+            
+        if s or e:
+            lines = lines[:s] + lines[e:]
+            shift_start = e
+            shift = -(e - s)
+            
+        with open('custom_cards.py', 'w') as f:
+            f.writelines(lines)
             f.write(text)
-            print(len(f))
-                    
+                
+        s = len(lines)
+        e = s + len(text.splitlines())
+        card.publish(s, e)
+
+        if shift_start:
+            self.shift_cards(shift_start, shift)
+            
+    def shift_cards(self, shift_start, shift):
+        cards = self.get_data('cards')
+        for i, card in enumerate(cards):
+            s, e = card['lines']
+            if (s or e) and s >= shift_start:
+                card['lines'] = (s + shift, e + shift)
         
-        
+        self.set_data('cards', cards)
         
         
         

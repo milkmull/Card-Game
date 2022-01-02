@@ -225,8 +225,9 @@ class Player:
         self.pid = pid
         self.name = info['name']
         self.color = self.client.colors[pid]
+        info['color'] = self.color
         self.info = info
-        SPRITESHEET.add_player_card(self.info, self.color)
+        SPRITESHEET.add_extra(self.info)
 
         self.target = pg.Rect(0, 0, 20, 20)
         self.view_card_rect = pg.Rect(0, 0, card_width // 2, card_height // 2)
@@ -1034,7 +1035,7 @@ class Client:
             self.players.remove(p)
             self.add_panes()
             
-            SPRITESHEET.remove_player_card(p.name)
+            SPRITESHEET.remove_extra(p.name)
             
             if pid == 0: 
                 self.exit()
@@ -1663,9 +1664,7 @@ class Client:
                 
     def find_uid(self, uid):
         for c in self.cards:
-            
             if uid == c.uid and SPRITESHEET.check_name(c.name):
-                
                 return c
                 
     def uid_exists(self, upd):

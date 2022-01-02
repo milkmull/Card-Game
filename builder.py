@@ -5,7 +5,6 @@ import cv2
 from tkinter import Tk
 from tkinter import filedialog
 
-import customsheet
 from custom_card_base import Card
 
 import save
@@ -16,23 +15,15 @@ import nodes2
 
 def init():
     globals()['SAVE'] = save.get_save()
-    globals()['CUSTOMSHEET'] = customsheet.get_sheet()
     nodes2.init()
 
 #Button funcs----------------------------------------------------------------------
 
 def save_card(card, ne):
-    global CUSTOMSHEET
-    
     node_data = ne.get_save_data()
     card.set_node_data(node_data)
     
-    saved = CUSTOMSHEET.save_card(card)
-    if not saved:
-        menu(notice, args=['A card with that name already exists.'], overlay=True)
-        return
-    else:
-        new_message('card saved!', 2000)
+    card.save()
 
 class VideoCapture:  
     def start(self):
