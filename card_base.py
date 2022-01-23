@@ -6,12 +6,9 @@ def safe_index(ls, i):
     return ls[i] if i in range(len(ls)) else None
 
 class Card:
-    def __init__(self, game, uid, name, tags=[]):
+    def __init__(self, game, uid):
         self.game = game
         self.uid = uid
-        
-        self.name = name
-        self.tags = tags
         
         self.mode = 0
 
@@ -41,6 +38,9 @@ class Card:
             return self.uid == other.get_id() and self.name == other.get_name()
         else:
             return False
+            
+    def __hash__(self):
+        return self.uid
         
     def copy(self): 
         T = type(self)
@@ -231,8 +231,22 @@ class Card:
         return (players, results)
         
 class Blank(Card):
+    tags = []
     def __init__(self, game, uid, name):
-        super().__init__(game, game.get_new_uid(), name, tags=[])
+        self.name = name
+        super().__init__(game, uid)
         
     def __eq__(self, other):
-        return self.name == other.get_name()
+        return self.name == getattr(other, 'name', None)
+        
+    def __hash__(self):
+        return self.uid
+        
+        
+        
+        
+        
+        
+        
+        
+        

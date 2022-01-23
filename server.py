@@ -1,7 +1,14 @@
-import socket, json, os, time
+import socket
+import json
+import os
+import time
 from _thread import start_new_thread
-from game import Game
+import game
 import save
+
+save.init()
+game.init()
+SAVE = save.get_save()
 
 confirmation_code = 'thisisthecardgameserver'
 
@@ -10,7 +17,7 @@ class PortInUse(Exception):
 
 def get_port():
     try:
-        port = save.get_data('port')       
+        port = SAVE.get_data('port')       
     except:
         port = 5555
         
@@ -32,7 +39,7 @@ class Server:
         self.player_info = {}
         
     def set_game(self):
-        self.game = Game()
+        self.game = game.Game()
             
     def close(self):
         for pid, conn in self.connections.items():
@@ -89,7 +96,7 @@ class Server:
             
             self.recieve_player_info(id, conn)
         
-            connected = self.game.new_player(id, self.player_info[id])
+            connected = self.game.add_player(id, self.player_info[id])
         
             if connected:
             
@@ -144,7 +151,7 @@ class Server:
                                 self.game.update_player(id, 'cancel')  
                             reply = 1
                             
-                        elif data.isdigit():
+                        elif data.lstrip('-').isdigit():
                             self.game.update_player(id, f'select {data}') 
                             reply = 1
                             
@@ -162,6 +169,7 @@ class Server:
                             reply = self.game.get_settings()
                             
                         elif data == 'us':
+                            SAVE.load_save()
                             self.game.update_settings()
                             reply = 1
 

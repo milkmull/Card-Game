@@ -87,7 +87,7 @@ def error_screen(errors):
         t.rect.center = text_rect.center
         screen.append(t)
     
-    b = Button((200, 30), 'ok', color2=(0, 200, 0), tag='break')
+    b = Button('ok', color2=(0, 200, 0), tag='break')
     b.rect.center = lower.center
     screen.append(b)
 
@@ -137,7 +137,7 @@ def info_menu(n):
                 label.update_message('info:')
                 node_text.image = node_info.image
                 
-        b = Button((40, 40), '>', func=update_info, border_radius=20)
+        b = Button('>', func=update_info, border_radius=20)
         b.rect.midleft = info_rect.midright
         screen.append(b)
     
@@ -222,10 +222,10 @@ def info_menu(n):
                 o.set_color(data['color'])
                 o.set_points(update_points(data['port']))
                 
-            b = Button((40, 40), '>', func=update_port_info, args=[port_index], kwargs={'dir': 1}, border_radius=20)
+            b = Button('>', func=update_port_info, args=[port_index], kwargs={'dir': 1}, border_radius=20)
             b.rect.midleft = port_box.rect.midright
             screen.append(b)
-            b = Button((40, 40), '<', func=update_port_info, args=[port_index], kwargs={'dir': -1}, border_radius=20)
+            b = Button('<', func=update_port_info, args=[port_index], kwargs={'dir': -1}, border_radius=20)
             b.rect.midright = port_box.rect.midleft
             screen.append(b)
             
@@ -238,7 +238,7 @@ def info_menu(n):
     else:
         screen.pop(-2)
 
-    b = Button((200, 30), 'back', color2=(0, 200, 0), tag='break')
+    b = Button('back', color2=(0, 200, 0), tag='break')
     b.rect.centerx = width // 2
     b.rect.bottom = height - 10
     screen.append(b)
@@ -342,8 +342,8 @@ class Node_Parser:
         self.nodes = nodes
         self.start_node = next((n for n in self.nodes if n.name == 'start'), None)
         
-        self.import_line = 'from card_base import *'
-        self.header = f"\n\nclass {self.card.classname}(Card):\n\tdef __init__(self, game, uid):\n\t\tsuper().__init__(game, uid, '{self.card.name}', tags=[])\n"
+        self.import_line = 'from card_base import *\n'
+        self.header = f"\nclass {self.card.classname}(Card):\n\tname = '{self.card.name}'\n\ttags = []\n\tdef __init__(self, game, uid):\n\t\tsuper().__init__(game, uid)\n"
         self.dec_line = ''
 
         self.funcs = {}
@@ -496,12 +496,12 @@ class Node_Editor:
         
         buttons = []
         for name in allnodes.NAMES:
-            b = Button((100, 20), name, border_radius=0)
+            b = Button(name, border_radius=0)
             b.set_func(self.get_node, args=[name])
             buttons.append(b)
 
         for name, data in load_group_data().items():
-            b = Button((100, 20), name, border_radius=0)
+            b = Button(name, border_radius=0)
             b.set_func(self.load_group_node, args=[name, data])
             buttons.append(b)
         screen += buttons
@@ -513,11 +513,11 @@ class Node_Editor:
         screen.append(p)
         self.search_window = p
 
-        b = Button((100, 20), 'save', func=self.save_progress)
+        b = Button('save', func=self.save_progress)
         b.rect.topleft = (5, 5)
         screen.append(b)
    
-        b = Button((100, 20), 'test', func=self.run_tester)
+        b = Button('test', func=self.run_tester)
         b.rect.topleft = screen[-1].rect.bottomleft
         b.rect.top += 5
         screen.append(b)
@@ -527,28 +527,28 @@ class Node_Editor:
             if text:
                 menu(notice, args=[text])
         
-        b = Button((100, 20), 'test game', func=test_run)
+        b = Button('test game', func=test_run)
         b.rect.topleft = screen[-1].rect.bottomleft
         b.rect.top += 5
         screen.append(b)
                 
-        b = Button((100, 20), 'publish card', func=self.publish)
+        b = Button('publish card', func=self.publish)
         b.rect.top = 5
         b.rect.midleft = screen[-1].rect.midright
         b.rect.y += 5
         screen.append(b)
         
-        b = Button((100, 20), 'load', func=self.load_progress)
+        b = Button('load', func=self.load_progress)
         b.rect.top = 5
         b.rect.left = screen[-2].rect.right + 5
         screen.append(b)
     
-        b = Button((100, 20), 'group node', func=self.make_group_node)
+        b = Button('group node', func=self.make_group_node)
         b.rect.top = 5
         b.rect.left = screen[-1].rect.right + 5
         screen.append(b)
         
-        b = Button((100, 20), 'ungroup node', func=self.ungroup_nodes)
+        b = Button('ungroup node', func=self.ungroup_nodes)
         b.rect.top = 5
         b.rect.left = screen[-1].rect.right + 5
         screen.append(b)
@@ -564,13 +564,13 @@ class Node_Editor:
         screen.append(group_name)
         self.group_name = group_name
         
-        b = Button((100, 20), 'save group node', func=self.save_group_node)
+        b = Button('save group node', func=self.save_group_node)
         b.rect.midleft = screen[-1].rect.midright
         b.rect.x -= 5
         b.rect.y += 5
         screen.append(b)
         
-        b = Button((100, 20), 'exit', func=self.exit)
+        b = Button('exit', func=self.exit)
         b.rect.midtop = screen[-1].rect.midbottom
         b.rect.y += 5
         screen.append(b)
@@ -578,7 +578,7 @@ class Node_Editor:
         self.info_box = pg.Rect(0, 0, 50, 50)
         self.info_box.topright = (width - 20, 20)
         
-        b = Button((100, 20), 'See node info', func=self.check_info)
+        b = Button('See node info', func=self.check_info)
         b.rect.midtop = self.info_box.midbottom
         b.rect.y += 10
         screen.append(b)

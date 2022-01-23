@@ -6,7 +6,7 @@ from spritesheet_base import Base_Sheet
 
 
 from constants import *
-from ui import rect_outline
+from ui import Image_Manager
 from custom_card_base import Card
 import pygame as pg
 
@@ -65,7 +65,7 @@ class Spritesheet:
         if any(scale):
             img = pg.transform.smoothscale(img, scale)
         elif olcolor is not None:
-            img = rect_outline(img, color=olcolor)
+            img = Image_Manager.rect_outline(img, color=olcolor)
 
         return img
         

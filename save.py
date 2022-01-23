@@ -15,7 +15,7 @@ class Save:
             os.mkdir('img/custom')
         if not os.path.exists('save'):
             os.mkdir('save')
-            
+ 
     @staticmethod
     def get_blank_data():
         save_data = {'username': 'Player 0', 'port': 5555, 'ips': [],
@@ -38,8 +38,9 @@ class Save:
 
     def __init__(self):
         self.save_data = None
-        self.card_data = None
         self.reset = False
+        
+        self.archive = None
         
         Save.create_folders()
         self.load_save()
@@ -55,6 +56,8 @@ class Save:
         finally:
             if 'f' in locals():
                 f.close()
+                
+        self.archive = copy.deepcopy(self.save_data)
         
     def reset_save(self):
         self.save_data = Save.get_blank_data()
@@ -72,8 +75,13 @@ class Save:
             f.write('from card_base import *\n')
         
     def update_save(self):
-        with open('save/save.json', 'w') as f:
-            json.dump(self.save_data, f, indent=4)
+        try:
+            with open('save/save.json', 'w') as f:
+                json.dump(self.save_data, f, indent=4)
+        except:
+            self.save_data = copy.deepcopy(self.archive)
+        else:
+            self.archive = copy.deepcopy(self.save_data)
         
     def verify_data(self):
         username = self.get_data('username')

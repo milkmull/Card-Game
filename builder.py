@@ -74,30 +74,44 @@ class Builder:
             
             x += s.rect.width + 40
             
-        b = Button((100, 40), 'import image', func=self.open_image)
+        b = Button('import image', func=self.open_image)
         b.rect.topleft = self.elements['r'].rect.bottomleft
         b.rect.y += 20
         self.elements['image'] = b
         
-        b = Button((100, 40), 'use webcam', func=self.record)
+        b = Button('use webcam', func=self.record)
         b.rect.topleft = self.elements['image'].rect.bottomleft
         b.rect.y += 20
         self.elements['cam'] = b
         
-        b = Button((100, 40), 'save card', func=save_card, args=[self.card, self.node_editor])
+        b = Button('save card', func=save_card, args=[self.card, self.node_editor])
         b.rect.topleft = self.elements['cam'].rect.bottomleft
         b.rect.y += 20
         self.elements['save'] = b
         
-        b = Button((100, 40), 'return to menu', func=self.quit)
+        b = Button('return to menu', func=self.quit)
         b.rect.topleft = self.elements['save'].rect.bottomleft
         b.rect.y += 20
         self.elements['quit'] = b
         
-        b = Button((100, 40), 'node editor', func=self.node_editor.run)
+        b = Button('node editor', func=self.node_editor.run)
         b.rect.topleft = self.elements['quit'].rect.bottomleft
         b.rect.y += 20
         self.elements['node_editor'] = b
+        
+        def update_published():
+            t = self.elements['published']
+            if self.card.published and 'True' not in t.message:
+                t.fgcolor = (0, 255, 0)
+                t.update_message('published: True')
+            elif not self.card.published and 'False' not in t.message:
+                t.fgcolor = (255, 0, 0)
+                t.update_message('published: False')
+
+        t = Textbox(' ' * 18, tsize=20, func=update_published)
+        t.rect.topleft = self.elements['b'].rect.topright
+        t.rect.x += 20
+        self.elements['published'] = t
 
     def run(self):
         while self.running:

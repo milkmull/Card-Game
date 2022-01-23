@@ -12,7 +12,7 @@ card_size = (375, 525)
 
 fps = 30
 
-NAMES = ['michael', 'dom', 'jack', 'mary', 'daniel', 'emily', 'gambling boi', 'mom', 'dad',
+NAMES = ('michael', 'dom', 'jack', 'mary', 'daniel', 'emily', 'gambling boi', 'mom', 'dad',
          'aunt peg', 'uncle john', 'kristen', 'joe', 'robber', 'ninja', 'item frenzy', 'mustard stain', 'gold coins',
          'gold', 'max the dog', 'basil the dog', 'copy cat', 'racoon', 'fox', 'cow', 'shark', 'fish',
          'pelican', 'lucky duck', 'lady bug', 'mosquito', 'snail', 'dragon', 'clam', 'pearl', 'uphalump',
@@ -23,6 +23,12 @@ NAMES = ['michael', 'dom', 'jack', 'mary', 'daniel', 'emily', 'gambling boi', 'm
          'succosecc', 'sunflower', 'lemon lord', 'wizard', 'haunted oak', 'spell reverse', 'sunny day', 'garden', 'desert',
          'fools gold', 'graveyard', 'city', 'wind gust', 'sunglasses', 'metal detector', 'sand storm', 'mummy', 'mummys curse',
          'pig', 'corn', 'harvest', 'golden egg', 'bear', 'big rock', 'unlucky coin', 'trap', 'hunting season',
-         'stardust', 'water lilly', 'torpedo', 'bat', 'sky flower', 'kite', 'balloon', 'north wind', 'garden snake',
+         'stardust', 'water lily', 'torpedo', 'bat', 'sky flower', 'kite', 'balloon', 'north wind', 'garden snake',
          'flower pot', 'farm', 'forest', 'water', 'sky', 'office fern', 'parade', 'camel', 'rattle snake',
-         'tumble weed', 'watering can', 'magic bean', 'the void', 'bug net', 'big sand worm', 'lost palm tree', 'seaweed', 'scuba baby']
+         'tumble weed', 'watering can', 'magic bean', 'the void', 'bug net', 'big sand worm', 'lost palm tree', 'seaweed', 'scuba baby')
+         
+def any(elements):
+    for e in elements:
+        if e:
+            return True
+    return False

@@ -2,7 +2,7 @@ import os
 
 import pygame as pg
 
-from ui import rect_outline, Input, menu, notice, new_message
+from ui import Image_Manager, Input, Menu
 
 card_width = 375
 card_height = 525
@@ -44,7 +44,7 @@ class Card:
         title = pg.Surface((225, 45)).convert()
         title.fill((255, 255, 255))
         title_textbox = title.get_rect()
-        title = rect_outline(title)
+        title = Image_Manager.rect_outline(title)
         title_rect = title.get_rect()
         title_rect.centerx = bg_rect.centerx
         title_rect.y = 30
@@ -66,7 +66,7 @@ class Card:
         desc = pg.Surface((225, 170)).convert()
         desc.fill((255, 255, 255))
         desc_textbox = desc.get_rect()
-        desc = rect_outline(desc)
+        desc = Image_Manager.rect_outline(desc)
         desc_rect = desc.get_rect()
         desc_rect.centerx = self.rects['bg'].centerx
         desc_rect.y = 300
@@ -78,7 +78,7 @@ class Card:
         tags_image = pg.Surface((230, 20)).convert()
         tags_image.fill((255, 255, 255))
         tags_textbox = tags_image.get_rect()
-        tags_image = rect_outline(tags_image)
+        tags_image = Image_Manager.rect_outline(tags_image)
         tags_rect = tags_image.get_rect()
         tags_rect.centerx = self.rects['bg'].centerx
         tags_rect.y = 480 - 5
@@ -119,18 +119,18 @@ class Card:
         
     def set_screen(self, name, description, tags):
         tb = self.textboxes['name']
-        i = Input((tb.width - 5, tb.height - 5), message=name, fitted=True, color=(0, 0, 0, 0), tcolor=(0, 0, 0), tsize=30)
+        i = Input((tb.width - 5, tb.height - 5), message=name, fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=30)
         i.rect.center = self.textboxes['name'].center
         self.elements['name'] = i
         
         tb = self.textboxes['desc']
-        i = Input((tb.width - 5, tb.height - 5), message='description', fitted=True, color=(0, 0, 0, 0), tcolor=(0, 0, 0), tsize=35, length=300)
+        i = Input((tb.width - 5, tb.height - 5), message='description', fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=35, length=300)
         i.rect.center = self.textboxes['desc'].center
         self.elements['desc'] = i
         i.update_message(description)
         
         tb = self.textboxes['tags']
-        i = Input((tb.width - 5, tb.height - 5), message=str(tags), fitted=True, color=(0, 0, 0, 0), tcolor=(0, 0, 0), tsize=50)
+        i = Input((tb.width - 5, tb.height - 5), message=str(tags), fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=50)
         i.rect.center = self.textboxes['tags'].center
         self.elements['tags'] = i
 
@@ -176,7 +176,7 @@ class Card:
         img.set_colorkey((50, 50, 50))
         image.blit(img, (0, 0))
         
-        image.blit(rect_outline(self.pic), self.rects['pic'])
+        image.blit(Image_Manager.rect_outline(self.pic), self.rects['pic'])
         
         for e in self.elements.values(): 
             e.draw(image)
@@ -193,7 +193,7 @@ class Card:
         
     def draw(self, win):
         win.blit(self.bg, self.rects['bg'])
-        win.blit(rect_outline(self.pic), self.rects['pic'])
+        win.blit(Image_Manager.rect_outline(self.pic), self.rects['pic'])
         win.blit(self.image, self.rect)
         
         for e in self.elements.values():

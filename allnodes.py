@@ -1,6 +1,6 @@
 import pygame as pg
 from constants import *
-from ui import Textbox, Dragger, rect_outline, intersect, Input
+from ui import Textbox, Dragger, Image_Manager, Line, Input
 
 #setup stuff-------------------------------------------------------------------
 
@@ -2930,7 +2930,7 @@ class HasCard(Node):
             return 'player'
 
     def get_output(self):
-        return "{1}.has_card_by_name({0})".format(*self.get_input())
+        return "{1}.has_card({0})".format(*self.get_input())
         
         
         

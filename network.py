@@ -4,6 +4,9 @@ import subprocess
 from threading import Thread
 import save
 
+def init():
+    globals()['SAVE'] = save.get_save()
+
 confirmation_code = 'thisisthecardgameserver'
 
 class InvalidIP(Exception):
@@ -37,13 +40,11 @@ class Network:
         found_game = False
         
         if server:
-            self.verify_connection(server, connections)
-            
+            self.verify_connection(server, connections) 
         else:
             threads = []
             
             for server in find_connections()[::-1]:
-
                 t = Thread(target=self.verify_connection, args=(server, connections))
                 t.start()
                 threads.append(t)
@@ -58,8 +59,7 @@ class Network:
             if res and not found_game: 
                 self.set_server(server)
                 client = sock
-                found_game = True
-                
+                found_game = True  
             else:
                 sock.close()
                 
@@ -92,8 +92,8 @@ class Network:
         self.reply_queue.clear()
 
     def send_player_info(self):
-        player_info = save.get_data('cards')[0]
-        player_info['name'] = save.get_data('username')
+        player_info = SAVE.get_data('cards')[0]
+        player_info['name'] = SAVE.get_data('username')
         with open(player_info['image'], 'rb') as f:
             image = f.read()
         player_info['len'] = len(image)
@@ -117,7 +117,6 @@ class Network:
         self.client.sendall(b'next')
         
         while len(image) < length:
-
             reply = self.client.recv(4096)
             image += reply
 

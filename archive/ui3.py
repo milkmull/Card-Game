@@ -10,153 +10,6 @@ def init():
 
     globals()['WIDTH'] = WIDTH
     globals()['HEIGHT'] = HEIGHT
-    
-class Circle:
-    def __init__(self, x, y, radius):
-        self.x = x
-        self.y = y
-        self.radius = radius
-        
-    def __eq__(self, circ):
-        if isinstance(circ, Circle):
-            return self.x == circ.x and self.y == circ.y and self.radius == circ.radius
-        return False
-        
-    @property
-    def center(self):
-        return (self.dx, self.dy)
-        
-    @center.setter
-    def center(self, center):
-        self.x = center[0]
-        self.y = center[1]
-        
-    @property
-    def top(self):
-        return self.y - self.radius
-        
-    @top.setter
-    def top(self, top):
-        self.y = round(top + self.radius)
-        
-    @property
-    def midtop(self):
-        return (self.x, self.y - self.radius)
-        
-    @midtop.setter
-    def midtop(self, midtop):
-        self.x = midtop[0]
-        self.y = midtop[1] + self.radius
-        
-    @property
-    def bottom(self):
-        return (self.x, self.y + self.radius)
-        
-    @bottom.setter
-    def bottom(self, bottom):
-        self.y = round(bottom - self.radius)
-        
-    @property
-    def midbottom(self):
-        return (self.x, self.y + self.radius)
-        
-    @midbottom.setter
-    def midbottom(self, midbottom):
-        self.x = midbottom[0]
-        self.y = midbottom[1] - self.radius
-        
-    @property
-    def left(self):
-        return (self.x - self.radius, self.y)
-        
-    @left.setter
-    def left(self, left):
-        self.x = round(left + self.radius)
-        
-    @property
-    def midleft(self):
-        return (self.x - self.radius, self.y)
-        
-    @midleft.setter
-    def midleft(self, midleft):
-        self.x = midleft[0] + self.radius
-        self.y = midleft[1]
-        
-    @property
-    def right(self):
-        return (self.x + self.radius, self.y)
-        
-    @right.setter
-    def right(self, right):
-        self.x = round(right - self.radius)
-        
-    @property
-    def midright(self):
-        return (self.x + self.radius, self.y)
-        
-    @midright.setter
-    def midright(self, midright):
-        self.x = midright[0] - self.radius
-        self.y = midright[1]
-        
-    @property
-    def diameter(self):
-        return self.radius * 2
-        
-    @diameter.setter
-    def diameter(self, diameter):
-        self.radius = round(diameter / 2)
-        
-    def copy(self):
-        return Circle(self.x, self.y, self.radius)
-        
-    def move(self, dx, dy):
-        return Circle(self.x + dx, self.y + dy, self.radius)
-        
-    def move_ip(self, dx, dy):
-        self.x += dx
-        self.y += dy
-      
-    def inflate(self, dr):
-        return Circle(self.x, self.y, self.radius + dr)
-        
-    def inflate_ip(self, dr):
-        self.radius += dr
-        
-    def update(self, x, y, radius):
-        self.x = x
-        self.y = y
-        self.radius = radius
-
-    def normalize(self):
-        self.radius = abs(self.radius)
-        
-    def contains(self, circ):
-        return sum([(a - b)**2 for a, b in zip(circ.center, self.center)])**0.5 + circ.radius <= self.radius
-        
-    def collidepoint(self, p):
-        return sum([(a - b)**2 for a, b in zip(p, self.center)])**0.5 < self.radius
- 
-    def collidecirc(self, circ):
-        return sum([(a - b)**2 for a, b in zip(circ.center, self.center)])**0.5 < self.radius
-    
-    def collidelist(self, circs):
-        for circ in circs:
-            if sum([(a - b)**2 for a, b in zip(circ.center, self.center)])**0.5 < self.radius + circ.radius:
-                return True
-        return False
-        
-    def collidelistall(self, circs):
-        for circ in circs:
-            if sum([(a - b)**2 for a, b in zip(circ.center, self.center)])**0.5 >= self.radius + circ.radius:
-                return False
-        return True
-        
-    def getoffset(self, circ):
-        return (self.x - circ.x, self.y - circ.y)
-        
-    def getrect(self):
-        return pg.Rect(self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2)
 
 class Line:
     def ccw(a, b, c):
@@ -178,26 +31,19 @@ class Mover:
         self.scale_vel = vec(0, 0)
         self.scale_acc = vec(0, 0)
         
-        self.current_rotation = 0
-        self.rotation_vel = 0
-        
         self.startup_timer = 0
         self.end_timer = 0
 
         self.moving = False
         self.scaling = False
-        self.animation_index = 0
         
         self.movement_sequence = []
-        self.movement_cache = {'v': 5, 'startup_timer': 0, 'end_timer': 0, 'scale': False, 'rotation_vel': 0}
+        self.movement_cache = {'v': 5, 'startup_timer': 0, 'end_timer': 0, 'scale': False}
         
     def finished_move(self):
         return self.end_timer == 0 and not (self.moving or self.scaling)
         
-    def set_target_rect(self, target_rect, p=None, v=5, startup_timer=0, end_timer=0, scale=False, rotation_vel=0):
-        if target_rect == self.rect:
-            return
-            
+    def set_target_rect(self, target_rect, p=None, v=5, startup_timer=0, end_timer=0, scale=False):
         self.target_rect = target_rect
         
         if p is not None:
@@ -216,9 +62,9 @@ class Mover:
         self.pos = p0
         self.moving = True
         
-        frames = length / v
-        
         if scale:
+            frames = length / v
+            
             s1 = vec(target_rect.width, target_rect.height)
             s0 = vec(self.rect.width, self.rect.height)
             
@@ -226,8 +72,6 @@ class Mover:
         
             self.scale_vel = scale_vel
             self.scaling = True
-            
-        self.rotation_vel = rotation_vel
 
         self.startup_timer = startup_timer
         self.end_timer = end_timer
@@ -236,32 +80,23 @@ class Mover:
         self.movement_cache['startup_timer'] = startup_timer
         self.movement_cache['end_timer'] = end_timer
         self.movement_cache['scale'] = scale
-        self.movement_cache['rotation_vel'] = rotation_vel
         
         self.last_pos = self.target_rect.center
         
-    def cancel_move(self):
-        if self.target_rect:
-            self.stop_scale()
-            self.stop_move()
-            self.stop_rotate()
-            self.startup_timer = 0
-            self.end_timer = 0
-            self.target_rect = None
+    def cancel(self):
+        self.stop_move()
+        self.stop_scale()
+        self.startup_timer = 0
+        self.end_timer = 0
         
-    def set_animation(self, movement_sequence, start=False):
+    def set_sequence(self, movement_sequence, start=False):
         self.movement_sequence = movement_sequence 
         if start:
             self.start_next_sequence()
-            
-    def start_animation(self):
-        self.animation_index = 0
-        self.start_next_sequence()
         
     def start_next_sequence(self):
-        info = self.movement_sequence[self.animation_index].copy()
-        self.animation_index += 1
-        target_rect = info.pop('target_rect')
+        info = self.movement_sequence.pop(0)
+        target_rect = info.pop('target')
         self.set_target_rect(target_rect, **info)
 
     def move(self):
@@ -269,7 +104,7 @@ class Mover:
         
             p = self.target_rect.center
             if self.last_pos != p:
-                self.set_target_rect(self.target_rect, **self.movement_cache)
+                self.set_target_rect(self.target_rect, **self.cache)
             self.last_pos = p
             
         if self.startup_timer > 0:
@@ -289,42 +124,14 @@ class Mover:
                 self.rect.center = (self.pos.x, self.pos.y)
                 if self.done_scaling():
                     self.stop_scale()
-                    
-            if self.rotation_vel:
-                self.current_rotation += self.rotation_vel
                 
         else:
             
             if self.end_timer > 0:
                 self.end_timer -= 1
                 
-            elif self.target_rect:
-                self.target_rect = None
-                
-        if self.finished_move() and 0 < self.animation_index < len(self.movement_sequence):
+        if self.finished_move() and self.movement_sequence:
             self.start_next_sequence()
-            
-    def gen_path(self, start_point, itterations, start_scale=None, dx=lambda x, y: x, dy=lambda x, y: y, dw=lambda w, h: w, dh=lambda w, h: h):
-        if start_scale is None:
-            start_scale = self.rect.size
-
-        x, y = start_point
-        w, h = start_scale
-        
-        r = pg.Rect(x, y, w, h)
-                
-        frames = [{'target_rect': r}]
-
-        for i in range(itterations):
-            x = dx(x, y)
-            y = dy(x, y)
-            w = dw(w, h)
-            h = dh(w, h)
-            
-            r = pg.Rect(x, y, w, h)
-            frames.append({'target_rect': r, 'scale': True})
-            
-        self.set_animation(frames)
             
     def done_moving(self):
         x_done = False
@@ -387,23 +194,13 @@ class Mover:
         self.scale_vel *= 0
         self.scaling = False
 
-    def stop_rotate(self):
-        self.current_rotation = 0
-        self.rotation_vel = 0
-
     def reset_timer(self):
-        self.end_timer = self.movement_cache['end_timer']
+        self.end_timer = self.cache['end_timer']
         
     def get_scale(self):
         w = max({int(self.scale.x), 0})
         h = max({int(self.scale.y), 0})
         return (w, h)
-       
-    def get_applied_scale(self):
-        return pg.transfrom.scale(self.image, self.get_scale())
-        
-    def get_applied_rotation(self):
-        return pg.transform.rotate(self.image, self.rotation)
        
 class Draw_Lines:
     def __init__(self, points, color=(0, 0, 0), width=3):
@@ -703,7 +500,7 @@ class Rect_Selector:
             pg.draw.lines(surf, self.color, True, points, self.rad)
 
 class Image_Manager:
-    def get_surface(size, color=(0, 0, 0), width=1, olcolor=None, key=None, **border_kwargs):
+    def get_surface(size, color=(0, 0, 0), width=1, olcolor=None, **border_kwargs):
         s = pg.Surface(size).convert()
         r = s.get_rect()
         if border_kwargs:
@@ -714,8 +511,6 @@ class Image_Manager:
             s.fill(color)
         if olcolor:
             pg.draw.rect(s, olcolor, r, width=width, **border_kwargs)
-        if key:
-            s.set_colorkey(key)
         return s
 
     def rect_outline(img, color=(0, 0, 0), width=2):
@@ -785,27 +580,13 @@ class Base_Loop:
         if object in self.objects:
             self.objects.remove(object)
 
-    def get_event_objects(self):
-        return self.objects
-            
-    def sub_events(self, events):
-        hit = False
-        
-        for o in self.get_event_objects():
-            if o.enabled:
-                o.events(events)
-                if not hit:
-                    hit = o.set_cursor()
-        if not hit:
-            pg.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
-
     def events(self):
         hit = False
         events = Base_Loop.get_events()
         p = events.get('p')
         
         if events.get('q'):
-            self.exit()
+            self.quit()
             return
             
         for o in self.objects:
@@ -828,7 +609,7 @@ class Base_Loop:
                 o.draw(self.window)
         pg.display.flip()
         
-    def exit(self):
+    def quit(self):
         self.running = False
                 
     def run(self):
@@ -936,12 +717,12 @@ class Menu(Base_Loop):
         return cls(objects=objects, overlay=overlay)
 
     @classmethod
-    def build_and_run(cls, get_objects, *args, overlay=False, **kwargs):
+    def make_and_run(cls, get_objects, *args, overlay=False, **kwargs):
         menu = cls(get_objects=get_objects, args=args, kwargs=kwargs, overlay=overlay)
         menu.run()
         
     @classmethod
-    def build_and_run_obj(cls, objects, *args, overlay=False, **kwargs):
+    def make_and_run_obj(cls, objects, *args, overlay=False, **kwargs):
         menu = cls(objects=objects, args=args, kwargs=kwargs, overlay=overlay)
         menu.run()
 
@@ -969,10 +750,10 @@ class Menu(Base_Loop):
         for o in self.objects:
             if o.tag == 'break':
                 if o.func:
-                    exit_func = self.wrap_exit_function(o)
+                    quit_func = self.wrap_quit_function(o)
                 else:
-                    exit_func = self.exit
-                o.set_func(exit_func)
+                    quit_func = self.quit
+                o.set_func(quit_func)
             elif o.tag == 'return':
                 return_func = self.wrap_return_function(o)
                 o.set_func(return_func)
@@ -980,12 +761,12 @@ class Menu(Base_Loop):
                 refresh_func = self.wrap_refresh_function(o)
                 o.set_func(refresh_func)
                 
-    def wrap_exit_function(self, o):
+    def wrap_quit_function(self, o):
         f = o.func
-        def exit_func(*args, **kwargs):
+        def quit_func(*args, **kwargs):
             f(*args, **kwargs)
-            self.exit()
-        return exit_func
+            self.quit()
+        return quit_func
                 
     def wrap_return_function(self, o):
         f = o.func
@@ -1014,7 +795,7 @@ class Menu(Base_Loop):
         self.return_val = None
         return r
         
-    def quit(self):
+    def exit(self):
         pg.quit()
         sys.exit()
         
@@ -1022,11 +803,11 @@ class Menu(Base_Loop):
         hit = False
         events = self.get_events()
         if events.get('q'):
-            self.quit()
+            self.exit()
         e = events.get('kd')
         if e:
             if e.key == pg.K_ESCAPE:
-                self.quit()
+                self.exit()
                     
         for o in self.objects:
             if o.enabled:
@@ -1060,21 +841,6 @@ class Menu(Base_Loop):
             self.draw()
 
 class Base_Object:    
-    @classmethod
-    def get_moving(cls):
-        class New_Mover(Mover, cls):
-            def __init__(self, *args, **kwargs):
-                cls.__init__(self, *args, **kwargs)
-                Mover.__init__(self)
-
-            def update(self):
-                self.move()
-                super().update()
-                
-        New_Mover.__name__ = f'Moving_{cls.__name__}'
-        
-        return New_Mover
-        
     def __init__(self, func=None, args=[], kwargs={}, tag=None, **okwargs):
         if tag is None:
             tag = str(id(self))
@@ -1083,7 +849,6 @@ class Base_Object:
         self.enabled = True
         self.window_draw = False
         self.hit = False
-        self.flag = False
 
         self.enable_func = bool(func)
         if func:
@@ -1137,9 +902,6 @@ class Base_Object:
     def set_cursor(self):
         pass
         
-    def clear(self):
-        pass
-        
     def events(self, events):
         pass
         
@@ -1151,15 +913,6 @@ class Base_Object:
         
     def draw(self, surf):
         pass
-        
-    def draw_many(self, surf, locations, anchor_point='center'):
-        s = getattr(self.rect, anchor_point)
-        for pos in locations:
-            setattr(self.rect, anchor_point, s)
-            self.update_position()
-            self.draw(surf)
-        setattr(self.rect, anchor_point, s)
-        self.update_position()
 
 class Position:
     @staticmethod
@@ -1248,10 +1001,6 @@ class Position:
         self.bind_width = bind_width
         self.bind_height = bind_height
         self.update_position()
-        
-    def position_copy_from(self, o):
-        self.rect = o.rect.copy()
-        self.set_parent(o.parent_rect, offset=o.offset.copy(), anchor_point=o.anchor_point, contain=o.contain, bind_width=o.bind_width, bind_height=o.bind_height)
 
     def set_anchor(self, anchor_point, offset=None):
         self.anchor_point = anchor_point
@@ -1291,7 +1040,13 @@ class Position:
         sx, sy = getattr(self.rect, self.anchor_point)
         px, py = getattr(self.parent_rect, self.anchor_point)
         return (sx - px, sy - py)
-
+            
+    def set_y_offset(self, dy):
+        self.offset[1] = dy
+        
+    def set_x_offset(self, dx):
+        self.offset[0] = dx
+        
     def set_offset(self, dx, dy):
         self.offset = [dx, dy]
         
@@ -1410,9 +1165,6 @@ class Image(Base_Object, Position):
         Base_Object.__init__(self)
         Position.__init__(self)
         
-    def get_image(self):
-        return self.image
-        
     def set_background(self, color):
         self.bgcolor = color
         
@@ -1442,7 +1194,7 @@ class Textbox(Base_Object, Position):
     def set_font(cls, font):
         cls_FONT = font
         cls.FONT = pg.freetype.Font(font)
-        cls.FONT.pad = True
+        setattr(cls.FONT, 'pad', True)
         
     @classmethod
     def get_font(cls):
@@ -1521,7 +1273,7 @@ class Textbox(Base_Object, Position):
         i = Image(image)
         return i
     
-    def __init__(self, message, tsize=20, fgcolor=(255, 255, 255), bgcolor=None, olcolor=None, width=2, anchor='center', fitted=False, font=None, **kwargs):
+    def __init__(self, message, tsize=10, fgcolor=(255, 255, 255), bgcolor=None, olcolor=None, width=2, anchor='center', fitted=False, font=None, **kwargs):
         self.message = message
         self.original_message = message
         
@@ -1581,22 +1333,22 @@ class Textbox(Base_Object, Position):
         return bool(self.message)
    
     def set_antialiased(self, antialiased):
-        self.font.antialiased = antialiased
+        setattr(self.font, 'antialiased', antialiased)
         
     def set_kerning(self, kerning):
-        self.font.kerning = kerning
+        setattr(self.font, 'kerning', kerning)
         
     def set_underline(self, underline):
-        self.font.underline = underline
+        setattr(self.font, 'underline', underline)
         
     def set_strong(self, strong):
-        self.font.strong = strong
+        setattr(self.font, 'strong', strong)
         
     def set_oblique(self, oblique):
-        self.font.oblique = oblique
+        setattr(self.font, 'oblique', oblique)
         
     def set_wide(self, wide):
-        self.font.wide = wide
+        setattr(self.font, 'wide', wide)
         
     def set_fgcolor(self, fgcolor):
         self.fgcolor = fgcolor
@@ -1613,12 +1365,12 @@ class Textbox(Base_Object, Position):
         self.font.size = tsize
         self.tsize = tsize
         
-    def set_font(self, font):
-        font_dict = self.font.__dict__.copy()
+    def set_font(self, font, tsize=None):
+        if tsize is not None:
+            self.tsize = tsize
         self._font = font
         self.font = pg.freetype.Font(font, size=self.tsize)
-        self.font
-        self.font.pad = True
+        setattr(self.font, 'pad', True)
         
     def set_anchor(self, anchor):
         self.anchor = anchor
@@ -1629,6 +1381,10 @@ class Textbox(Base_Object, Position):
             self.fitted_rect = rect
         else:
             self.fitted_rect = self.rect.copy()
+        
+    def set_message_timer(self, message, timer):
+        self.set_message(message)
+        self.timer = timer
         
     def get_message(self):
         return self.message
@@ -1855,37 +1611,6 @@ class Textbox(Base_Object, Position):
             setattr(self.rect, self.anchor, a)
         self.move_characters()
         
-    def update_style(self, message=None, tsize=None, fgcolor=None, bgcolor=None, olcolor=None, width=None, font=None, **kwargs): 
-        if tsize is not None:
-            self.tsize = tsize
-        if fgcolor is not None:
-            self.fgcolor = fgcolor
-        if bgcolor is not None:
-            self.bgcolor = bgcolor
-        if olcolor is not None:
-            self.olcolor = olcolor
-        if width is not None:
-            self.width = width
-        if font is not None:
-            self.set_font(font)
-        
-        if kwargs:
-            if kwargs.get('antialiased'):
-                self.set_antialiased(antialiased)
-            if kwargs.get('kerning'):
-                self.set_kerning(kerning)
-            if kwargs.get('underline'):
-                self.set_underline(underline)
-            if kwargs.get('strong'):
-                self.set_strong(strong)
-            if kwargs.get('oblique'):
-                self.set_oblique(oblique)
-            if kwargs.get('wide'):
-                self.set_wide(wide)
-                
-        if message is not None:
-            self.set_message(message)
-
     def set_message(self, message):
         self.message = message
         if self.fitted:
@@ -1953,11 +1678,6 @@ class Button(Base_Object, Position):
         
         Base_Object.__init__(self, tag=tag)
         Position.__init__(self)
-        
-    def set_enabled(self, enabled):
-        self.enabled = enabled
-        if not enabled:
-            self.active = False
         
     def get_state(self):
         return self.pressed
@@ -2539,7 +2259,7 @@ class Input(Base_Object, Position):
 
 class Flipper(Base_Object, Position):
     @classmethod
-    def counter(cls, ran, tsize=20, **kwargs):
+    def numeric_flipper(cls, ran, tsize=20, **kwargs):
         objects = []
         for i in ran:
             tb = Textbox.static_textbox(str(i), tsize=tsize)
@@ -2562,19 +2282,19 @@ class Flipper(Base_Object, Position):
         
         left_arrow = Image_Manager.get_arrow('l', (15, 15))
         right_arrow = pg.transform.rotate(left_arrow, 180)
-        self.left_button = Button.image_button(left_arrow, func=self.flip, args=[-1])
-        self.right_button = Button.image_button(right_arrow, func=self.flip, args=[1])
+        self.left_arrow = Button.image_button(left_arrow, func=self.flip, args=[-1])
+        self.right_arrow = Button.image_button(right_arrow, func=self.flip, args=[1])
         
         Base_Object.__init__(self)
         Position.__init__(self)
         
-        self.left_button.set_parent(self.rect, anchor_point='midleft', offset=(-self.left_button.rect.width, 0))
-        self.right_button.set_parent(self.rect, anchor_point='midright', offset=(self.right_button.rect.width, 0))
+        self.left_arrow.set_parent(self.rect, anchor_point='midleft', offset=(-self.left_arrow.rect.width, 0))
+        self.right_arrow.set_parent(self.rect, anchor_point='midright', offset=(self.right_arrow.rect.width, 0))
         
         for o in self.objects:
             o.set_parent(self.rect, anchor_point='center')
         
-        self.set_children([self.left_button, self.right_button])
+        self.set_children([self.left_arrow, self.right_arrow])
         
     def get_children(self):
         return self.children + self.objects
@@ -2587,15 +2307,6 @@ class Flipper(Base_Object, Position):
         
     def get_current_tag(self):
         return self.objects[self.index].tag
-        
-    def set_cursor(self):
-        if not self.visible:
-            return
-        set = False
-        set = self.right_button.set_cursor()
-        if not set:
-            set = self.left_button.set_cursor()
-        return set
         
     def events(self, events):
         for o in self.children:
@@ -2610,8 +2321,8 @@ class Flipper(Base_Object, Position):
         
     def draw(self, surf):
         self.base_image.fill(self.color)
-        self.right_button.draw(surf)
-        self.left_button.draw(surf)
+        self.right_arrow.draw(surf)
+        self.left_arrow.draw(surf)
         self.objects[self.index].draw_on(self.base_image, rect=self.rect)
         surf.blit(self.base_image, self.rect)
 
@@ -2623,6 +2334,9 @@ class Scroll_Bar(Base_Object, Position):
         if not extended_rect:
             extended_rect = self.rect
         self.extended_rect = extended_rect
+        
+        self.image = pg.Surface(self.body.rect.size).convert()
+        self.image.fill(color1)
         
         self.rel_pos = None
         self.last_pos = self.rect.top
@@ -2637,8 +2351,6 @@ class Scroll_Bar(Base_Object, Position):
         
         self.color1 = color1
         self.color2 = color2
-        
-        self.handel_collision = True
 
         self.height_ratio = 1
         self.set_height_ratio(1)
@@ -2647,25 +2359,12 @@ class Scroll_Bar(Base_Object, Position):
         Position.__init__(self)
         
         self.set_children([self.body, self.handel, self.up_button, self.down_button])
-        
-    def set_handel_collision(self, handel_collision):
-        self.handel_collision = handel_collision
 
     def is_held(self):
         return self.rel_pos is not None
         
     def is_full(self):
         return self.height_ratio == 1
-        
-    def refresh(self):
-        height = self.parent_rect.height
-        self.rect.height = height
-        r = self.get_height_ratio()
-        self.body.rect.height = height - (2 * self.rect.width)
-        self.set_height_ratio(r)
-        
-    def get_height_ratio(self):
-        return self.handel.rect.height / self.body.rect.height
         
     def set_height_ratio(self, r):
         top = self.handel.rect.top
@@ -2718,7 +2417,7 @@ class Scroll_Bar(Base_Object, Position):
         mbu = events.get('mbu')
 
         if mbd:
-            if mbd.button == 1 and self.handel_collision:   
+            if mbd.button == 1:   
                 if self.handel.rect.collidepoint(p):
                     self.set_rel_pos(p)
                 elif self.body.rect.collidepoint(p):
@@ -2729,9 +2428,8 @@ class Scroll_Bar(Base_Object, Position):
                 elif mbd.button == 5:
                     self.scroll(1)
         elif mbu:
-            if mbu.button == 1:
-                self.rel_pos = None
-                self.handel.freeze()
+            self.rel_pos = None
+            self.handel.freeze()
                 
     def update(self):
         self.update_position()
@@ -2752,7 +2450,7 @@ class Scroll_Bar(Base_Object, Position):
         self.set_enabled(not full)
 
     def draw(self, surf):
-        pg.draw.rect(surf, self.color1, self.body.rect)
+        surf.blit(self.image, self.body)
         pg.draw.rect(surf, self.color2, self.handel.rect)
         self.up_button.draw(surf)
         self.down_button.draw(surf)
@@ -2797,7 +2495,7 @@ class Static_Window(Base_Object, Position, Scroll_Pair):
         win.image = image
         return win
   
-    def __init__(self, size, hide_label=False, label='', label_color=(0, 0, 0), label_height=25, text_kwargs={}, **kwargs):
+    def __init__(self, size, label='', label_color=(0, 0, 0), label_height=25, text_kwargs={}, **kwargs):
         self.size = size
         self.image = Image_Manager.get_surface(size, **kwargs)
         self.current_image = self.image.copy()
@@ -2805,10 +2503,10 @@ class Static_Window(Base_Object, Position, Scroll_Pair):
         self.rect = self.image.get_rect()
 
         self.objects = []
+        self.columns = {}
         self.orientation_cache = {'xpad': 5, 'ypad': 5, 'dir': 'y', 'pack': False}
 
-        self.hide_label = hide_label
-        self.label = Textbox(label, **text_kwargs)
+        self.label = Textbox.static_textbox(label, **text_kwargs)
         self.label_rect = Position(rect=pg.Rect(0, 0, self.rect.width, label_height))
         self.label_color = label_color
         
@@ -2818,26 +2516,6 @@ class Static_Window(Base_Object, Position, Scroll_Pair):
         
         self.add_child(self.label_rect, anchor_point='topleft', offset=[0, -label_height])
         self.label_rect.add_child(self.label, anchor_point='center')
-        
-    def __bool__(self):
-        return bool(self.objects)
-        
-    def set_label_stuyle(self, **kwargs):
-        self.label.update_style(**kwargs)
-        
-    def resize(self, w=None, h=None, anchor_point='center'):
-        if w is None:
-            w = self.rect.width
-        if h is None:
-            h = self.rect.height
-        self.size = (w, h)
-        p = getattr(self.rect, anchor_point)
-        self.rect.size = (w, h)
-        setattr(self.rect, anchor_point, p)
-        self.bounding_rect.rect.width = w
-        self.image = pg.transform.smoothscale(self.image, (w, h))
-        self.current_image = self.image.copy()
-        self.refresh()
         
     def get_total_rect(self):
         return pg.Rect(self.rect.x, self.label_rect.rect.y, self.label_rect.rect.width, self.rect.height + self.label_rect.rect.height)
@@ -2859,39 +2537,42 @@ class Static_Window(Base_Object, Position, Scroll_Pair):
         
     def sort_objects(self, key):
         objects = sorted(self.objects, key=key)
-        self.join_objects(objects)
+        self.join_objects(objects, **self.orientation_cache)
+    
+    def refresh_window(self):
+        self.current_image.blit(self.image, (0, 0))
     
     def clear(self):
-        if self.objects:
-            self.join_objects([])
-            self.refresh_image()
-
-    def refresh_image(self):
-        self.current_image.blit(self.image, (0, 0))
+        self.join_objects([])
+        self.refresh_window()
         
-    def refresh(self):
-        self.join_objects(self.objects, force=True)
-        self.scroll_bar.refresh()
-        
-    def add_object(self, object):
-        self.join_objects(self.objects + [object])
+    def add_column(self, objects, startingx, ypad=5):
+        clo = self.columns.get(startingx)
+        if col is not None:
+            for o in col:
+                self.objects.remove(o)
+            col.clear()
+        else:
+            self.columns[startingx] = []
+            
+        x = startingx
+        y = 0
     
-    def join_objects(self, objects, xpad=None, ypad=None, dir=None, pack=None, force=False, scroll=False, move=False):
-        if xpad is None:
-            xpad = self.orientation_cache['xpad']
-        if ypad is None:
-            ypad = self.orientation_cache['ypad']
-        if dir is None:
-            dir = self.orientation_cache['dir']
-        if pack is None:
-            pack = self.orientation_cache['pack']
+        for o in objects:
+            offset = [0, y + ypad]  
+            o.set_parent(self.bounding_rect.rect, anchor_point='midtop', offset=offset)
+            self.columns[startingx].append(o)
+            self.objects.append(o)
+            y += o.rect.height + ypad
+        self.set_total_height()
 
+    def join_objects(self, objects, xpad=5, ypad=5, dir='y', pack=False, force=False, scroll=False, move=False):
         same = self.is_same(objects)
 
         if not same or force:
             x = 0
             y = 0
-
+            
             if dir == 'y':   
                 for o in objects:
                     if pack:
@@ -2917,17 +2598,15 @@ class Static_Window(Base_Object, Position, Scroll_Pair):
                         offset = [x + xpad, 0]  
                         o.set_parent(self.bounding_rect.rect, anchor_point='midleft', offset=offset)  
                     x += o.rect.width + xpad
-
+                    
+            self.columns.clear()
             self.objects = objects.copy()
             self.orientation_cache = {'xpad': xpad, 'ypad': ypad, 'dir': dir, 'pack': pack}
             self.set_total_height()
                 
-        elif same and move and objects:
+        elif same and move:
             for i in range(len(self.objects)):
-                o0 = self.objects[i]
-                o1 = objects[i]
-                o1.position_copy_from(o0)
-                self.objects[i] = o1
+                objects[i].offset = self.objects[i].get_offset()
 
     def set_total_height(self):
         h = self.rect.height
@@ -2941,10 +2620,8 @@ class Static_Window(Base_Object, Position, Scroll_Pair):
                 
     def set_window(self, r):
         super().set_window(r)
-        self.redraw()
-                
-    def redraw(self):
-        self.refresh_image()
+
+        self.refresh_window()
         for o in self.objects: 
             o.update_position()
             if o.rect.colliderect(self.rect):
@@ -2975,11 +2652,10 @@ class Static_Window(Base_Object, Position, Scroll_Pair):
 
     def draw(self, surf):
         surf.blit(self.current_image, self.rect)
-        if not self.hide_label:
+        if self.label:
             pg.draw.rect(surf, self.label_color, self.label_rect.rect, border_top_left_radius=10, border_top_right_radius=10)
-            if self.label:
-                self.label.draw(surf)
-        if not self.scroll_bar.is_full():
+            self.label.draw(surf)
+        if self.scroll_bar.visible:
             self.scroll_bar.draw(surf)
 
 class Live_Window(Static_Window):   
@@ -2990,11 +2666,6 @@ class Live_Window(Static_Window):
         super().join_objects(*args, **kwargs)
         for o in self.objects:
             o.set_window_draw(True)
-            
-    def update(self):
-        super().update()
-        for o in self.objects:
-            o.update()
 
     def draw(self, surf):
         self.current_image.blit(self.image, (0, 0))
@@ -3002,10 +2673,9 @@ class Live_Window(Static_Window):
             if o.visible:
                 o.draw_on(self.current_image, self.rect)
         surf.blit(self.current_image, self.rect)
-        if not self.hide_label:
+        if self.label:
             pg.draw.rect(surf, self.label_color, self.label_rect.rect, border_top_left_radius=10, border_top_right_radius=10)
-            if self.label:
-                self.label.draw(surf)
+            self.label.draw(surf)
         if self.scroll_bar.visible:
             self.scroll_bar.draw(surf)
 
@@ -3034,7 +2704,7 @@ class Popup_Base(Static_Window, Mover):
 
         if mbd:
             if mbd.button == 1:
-                if self.label_rect.rect.collidepoint(p) or self.rect.collidepoint(p):
+                if self.label_rect.rect.collidepoint(p):
                     if self.timer < 10:
                         self.locked = not self.locked
                     self.timer = 0
@@ -3066,10 +2736,8 @@ class Popup_Base(Static_Window, Mover):
         if self.is_visible():
             super().draw(surf)
 
-        if not self.hide_label:
-            pg.draw.rect(surf, self.label_color, self.label_rect.rect, border_top_left_radius=10, border_top_right_radius=10)
-            if self.label:
-                self.label.draw(surf)
+        pg.draw.rect(surf, self.label_color, self.label_rect, border_top_left_radius=10, border_top_right_radius=10)  
+        self.label.draw(surf)
 
 class Live_Popup(Live_Window, Mover):
     def __init__(self, *args, **kwargs):
@@ -3135,10 +2803,9 @@ class Live_Popup(Live_Window, Mover):
             if self.locked: 
                 color = tuple(max({rgb - 50, 0}) for rgb in self.color)
                 pg.draw.rect(surf, color, self.rect, width=5)
-        elif not self.hide_label:
-            pg.draw.rect(surf, self.label_color, self.label_rect.rect, border_top_left_radius=10, border_top_right_radius=10)
-            if self.label:
-                self.label.draw(surf)
+        else:
+            pg.draw.rect(surf, self.label_color, self.label_rect, border_top_left_radius=10, border_top_right_radius=10)  
+            self.label.draw(surf)
 
 class Slider(Base_Object, Position):
     def __init__(self, size, ran, dir='x', handel_size=None, color=(255, 255, 255), hcolor=(0, 0, 0), flipped=False, func=lambda *args, **kwargs: None, args=[], kwargs={}):
