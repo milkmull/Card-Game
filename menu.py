@@ -531,8 +531,8 @@ def join_game(ip, field):
     connect(ip, port)
 
 def new_entry(name_field, ip_field):
-    name = name_field.object.get_message()
-    ip = ip_field.object.get_message()
+    name = name_field.textbox.get_message()
+    ip = ip_field.textbox.get_message()
     SAVE.update_ips({'name': name, 'ip': ip})
     
 #builder-----------------------------------------------------------------------
