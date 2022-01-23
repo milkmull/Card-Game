@@ -318,7 +318,7 @@ def join_game_menu(name, ip):
     b.rect.midtop = (body.right - (body.width * 0.33), body.bottom + 15)
     objects.append(b)
         
-    b = ui.Button.text_button('join game', size=(100, 24), color1=(0, 0, 0), color2=(0, 255, 0), func=join_game, args=[ip, objects[-1]])
+    b = ui.Button.text_button('join game', size=(100, 24), color1=(0, 0, 0), color2=(0, 255, 0), func=join_game, args=[ip, objects[-2]])
     b.rect.midtop = (body.left + (body.width * 0.33), body.bottom + 15)
     objects.append(b)
     
@@ -509,8 +509,8 @@ def single_player():
 #user settings-------------------------------------------------------------
 
 def save_user_settings(button, username_field, port_field):
-    username = username_field.get_message()
-    port = int(port_field.get_message())
+    username = username_field.object.get_message()
+    port = int(port_field.object.get_message())
     
     SAVE.set_data('username', username)
     
@@ -527,12 +527,12 @@ def save_user_settings(button, username_field, port_field):
 #join game-------------------------------------------------------------
         
 def join_game(ip, field):
-    port = int(field.get_message())
+    port = int(field.textbox.get_message())
     connect(ip, port)
 
 def new_entry(name_field, ip_field):
-    name = name_field.get_message()
-    ip = ip_field.get_message()
+    name = name_field.object.get_message()
+    ip = ip_field.object.get_message()
     SAVE.update_ips({'name': name, 'ip': ip})
     
 #builder-----------------------------------------------------------------------

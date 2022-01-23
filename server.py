@@ -90,6 +90,8 @@ class Server:
             
         self.player_info[id]['image'] = filename
         self.player_info[id]['id'] = id
+        
+        conn.sendall(b'done')
 
     def threaded_client(self, conn, id):
         try:

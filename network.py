@@ -104,10 +104,13 @@ class Network:
         while image:
             data = image[:4096]
             self.client.sendall(data)
-            self.client.recv(4096)
+            reply = self.client.recv(4096)
             
             image = image[4096:]
-        
+            
+        while reply != b'done':
+            reply = self.client.recv(4096)
+
     def recieve_player_info(self, pid):
         info = self.send(f'getinfo{pid}')
         length = info['len']
@@ -137,7 +140,9 @@ class Network:
     def send(self, data, return_val=False):
         try: 
             self.client.sendall(str.encode(data))
-            reply = json.loads(self.client.recv(4096))
+            reply = self.client.recv(4096)
+            print('reply', reply)
+            reply = json.loads(reply)
 
             if return_val:
                 self.reply_queue.append((data, reply))
