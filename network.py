@@ -16,11 +16,8 @@ class NoGamesFound(Exception):
     pass
  
 def find_connections():
-    r = range(0, 255)
-    ips = [f'192.168.{i}.{j}' for i in r for j in r]
-    #for i in r:
-    #    for j in r:
-    #        ips.append(f'192.168.{i}.{j}')
+    out = subprocess.check_output(['arp', '-a']).decode().split()
+    ips = [s for s in out if s.startswith(('10.166', '192.168')) and not s.endswith(('.1', '.255'))]
     return ips
 
 class Network:

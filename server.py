@@ -22,6 +22,13 @@ def get_port():
         port = 5555
         
     return port
+    
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(('8.8.8.8', 80))
+    local_ip = s.getsockname()[0]
+    s.close()
+    return local_ip
 
 class Server:
     def __init__(self):
@@ -29,7 +36,7 @@ class Server:
         
         self.connections = {}
         
-        self.server = socket.gethostbyname(socket.gethostname())
+        self.server = get_local_ip()
         self.port = get_port()
         self.addr = (self.server, self.port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -394,7 +394,11 @@ def card_edit_menu(card):
 #other-------------------------------------------------------------------
 
 def get_local_ip():
-    return socket.gethostbyname(socket.gethostname())
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(('8.8.8.8', 80))
+    local_ip = s.getsockname()[0]
+    s.close()
+    return local_ip
     
 def get_public_ip():
     ip = 'no internet connection'
