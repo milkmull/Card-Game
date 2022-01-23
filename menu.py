@@ -236,9 +236,8 @@ def view_ip_menu():
     t = ui.Textbox.static_textbox(f'your online IP:  {public_ip}')
     t.rect.midbottom = (width // 2, height // 2)
     objects.append(t)
-    
-    text_kwargs = {'fgcolor': (255, 255, 0)}
-    b = ui.Button.text_button('copy online IP to clipboard', padding=(10, 0), color1=(0, 0, 0, 0), color2=(128, 128, 0), text_kwargs=text_kwargs, func=ui.Input.copy_to_clipboard, args=[public_ip])
+
+    b = ui.Button.text_button('copy online IP to clipboard', padding=(10, 0), color1=(0, 0, 0, 0), color2=(128, 128, 0), fgcolor=(255, 255, 0), func=ui.Input.copy_to_clipboard, args=[public_ip])
     b.rect.midtop = objects[-1].rect.midbottom
     b.rect.y += 5
     objects.append(b)
@@ -251,7 +250,7 @@ def view_ip_menu():
     t.rect.y += 5
     objects.append(t)
     
-    b = ui.Button.text_button('copy local IP to clipboard', padding=(10, 0), color1=(0, 0, 0, 0), color2=(128, 128, 0), text_kwargs=text_kwargs, func=ui.Input.copy_to_clipboard, args=[local_ip])
+    b = ui.Button.text_button('copy local IP to clipboard', padding=(10, 0), color1=(0, 0, 0, 0), color2=(128, 128, 0), fgcolor=(255, 255, 0), func=ui.Input.copy_to_clipboard, args=[local_ip])
     b.rect.midtop = objects[-1].rect.midbottom
     b.rect.y += 5
     objects.append(b)
