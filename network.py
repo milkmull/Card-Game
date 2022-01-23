@@ -16,8 +16,11 @@ class NoGamesFound(Exception):
     pass
  
 def find_connections():
-    out = subprocess.check_output(['arp', '-a']).decode().split()
-    ips = [s for s in out if s.startswith(('10.166', '192.168')) and not s.endswith(('.1', '.255'))]
+    r = range(0, 255)
+    ips = [f'192.168.{i}.{j}' for i in r for j in r]
+    #for i in r:
+    #    for j in r:
+    #        ips.append(f'192.168.{i}.{j}')
     return ips
 
 class Network:
@@ -108,8 +111,10 @@ class Network:
             
             image = image[4096:]
             
-        while reply != b'done':
+        while b'done' not in reply:
             reply = self.client.recv(4096)
+            print(reply)
+        print(reply)
 
     def recieve_player_info(self, pid):
         info = self.send(f'getinfo{pid}')
@@ -140,9 +145,7 @@ class Network:
     def send(self, data, return_val=False):
         try: 
             self.client.sendall(str.encode(data))
-            reply = self.client.recv(4096)
-            print('reply', reply)
-            reply = json.loads(reply)
+            reply = json.loads(self.client.recv(4096))
 
             if return_val:
                 self.reply_queue.append((data, reply))

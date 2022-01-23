@@ -2063,6 +2063,7 @@ class Input(Base_Object, Position):
     VALID_CHARS.add(10)
     
     TK = Tk()
+    TK.withdraw()
     
     @classmethod
     def copy_to_clipboard(cls, text):

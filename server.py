@@ -117,6 +117,7 @@ class Server:
                             reply = id
                         
                         if data == 'disconnect':
+                            reply = '1'
                             connected = False
 
                         elif data == 'info':
@@ -192,7 +193,7 @@ class Server:
         self.game.remove_player(id)
                 
         conn.close()
-        del self.connections[id]
+        self.connections.pop(id)
         
     def verify_connection(self, conn):
         code = conn.recv(4096).decode()
@@ -206,12 +207,13 @@ class Server:
             self.sock.bind(self.addr)
             bind = True
 
-        except socket.error as e:
+        except OSError as e:
             print(e, 's3')
-            raise PortInUse
+            errno = e.args[0]
+            if errno == 98:
+                raise PortInUse
             
         finally:
-        
             if bind:
                 self.set_game()
                 self.run()
