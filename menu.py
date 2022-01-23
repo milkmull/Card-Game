@@ -459,7 +459,7 @@ def start_game():
 
     try:
     
-        pipe = subprocess.Popen([sys.executable, 'server.py'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        pipe = subprocess.Popen([sys.executable, 'server.py'], stderr=sys.stderr, stdout=sys.stdout)
         
         try:
             _, error = pipe.communicate(timeout=1)
@@ -503,7 +503,7 @@ def single_player():
     c = client.Client(g, 'single')
     c.run()
     
-    menu = ui.Menu.timed_message('returning to main menu...', 1000)
+    menu = ui.Menu.timed_message('returning to main menu...', 25)
     menu.run()
 
 #user settings-------------------------------------------------------------

@@ -120,9 +120,18 @@ class Network:
             reply = self.client.recv(4096)
             image += reply
 
-        with open(info['image'], 'wb') as f:
-            f.write(image)
-            
+        while True:
+            try:
+                with open(info['image'], 'wb') as f:
+                    f.write(image)
+                break
+            except OSError as e:
+                errno = e.args[0]
+                if errno == 13:
+                    continue
+                else:
+                    raise e
+
         return info
 
     def send(self, data, return_val=False):

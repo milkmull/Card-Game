@@ -594,6 +594,7 @@ class Client(ui.Menu):
         self.frame = 0
 
         self.pid = self.send('pid', threaded=False)
+        print(self.pid)
         self.colors = gen_colors(20)
         self.players = []
         
@@ -921,10 +922,11 @@ class Client(ui.Menu):
 
             self.get_info()
             self.update_info()
-            
-            self.events()
-            self.update()
-            self.draw()
+            if self.playing:
+                self.events()
+            if self.playing:
+                self.update()
+                self.draw()
 
     def events(self):   
         events = self.get_events()
@@ -1539,12 +1541,8 @@ class Client(ui.Menu):
         
 #status stuff----------------------------------------------------------------------------------
         
-    def set_status(self, stat):
-        if stat == 'start':
-            if not self.is_host():
-                stat = 'waiting'
-                
-        elif stat == 'next round':
+    def set_status(self, stat): 
+        if stat == 'next round':
             if not self.is_host():
                 stat = 'round over'
                 

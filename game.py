@@ -361,9 +361,9 @@ class Game:
             
             self.add_log({'t': 'add', 'pid': pid})
             self.logs[pid] = self.get_startup_log()
+            
+            self.new_status('waiting')
 
-            if len(self.players) > 1:
-                self.new_status('start')
             return p 
             
     def remove_player(self, pid):
@@ -375,8 +375,11 @@ class Game:
             self.players.remove(p)
             self.add_log({'t': 'del', 'pid': p.pid})
             
-            if self.mode == 'online' and self.status == 'playing':
-                self.reset()
+            if self.mode == 'online':
+                if self.status == 'playing':
+                    self.reset()
+                else:
+                    self.new_status('waiting')
 
     def balance_cpus(self):
         players = sorted(self.players, key=lambda p: p.pid, reverse=True)

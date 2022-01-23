@@ -95,8 +95,8 @@ class Server:
         try:
             
             self.recieve_player_info(id, conn)
-        
             connected = self.game.add_player(id, self.player_info[id])
+            print(id, connected, self.game.status)
         
             if connected:
             
