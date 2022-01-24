@@ -593,7 +593,7 @@ class Client(ui.Menu):
         self.log_queue = []
         self.frame = 0
 
-        self.pid = self.send('pid', threaded=False)
+        self.pid = self.send('pid')
         print(self.pid)
         self.colors = gen_colors(20)
         self.players = []
@@ -1085,21 +1085,21 @@ class Client(ui.Menu):
    
 #server stuff-----------------------------------------------------------------------------
   
-    def send(self, data, threaded=True, return_val=False):
+    def send(self, data, thread=False, func=None):
         if self.playing:
             
-            #if threaded and self.r'online':
-            #    reply = self.n.threaded_send(data, return_val=return_val)  
-            #else:
-            reply = self.n.send(data)
-            
+            if thread:
+                reply = self.n.queue_data(data, func=func)
+            else:
+                reply = self.n.send(data)
+                
             if reply is None:
                 self.playing = False 
             else:
                 return reply
 
     def get_settings(self):
-        return self.send('settings', threaded=False)
+        return self.send('settings')
         
     def update_settings(self, settings):
         if self.get_status() in ('waiting', 'start', 'new game'):
@@ -1118,7 +1118,7 @@ class Client(ui.Menu):
         self.exit()
         
     def get_info(self):
-        logs = self.send('info', return_val=True)
+        logs = self.send('info')
         if logs:
             self.log_queue += logs
 

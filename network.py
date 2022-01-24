@@ -2,6 +2,8 @@ import socket
 import json
 import subprocess
 from threading import Thread
+import re
+
 import save
 
 def init():
@@ -16,8 +18,8 @@ class NoGamesFound(Exception):
     pass
  
 def find_connections():
-    out = subprocess.check_output(['arp', '-a']).decode().split()
-    ips = [s for s in out if s.startswith(('10.166', '192.168')) and not s.endswith(('.1', '.255'))]
+    out = subprocess.check_output(['arp', '-a']).decode()
+    ips = re.findall(r'[0-9]+(?:\.[0-9]+){3}', out)
     return ips
 
 class Network:
@@ -26,8 +28,12 @@ class Network:
         self.client = self.init_client(server)
         self.client.settimeout(3)
         self.addr = (self.server, self.port)
+        
+        self.isalive = False
 
-        self.reply_queue = []
+        self.send_queue = []
+        self.stop_thread = False
+        self.send_thread = None
         
         self.send_player_info()
 
@@ -110,8 +116,6 @@ class Network:
             
         while b'done' not in reply:
             reply = self.client.recv(4096)
-            print(reply)
-        print(reply)
 
     def recieve_player_info(self, pid):
         info = self.send(f'getinfo{pid}')
@@ -139,37 +143,38 @@ class Network:
 
         return info
 
-    def send(self, data, return_val=False):
+    def send(self, data):
         try: 
             self.client.sendall(str.encode(data))
-            reply = json.loads(self.client.recv(4096))
-
-            if return_val:
-                self.reply_queue.append((data, reply))
-                
+            reply = json.loads(self.client.recv(4096)) 
             return reply
             
         except socket.error as e:
-            return ''
-
-    def threaded_send(self, data, return_val):
-        reply = 0
-        
-        if len(self.reply_queue) < 10:
-
-            t = Thread(target=self.send, args=(data,), kwargs={'return_val': return_val})
-            t.start()
-
-        for info in self.reply_queue.copy():
-            d, r = info
-            if d == data:
-                reply = r
-                self.reply_queue.remove(info)
-                break
-
-        return reply
-        
+            return
             
+    def start_thread(self):
+        self.send_thread = Thread(target=self.threaded_send)
+        self.send_thread.start()
+        self.send_thread.join()
+
+    def queue_data(self, data, func=None):
+        self.send_queue.append((data, func))
+        if self.isalive:
+            return True
+        
+    def threaded_send(self):
+        while not self.stop_thread:
+            if self.send_queue:
+                data, func = self.send_queue[0]
+                reply = self.send(data)
+                if rely is None:
+                    isalive = False
+                    break
+                elif func is not None:
+                    func(reply)
+
     def close(self):
         self.send('disconnect')
+        if self.send_thread: 
+            self.stop_thread = True
         self.client.close()

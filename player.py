@@ -185,6 +185,8 @@ class Player:
         self.draw_cards('items', self.game.get_setting('items'))
         self.draw_cards('spells', self.game.get_setting('spells'))
         self.new_deck('treasure', [self.game.get_card('gold coins')])
+        
+        self.max = 60 * len([p for p in self.game.players if not p.is_auto()]) * 2
 
     def new_round(self):
         self.unequip_all()

@@ -512,8 +512,8 @@ def single_player():
 #user settings-------------------------------------------------------------
 
 def save_user_settings(button, username_field, port_field):
-    username = username_field.object.get_message()
-    port = int(port_field.object.get_message())
+    username = username_field.textbox.get_message()
+    port = int(port_field.textbox.get_message())
     
     SAVE.set_data('username', username)
     

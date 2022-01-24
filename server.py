@@ -40,6 +40,7 @@ class Server:
         self.port = get_port()
         self.addr = (self.server, self.port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.settimeout(3)
         
         self.game = None
@@ -105,7 +106,6 @@ class Server:
             
             self.recieve_player_info(id, conn)
             connected = self.game.add_player(id, self.player_info[id])
-            print(id, connected, self.game.status)
         
             if connected:
             
