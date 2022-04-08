@@ -1,21 +1,16 @@
 import socket
 import json
 import subprocess
-from threading import Thread
 import re
+import threading
 
 import save
+import exceptions
 
 def init():
     globals()['SAVE'] = save.get_save()
 
 confirmation_code = 'thisisthecardgameserver'
-
-class InvalidIP(Exception):
-    pass
-    
-class NoGamesFound(Exception):
-    pass
  
 def find_connections():
     out = subprocess.check_output(['arp', '-a']).decode()
@@ -28,13 +23,6 @@ class Network:
         self.client = self.init_client(server)
         self.client.settimeout(3)
         self.addr = (self.server, self.port)
-        
-        self.isalive = False
-
-        self.send_queue = []
-        self.stop_thread = False
-        self.send_thread = None
-        
         self.send_player_info()
 
     def set_server(self, server):
@@ -51,16 +39,14 @@ class Network:
             threads = []
             
             for server in find_connections()[::-1]:
-                t = Thread(target=self.verify_connection, args=(server, connections))
+                t = threading.Thread(target=self.verify_connection, args=(server, connections))
                 t.start()
                 threads.append(t)
                 
             while any(t.is_alive() for t in threads):
                 continue
        
-        for server in connections:
-            
-            sock, res = connections[server]
+        for server, (sock, res) in connections.items():
 
             if res and not found_game: 
                 self.set_server(server)
@@ -70,7 +56,7 @@ class Network:
                 sock.close()
                 
         if client is None:
-            raise NoGamesFound
+            raise exceptions.NoGamesFound
                 
         return client
         
@@ -93,9 +79,6 @@ class Network:
             
         finally: 
             connections[server] = (sock, res)
-  
-    def reset(self):
-        self.reply_queue.clear()
 
     def send_player_info(self):
         player_info = SAVE.get_data('cards')[0]
@@ -103,19 +86,20 @@ class Network:
         with open(player_info['image'], 'rb') as f:
             image = f.read()
         player_info['len'] = len(image)
+        chunk_size = 4096
         
         self.client.sendall(bytes(json.dumps(player_info), encoding='utf-8'))
-        self.client.recv(4096)
+        self.client.recv(chunk_size)
         
         while image:
-            data = image[:4096]
+            data = image[:chunk_size]
             self.client.sendall(data)
-            reply = self.client.recv(4096)
+            reply = self.client.recv(chunk_size)
             
-            image = image[4096:]
+            image = image[chunk_size:]
             
         while b'done' not in reply:
-            reply = self.client.recv(4096)
+            reply = self.client.recv(chunk_size)
 
     def recieve_player_info(self, pid):
         info = self.send(f'getinfo{pid}')
@@ -136,9 +120,7 @@ class Network:
                 break
             except OSError as e:
                 errno = e.args[0]
-                if errno == 13:
-                    continue
-                else:
+                if errno != 13:
                     raise e
 
         return info
@@ -151,30 +133,7 @@ class Network:
             
         except socket.error as e:
             return
-            
-    def start_thread(self):
-        self.send_thread = Thread(target=self.threaded_send)
-        self.send_thread.start()
-        self.send_thread.join()
-
-    def queue_data(self, data, func=None):
-        self.send_queue.append((data, func))
-        if self.isalive:
-            return True
-        
-    def threaded_send(self):
-        while not self.stop_thread:
-            if self.send_queue:
-                data, func = self.send_queue[0]
-                reply = self.send(data)
-                if rely is None:
-                    isalive = False
-                    break
-                elif func is not None:
-                    func(reply)
 
     def close(self):
         self.send('disconnect')
-        if self.send_thread: 
-            self.stop_thread = True
         self.client.close()

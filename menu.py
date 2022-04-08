@@ -17,20 +17,17 @@ import image_handler
 import spritesheet
 import customsheet
 
-from constants import *
 import ui
+
+import exceptions
+from constants import *
 
 def init():
     globals()['SAVE'] = save.get_save()
     globals()['IMAGE_HANDLER'] = image_handler.get_image_handler()
     globals()['SPRITESHEET'] = spritesheet.get_sheet()
     globals()['CUSTOMSHEET'] = customsheet.get_sheet()
-    
-#errors----------------------------------------------------------------
 
-class PortInUse(Exception):
-    pass
-    
 #objects---------------------------------------------------------------
 
 class Button_Timer(ui.Base_Object):
@@ -151,7 +148,7 @@ def select_host_menu():
     buttons = []
     for entry in SAVE.get_data('ips'):
         message = f"{entry['name']}: {entry['ip']}"
-        b = ui.Button.text_button(message, padding=(10, 3), func=ui.Menu.build_and_run, args=[join_game_menu, entry['name'], entry['ip']], tag='refresh')
+        b = ui.Button.text_button(message, padding=(10, 3), func=ui.Menu.build_and_run, args=[join_game_menu, entry['name'], entry['ip']], tag='refresh', ohandle=True)
         buttons.append(b)
     w.join_objects(buttons)
     objects += buttons
@@ -342,11 +339,11 @@ def builder_menu():
     buttons = []
     for c in cards:
         name = c['name']
-        b = ui.Button.text_button(name, size=(200, 22), func=ui.Menu.build_and_run, args=[card_edit_menu, c], tag='refresh')
+        b = ui.Button.text_button(name, size=(200, 22), func=ui.Menu.build_and_run, args=[card_edit_menu, c], tag='refresh', ohandle=True)
         buttons.append(b)    
     w.join_objects(buttons)
     objects += buttons
-        
+
     b = ui.Button.text_button('new', padding=(10, 2), func=run_builder, args=[SAVE.get_new_card_data()], tag='refresh')
     b.rect.midbottom = (width // 2, height)
     b.rect.y -= b.rect.height * 2
@@ -433,11 +430,11 @@ def connect(ip, port):
         c = client.Client(net, mode='online')
         c.run()
         
-    except network.InvalidIP:
+    except exceptions.InvalidIP:
         menu = ui.Menu.notice('An invalid IP address has been entered.', overlay=True)
         menu.run()
         
-    except network.NoGamesFound:  
+    except exceptions.NoGamesFound:  
         menu = ui.Menu.notice('no games could be found', overlay=True)
         menu.run()
         
@@ -467,7 +464,7 @@ def start_game():
         try:
             _, error = pipe.communicate(timeout=1)
             if 'PortInUse' in error.decode():
-                raise PortInUse
+                raise exceptions.PortInUse
         except subprocess.TimeoutExpired:
             pass
 
@@ -480,12 +477,12 @@ def start_game():
         menu = ui.Menu.timed_message('disconnected', 10)
         menu.run()
         
-    except PortInUse:
+    except exceptions.PortInUse:
         message = 'The port you requested is currently being used by another device. Try changing the default port in settings'
         menu = ui.Menu.notice(message, overlay=True)
         menu.run()
         
-    except network.NoGamesFound:
+    except exceptions.NoGamesFound:
         menu = ui.Menu.notice('game could not be started', 10)
         menu.run()
        
@@ -546,8 +543,7 @@ def run_builder(card_info):
     b.cam.close()
 
 def del_card(entry):
-    r = menu(yes_no, args=['Are you sure you want to delete this card?'], overlay=True)
-    if not r:
-        return
-
-    CUSTOMSHEET.del_card(entry)
+    m = ui.Menu.yes_no('Are you sure you want to delete this card?', overlay=True)
+    r = m.run()
+    if r:
+        CUSTOMSHEET.del_card(entry)

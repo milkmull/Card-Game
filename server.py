@@ -3,17 +3,16 @@ import json
 import os
 import time
 from _thread import start_new_thread
+
 import game
 import save
+import exceptions
 
 save.init()
 game.init()
 SAVE = save.get_save()
 
 confirmation_code = 'thisisthecardgameserver'
-
-class PortInUse(Exception):
-    pass
 
 def get_port():
     try:
@@ -218,7 +217,7 @@ class Server:
             print(e, 's3')
             errno = e.args[0]
             if errno == 98:
-                raise PortInUse
+                raise exceptions.PortInUse
             
         finally:
             if bind:

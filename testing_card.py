@@ -1,17 +1,34 @@
 from card_base import *
 
-class Player_0(Card):
+class Player_2(Card):
+    name = 'player 2'
+    tags = []
     def __init__(self, game, uid):
-        super().__init__(game, uid, 'player 0', tags=[])
+        super().__init__(game, uid)
     
     def start(self, player):
         self.reset()
-        self.start_ongoing(player)
+        player.add_request(self, 'select')
     
-    def start_ongoing(self, player):
-        player.add_og(self, 'cont')
+    def get_selection(self, player):
+        if (not self.extra_card):
+            return getattr(player, 'played', []).copy()
+        else:
+            return self.sort_players(player)
     
-    def ongoing(self, player, log):
-        added6, c6 = self.check_index(player, (player.played.index(self) + 1), tags=['human'])
-        if added6:
-            player.gain(self, 5)
+    def select(self, player, num):
+        if not num:
+            return
+        sel = player.selected[-1]
+        self.t_select = sel
+        sel_c = None
+        sel_p = None
+        if isinstance(sel, Card):
+            sel_c = sel
+        else:
+            sel_p = sel
+        if sel_c:
+            self.extra_card = sel_c
+            self.wait = 'select'
+        else:
+            player.give_card(self.extra_card, sel_p)

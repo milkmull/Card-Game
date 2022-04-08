@@ -1,29 +1,29 @@
-import pygame as pg
-
 import os
 import cv2
 from tkinter import Tk
 from tkinter import filedialog
 
+import pygame as pg
+
 from custom_card_base import Card
 
+import ui
 import save
 from constants import *
-from ui import *
 
-import nodes2
+import node_editor
 
 def init():
     globals()['SAVE'] = save.get_save()
-    nodes2.init()
+    node_editor.init()
 
 #Button funcs----------------------------------------------------------------------
 
 def save_card(card, ne):
-    node_data = ne.get_save_data()
-    card.set_node_data(node_data)
+    card.save(nodes=ne.nodes)
     
-    card.save()
+def publish_card(card, ne):
+    card.publish(nodes=ne.nodes)
 
 class VideoCapture:  
     def start(self):
@@ -40,136 +40,98 @@ class VideoCapture:
             self.vid.release()
             cv2.destroyAllWindows()
         
-class Builder:
+class Builder(ui.Menu):
     def __init__(self, card_info):
-        self.screen = pg.display.get_surface()
-        self.frame = pg.Surface((width, height)).convert()
-        self.clock = pg.time.Clock()
-        self.running = True
-        
         self.cam = VideoCapture()
         self.recording = False
 
         self.card = Card(**card_info)
-        self.node_editor = nodes2.Node_Editor(self.card)
+        self.node_editor = node_editor.Node_Editor(self.card)
         
-        self.elements = {'card': self.card}
-        
-        self.input = []
-        
-        self.set_screen()
+        self.objects_dict = {'card': self.card}
+        super().__init__(get_objects=self.builder_objects)
         
     def close(self):
         self.cam.close()
 
-    def set_screen(self):
-        x = self.elements['card'].rect.right + 10
+    def builder_objects(self):
+        objects = self.card.objects + [self.card]
+        
+        x = self.objects_dict['card'].rect.right + 10
         
         for i, rgb in enumerate(('r', 'g', 'b')):
             
-            s = RGBSlider((20, 200), rgb, hcolor=(255, 255, 255), func=self.elements['card'].update_color, args=[i])
+            s = ui.RGBSlider((20, 200), 'y', rgb, hcolor=(255, 255, 255), func=self.update_color)
             s.rect.topleft = (x, 10)
-            s.set_state(self.elements['card'].color[i])
-            self.elements[rgb] = s
+            s.set_state(self.objects_dict['card'].color[i])
+            objects.append(s)
+            self.objects_dict[rgb] = s
             
             x += s.rect.width + 40
             
-        b = Button('import image', func=self.open_image)
-        b.rect.topleft = self.elements['r'].rect.bottomleft
+        b = ui.Button.text_button('import image', func=self.open_image)
+        b.rect.topleft = self.objects_dict['r'].rect.bottomleft
         b.rect.y += 20
-        self.elements['image'] = b
+        objects.append(b)
+        self.objects_dict['image'] = b
         
-        b = Button('use webcam', func=self.record)
-        b.rect.topleft = self.elements['image'].rect.bottomleft
+        b = ui.Button.text_button('use webcam', func=self.record)
+        b.rect.topleft = self.objects_dict['image'].rect.bottomleft
         b.rect.y += 20
-        self.elements['cam'] = b
+        objects.append(b)
+        self.objects_dict['cam'] = b
         
-        b = Button('save card', func=save_card, args=[self.card, self.node_editor])
-        b.rect.topleft = self.elements['cam'].rect.bottomleft
+        b = ui.Button.text_button('node editor', func=self.node_editor.run)
+        b.rect.topleft = self.objects_dict['cam'].rect.bottomleft
         b.rect.y += 20
-        self.elements['save'] = b
-        
-        b = Button('return to menu', func=self.quit)
-        b.rect.topleft = self.elements['save'].rect.bottomleft
+        objects.append(b)
+        self.objects_dict['node_editor'] = b
+    
+        b = ui.Button.text_button('save card', func=save_card, args=[self.card, self.node_editor])
+        b.rect.topleft = self.objects_dict['node_editor'].rect.bottomleft
         b.rect.y += 20
-        self.elements['quit'] = b
-        
-        b = Button('node editor', func=self.node_editor.run)
-        b.rect.topleft = self.elements['quit'].rect.bottomleft
-        b.rect.y += 20
-        self.elements['node_editor'] = b
-        
-        def update_published():
-            t = self.elements['published']
-            if self.card.published and 'True' not in t.message:
-                t.fgcolor = (0, 255, 0)
-                t.update_message('published: True')
-            elif not self.card.published and 'False' not in t.message:
-                t.fgcolor = (255, 0, 0)
-                t.update_message('published: False')
+        objects.append(b)
+        self.objects_dict['save'] = b
 
-        t = Textbox(' ' * 18, tsize=20, func=update_published)
-        t.rect.topleft = self.elements['b'].rect.topright
+        b = ui.Button.text_button('publish card', func=publish_card, args=[self.card, self.node_editor])
+        b.rect.topleft = self.objects_dict['save'].rect.bottomleft
+        b.rect.y += 20
+        objects.append(b)
+        self.objects_dict['publish'] = b
+       
+        b = ui.Button.text_button('return to menu', tag='break')
+        b.rect.topleft = self.objects_dict['publish'].rect.bottomleft
+        b.rect.y += 20
+        objects.append(b)
+        self.objects_dict['quit'] = b
+
+        t = ui.Textbox('published: False', tsize=20)
+        t.set_func(self.update_published)
+        t.rect.topleft = self.objects_dict['quit'].rect.topright
         t.rect.x += 20
-        self.elements['published'] = t
-
-    def run(self):
-        while self.running:
-            self.clock.tick(fps)
-            self.events()
-            self.update()
-            self.draw()
-            
-    def events(self):
-        self.input = pg.event.get()
+        objects.append(t)
+        self.objects_dict['published'] = t
         
-        for e in self.input:
-            
-            if e.type == pg.QUIT:
-                self.running = False
-            
-            elif e.type == pg.KEYDOWN:
-                
-                if e.key == pg.K_ESCAPE:
-                    self.running = False
-                    
-            elif e.type == pg.MOUSEBUTTONDOWN:
-                pass
-        
-        for e in self.elements.values():
-            e.events(self.input)
+        return objects
        
     def update(self):
-        for e in self.elements.values():
-            e.update()
+        super().update()
             
         if self.recording:
             self.send_recorded_image()
-
-        #bgc = tuple(self.elements[rgb].get_state() for rgb in ('r', 'g', 'b'))
-        #self.elements['card'].fill_bg(bgc)
-
-    def draw(self):
-        self.frame.fill((0, 0, 0))
-
-        for e in self.elements.values():
-            e.draw(self.frame)
-
-        self.screen.blit(self.frame, (0, 0))
-        pg.display.flip()
         
     def quit(self):
-        self.running = False
         self.cam.close()
+        super().quit()
    
     def record(self):
         self.recording = not self.recording
         
         if self.recording: 
-            self.elements['cam'].update_message('take picture')
+            self.objects_dict['cam'].object.set_message('take picture')
             self.cam.start()  
         else:
-            self.elements['cam'].update_message('use webcam')
+            self.objects_dict['cam'].object.set_message('use webcam')
             self.cam.close()
 
     def open_image(self):
@@ -180,16 +142,29 @@ class Builder:
         
         if file:
             image = pg.image.load(file).convert()
-            self.elements['card'].update_image(image)
+            self.objects_dict['card'].update_image(image)
             
     def send_recorded_image(self):
         image = self.cam.get_frame()
         if image is not None:
-            self.elements['card'].update_image(image)
+            self.objects_dict['card'].update_image(image)
 
+    def update_published(self):
+        t = self.objects_dict['published']
+        if self.card.published and 'True' not in t.message:
+            t.fgcolor = (0, 255, 0)
+            t.set_message('published: True')
+        elif not self.card.published and 'False' not in t.message:
+            t.fgcolor = (255, 0, 0)
+            t.set_message('published: False')
 
-
-
+    def update_color(self):
+        r = self.objects_dict['r']
+        g = self.objects_dict['g']
+        b = self.objects_dict['b']
+        
+        color = [r.get_state(), g.get_state(), b.get_state()]
+        self.objects_dict['card'].set_color(color)
 
 
 

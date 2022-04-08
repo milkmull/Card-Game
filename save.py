@@ -7,6 +7,16 @@ def get_save():
     return globals().get('SAVE')
 
 class Save:
+    BASE_SETTINGS = {
+        'rounds': range(1, 6), 
+        'ss': range(5, 51), 
+        'cards': range(1, 11),
+        'items': range(0, 6), 
+        'spells': range(0, 4), 
+        'cpus': range(1, 15), 
+        'diff': range(0, 5)
+    }
+    
     @staticmethod
     def create_folders():
         if not os.path.exists('img/temp'):
@@ -15,20 +25,50 @@ class Save:
             os.mkdir('img/custom')
         if not os.path.exists('save'):
             os.mkdir('save')
+            
+    @staticmethod
+    def get_base_settings():
+        settings = {
+            'rounds': 3, 
+            'ss': 20, 
+            'cards': 5,
+            'items': 3,
+            'spells': 1,
+            'cpus': 1,
+            'diff': 4
+        }
+        return settings
+
+    @staticmethod
+    def get_blank_card_data():
+        data = {
+            'name': 'Player 0', 
+            'description': 'description', 
+            'tags': ['player'], 
+            'color': [161, 195, 161],
+            'image': 'img/user.png', 
+            'id': 0, 
+            'weight': 1,
+            'classname': 'Player_0',
+            'custom': True,
+            'code': '',
+            'lines': [0, 0],
+            'published': False,
+            'node_data': {}
+        }
+        return data
  
     @staticmethod
     def get_blank_data():
-        save_data = {'username': 'Player 0', 'port': 5555, 'ips': [],
-         'settings': {'rounds': 3, 'ss': 20, 'cards': 5, 'items': 3, 'spells': 1, 'cpus': 1, 'diff': 4},
-         'cards': [{'name': 'Player 0', 'description': 'description', 'tags': ['player'], 
-                    'image': 'img/user.png', 'color': [161, 195, 161], 'id': 0, 'node_data': {}}]}
+        save_data = {
+            'username': 'Player 0', 
+            'port': 5555, 
+            'ips': [],
+            'settings': Save.get_base_settings(),
+            'cards': [Save.get_blank_card_data()]
+        }
                       
         return save_data
-        
-    @staticmethod
-    def get_blank_card_data():
-        return {'name': 'Player 0', 'description': 'description', 'tags': ['player'], 
-                'image': 'img/user.png', 'color': [161, 195, 161], 'id': 0, 'node_data': {}}
                 
     @staticmethod
     def get_card_data():
@@ -103,17 +143,16 @@ class Save:
         settings = self.get_data('settings')
         if not isinstance(settings, dict):
             self.reset_save()
-
-        base_settings = {'rounds': range(1, 6), 'ss': range(5, 51), 'cards': range(1, 11),
-                         'items': range(0, 6), 'spells': range(0, 4), 'cpus': range(1, 15), 'diff': range(0, 5)}
-        
-        if any(key not in settings for key in base_settings):
-            settings = {'rounds': 3, 'ss': 20, 'cards': 5, 'items': 3, 'spells': 1, 'cpus': 1, 'diff': 4}
-            self.set_data('settings', settings)
             
-        elif any(settings.get(key) not in base_settings[key] for key in base_settings):
-            settings = {'rounds': 3, 'ss': 20, 'cards': 5, 'items': 3, 'spells': 1, 'cpus': 1, 'diff': 4}
-            self.set_data('settings', settings)
+        base_settings = Save.BASE_SETTINGS
+        if any({key not in settings for key in base_settings}):
+            self.set_data('settings', Save.get_base_settings()) 
+        elif any({settings.get(key) not in base_settings[key] for key in base_settings}):
+            self.set_data('settings', Save.get_base_settings())
+            
+        if len(self.get_data('cards')) == 0:
+            cards = [Save.get_blank_card_data()]
+            self.set_data('cards', cards)
         
     def get_data(self, key):
         val = copy.deepcopy(self.save_data.get(key))
@@ -200,7 +239,12 @@ class Save:
         data = {}
         cards = self.get_data('cards')
         for c in cards:
-            data[c['name']] = {'weight': c['weight'], 'classname': c['classname'], 'custom': True, 'published': c['published']}
+            data[c['name']] = {
+                'weight': c['weight'], 
+                'classname': c['classname'], 
+                'custom': True, 
+                'published': c['published']
+            }
         return data
         
     def get_all_card_data(self):
@@ -213,16 +257,21 @@ class Save:
         cards = self.get_data('cards')
         for c in cards:
             if c['published'] and c['id']:
-                data['play'][c['name']] = {'weight': c['weight'], 'classname': c['classname'], 'custom': True}
+                data['play'][c['name']] = {
+                    'weight': c['weight'], 
+                    'classname': c['classname'], 
+                    'custom': True
+                }
         return data
         
     def get_custom_names(self):
         return tuple(c['name'] for c in self.get_data('cards'))
         
-    def publish_card(self, card, text):
+    def publish_card(self, card):
         shift_start = 0
         shift = 0
         s, e = card.lines
+        text = card.code
 
         with open('custom_cards.py', 'r') as f:
             lines = f.readlines()
@@ -238,10 +287,14 @@ class Save:
                 
         s = len(lines)
         e = s + len(text.splitlines())
-        card.publish(s, e)
 
         if shift_start:
             self.shift_cards(shift_start, shift)
+            
+        import game
+        game.load_custom_cards()
+            
+        return (s, e)
             
     def shift_cards(self, shift_start, shift):
         cards = self.get_data('cards')

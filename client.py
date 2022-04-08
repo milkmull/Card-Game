@@ -594,7 +594,6 @@ class Client(ui.Menu):
         self.frame = 0
 
         self.pid = self.send('pid')
-        print(self.pid)
         self.colors = gen_colors(20)
         self.players = []
         
@@ -828,12 +827,13 @@ class Client(ui.Menu):
         if not any({p.pid == pid for p in self.players}):
             
             ps = Visuals.get_player_spot(pid)
-            self.player_spots.append(ps)
-            
+
             info = self.n.recieve_player_info(pid)
             p = Player(self, pid, self.colors[pid], info, ps)
             self.players.append(p)
             self.players.sort(key=lambda p: p.pid)
+            
+            self.player_spots.append(ps)
 
             self.organize_screen()
 
@@ -844,9 +844,8 @@ class Client(ui.Menu):
             p = self.get_player(pid)
             
             ps = p.spot
-            self.player_spots.remove(ps)
-
             self.players.remove(p)
+            self.player_spots.remove(ps)
             SPRITESHEET.remove_extra(p.name)
             
             self.organize_screen()
@@ -921,7 +920,6 @@ class Client(ui.Menu):
             #print(self.clock.get_fps())
 
             self.get_info()
-            self.update_info()
             if self.playing:
                 self.events()
             if self.playing:
@@ -1085,14 +1083,10 @@ class Client(ui.Menu):
    
 #server stuff-----------------------------------------------------------------------------
   
-    def send(self, data, thread=False, func=None):
+    def send(self, data):
         if self.playing:
-            
-            if thread:
-                reply = self.n.queue_data(data, func=func)
-            else:
-                reply = self.n.send(data)
-                
+
+            reply = self.n.send(data)    
             if reply is None:
                 self.playing = False 
             else:
@@ -1119,13 +1113,13 @@ class Client(ui.Menu):
         
     def get_info(self):
         logs = self.send('info')
-        if logs:
-            self.log_queue += logs
-
-    def update_info(self):
+        self.update_logs(logs)
+        
+    def update_logs(self, logs):
+        self.log_queue += logs
         self.parse_logs(self.log_queue[:5])
         self.log_queue = self.log_queue[5:]
-            
+
     def parse_logs(self, logs):
         points = []
 

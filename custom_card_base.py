@@ -1,205 +1,238 @@
 import os
+import ast
 
 import pygame as pg
 
-from ui import Image_Manager, Input, Menu
+import node_data
+import node_parser
+import tester
+
+import ui
 
 card_width = 375
 card_height = 525
 
 card_size = (375, 525)
 
-class Card:
+def is_valid_code(code):
+    try:
+        ast.parse(code)
+    except SyntaxError:
+        return False
+    return True
+
+class Card(ui.Advanced_Object):
+    IMAGE_SIZE = (card_width - 75, 210)
     @staticmethod
     def build_card(info):
         c = Card(**info)
         return c.get_card_image()
         
-    def __init__(self, name='Title', description='description', tags='tags', color=[161, 195, 161], id=None, image='', node_data={}, weight=1, published=False, lines=(0, 0), **kwargs):
+    @classmethod
+    def load_pic(cls, path):
+        if os.path.exists(path):
+            pic = pg.image.load(path).convert_alpha()
+            pic = pg.transform.smoothscale(pic, cls.IMAGE_SIZE)
+        else:
+            pic = pg.Surface(cls.IMAGE_SIZE).convert_alpha()
+        return pic
+        
+    def __init__(self, name='Title', description='description', tags='tags', color=[161, 195, 161], id=None, 
+                 image='', node_data={}, weight=1, code='', lines=(0, 0), published=False, **kwargs):
+        super().__init__()
+        
         self.id = id
         self.node_data = node_data
         self.weight = weight
-        self.published = published
+        self.code = code
         self.lines = lines
-        
-        self.rects = {}
-        self.textboxes = {}
-        self.elements = {}
-        
-        self.color = color
-        self.bg = pg.Surface((345, 500)).convert()
-        self.bg.fill(self.color)
-        
+        self.published = published
+
         self.image = pg.Surface(card_size).convert_alpha()
         self.image.fill((50, 50, 50))
         self.rect = self.image.get_rect()
-        
-        bg = pg.Surface((345, 500)).convert_alpha()
-        bg.fill((1, 1, 1))
-        bg_rect = bg.get_rect()
-        bg_rect.center = self.rect.center
-        self.image.blit(bg, bg_rect)
-        self.rects['bg'] = bg_rect
+        r = self.rect.inflate(-30, -30)
+        pg.draw.rect(self.image, (1, 0, 0), r)
+        self.image.set_colorkey((1, 0, 0))
 
-        title = pg.Surface((225, 45)).convert()
-        title.fill((255, 255, 255))
-        title_textbox = title.get_rect()
-        title = Image_Manager.rect_outline(title)
-        title_rect = title.get_rect()
-        title_rect.centerx = bg_rect.centerx
-        title_rect.y = 30
-        title_textbox.center = title_rect.center
-        self.image.blit(title, title_rect)
-        self.rects['name'] = title_rect
-        self.textboxes['name'] = title_textbox
+        self.objects_dict = {}
 
-        pic = self.load_pic(image)
-        pic_rect = pic.get_rect()
-        pic_rect.centerx = self.rects['bg'].centerx
-        pic_rect.y = self.rects['name'].bottom + 10
-        window = pic.copy()
-        window.fill((0, 0, 0, 0))
-        self.image.blit(window, pic_rect)
-        self.pic = pic
-        self.rects['pic'] = pic_rect
+        bg = ui.Image(pg.Surface(r.size).convert())
+        bg.image.fill(color)
+        bg.rect.center = self.rect.center
+        self.add_child(bg, current_offset=True)
+        self.objects_dict['bg'] = bg
+
+        name_box = ui.Image_Manager.get_surface((255, 45), color=(255, 255, 255), olcolor=(0, 0, 0))
+        name = ui.Input.from_image(name_box, message=name, fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=30)
+        name.rect.centerx = bg.rect.centerx
+        name.rect.y = 30
+        self.add_child(name, current_offset=True)
+        self.objects_dict['name'] = name
         
-        desc = pg.Surface((225, 170)).convert()
-        desc.fill((255, 255, 255))
-        desc_textbox = desc.get_rect()
-        desc = Image_Manager.rect_outline(desc)
-        desc_rect = desc.get_rect()
-        desc_rect.centerx = self.rects['bg'].centerx
-        desc_rect.y = 300
-        desc_textbox.center = desc_rect.center
-        self.image.blit(desc, desc_rect)
-        self.rects['desc'] = desc_rect
-        self.textboxes['desc'] = desc_textbox
+        pw, ph = Card.IMAGE_SIZE
+        pic_outline = ui.Image.from_style((pw + 4, ph + 4), color=(0, 0, 0))
+        pic_outline.rect.centerx = bg.rect.centerx
+        pic_outline.rect.y = name.rect.bottom + 6
+        self.objects_dict['pic_outline'] = pic_outline
+
+        pic = ui.Image(Card.load_pic(image))
+        pic.rect.center = pic_outline.rect.center
+        self.objects_dict['pic'] = pic
+        self.add_child(pic, current_offset=True)
+
+        desc_box = ui.Image_Manager.get_surface((225, 170), color=(255, 255, 255), olcolor=(0, 0, 0))
+        desc = ui.Input.from_image(desc_box, message=description, fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=35, length=300)
+        desc.rect.centerx = bg.rect.centerx
+        desc.rect.y += 300
+        self.add_child(desc, current_offset=True)
+        self.objects_dict['desc'] = desc
+
+        tags_box = ui.Image_Manager.get_surface((230, 20), color=(255, 255, 255), olcolor=(0, 0, 0))
+        tags = ui.Input.from_image(tags_box, message=str(tags), fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=50)
+        tags.rect.centerx = bg.rect.centerx
+        tags.rect.y += 475
+        self.add_child(tags, current_offset=True)
+        self.objects_dict['tags'] = tags
         
-        tags_image = pg.Surface((230, 20)).convert()
-        tags_image.fill((255, 255, 255))
-        tags_textbox = tags_image.get_rect()
-        tags_image = Image_Manager.rect_outline(tags_image)
-        tags_rect = tags_image.get_rect()
-        tags_rect.centerx = self.rects['bg'].centerx
-        tags_rect.y = 480 - 5
-        tags_textbox.center = tags_rect.center
-        self.image.blit(tags_image, tags_rect)
-        self.rects['tags'] = tags_rect
-        self.textboxes['tags'] = tags_textbox
-        
-        self.image.set_colorkey((1, 1, 1))
-        
-        self.set_screen(name, description, tags)
-            
-        self.update()
+        self.objects = list(self.objects_dict.values())
       
     @property
     def name(self):
-        return self.elements['name'].get_message().lower()
+        return self.objects_dict['name'].get_message().lower()
         
     @property
     def description(self):
-        return self.elements['desc'].get_message()
+        return self.objects_dict['desc'].get_message()
         
     @property
     def tags(self):
-        return self.elements['tags'].get_message()
+        return self.objects_dict['tags'].get_message()
         
     @property
     def classname(self):
-        return self.name.title().replace(' ', '_')
-  
-    def load_pic(self, path):
-        if os.path.exists(path):
-            pic = pg.image.load(path).convert_alpha()
-        else:
-            pic = pg.Surface((card_width - 75, 210)).convert_alpha()
-        pic = pg.transform.smoothscale(pic, (card_width - 75, 210))
-        return pic
+        name = self.name.title().replace(' ', '_')
         
-    def set_screen(self, name, description, tags):
-        tb = self.textboxes['name']
-        i = Input((tb.width - 5, tb.height - 5), message=name, fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=30)
-        i.rect.center = self.textboxes['name'].center
-        self.elements['name'] = i
-        
-        tb = self.textboxes['desc']
-        i = Input((tb.width - 5, tb.height - 5), message='description', fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=35, length=300)
-        i.rect.center = self.textboxes['desc'].center
-        self.elements['desc'] = i
-        i.update_message(description)
-        
-        tb = self.textboxes['tags']
-        i = Input((tb.width - 5, tb.height - 5), message=str(tags), fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=50)
-        i.rect.center = self.textboxes['tags'].center
-        self.elements['tags'] = i
+        cname = ''
+        for char in name:
+            if char.isalnum() or char == '_':
+                cname += char
+                
+        if cname[0].isnumeric():
+            cname = '_' + cname
 
+        return cname
+        
+    @property
+    def color(self):
+        return list(self.objects_dict['bg'].image.get_at((0, 0)))
+        
+    @property
+    def pic(self):
+        return self.objects_dict['pic'].image
+        
+    @property
+    def image_path(self):
+        return f'img/custom/{self.id}.png'
+        
+    def get_info(self):
+        info = {
+            'name': self.name,
+            'description': self.description,
+            'tags': self.tags, 
+            'color': self.color, 
+            'image': self.image_path,
+            'id': self.id,
+            'weight': self.weight, 
+            'classname': self.classname, 
+            'custom': True,
+            'code': self.code,
+            'lines': self.lines,
+            'published': self.published,
+            'node_data': self.node_data
+        }
+        return info
+ 
     def is_user(self):
         return self.id == 0
         
-    def get_image_path(self):
-        return f'img/custom/{self.id}.png'
-    
-    def get_info(self):
-        return {'name': self.name, 'description': self.description, 'tags': self.tags, 'color': self.color, 
-                'image': self.get_image_path(), 'id': self.id, 'node_data': self.node_data, 'weight': self.weight, 
-                'classname': self.classname, 'custom': True, 'published': self.published, 'lines': self.lines}
+    def set_color(self, color):
+        self.objects_dict['bg'].fill(color)
             
-    def update_color(self, rgb, val):
-        self.color[rgb] = val
-        self.bg.fill(self.color)
+    def update_image(self, img):
+        self.objects_dict['pic'].set_image(img)
         
-    def set_node_data(self, node_data):
-        if self.node_data != node_data:
-            self.node_data = node_data
+    def clear_image(self):
+        self.objects_dict['pic'].fill(self.color)
+        
+    def get_card_image(self):
+        image = self.image.copy()
+        for o in self.objects:
+            o.draw_on(image, self.rect)
+        return image
+
+    def set_node_data(self, nodes):
+        data = node_data.pack(nodes)
+        self.node_data = data
+        
+        prev_code = self.code
+        np = node_parser.Node_Parser(self, nodes)
+        code = np.get_text()
+        self.set_code(code)
+        
+        if prev_code != code:
             self.published = False
+   
+    def set_code(self, code):
+        self.code = code
             
     def set_lines(self, s, e):
         self.lines = (s, e)
         
-    def publish(self, s, e):
+    def publish(self, nodes=None):
+        if nodes is not None:
+            self.set_node_data(nodes)
+            
+        if not self.code:
+            m = ui.Menu.notice('No writable nodes found.')
+            m.run()
+            return
+            
+        saved = self.save(suppress=True)
+        if not saved:
+            m = ui.Menu.notice('An error occurred while saving.')
+            m.run()
+            return
+        
+        if not is_valid_code(self.code):
+            m = ui.Menu.notice('Error: invalid code.')
+            m.run()
+            return
+  
+        passed = tester.run_tester(self)
+        if not passed:
+            return
+
+        import save
+        s = save.get_save()
+        s, e = s.publish_card(self)
         self.set_lines(s, e)
+        
         self.published = True
-        import game
-        game.load_custom_cards()
+        self.save(suppress=True)
+        
+        m = ui.Menu.notice('Card has been published successfully!')
+        m.run()
+        
+    def draw(self, surf):
+        for o in self.objects:
+            o.draw_on(self.image, self.rect)
+        surf.blit(self.image, self.rect)
             
-    def update_image(self, img):
-        self.pic = pg.transform.smoothscale(img, self.rects['pic'].size)
-        
-    def clear_image(self):
-        self.pic.fill(self.color)
-
-    def get_card_image(self):
-        image = pg.Surface(self.rect.size).convert()
-        image.blit(self.bg, self.rects['bg'])
-        img = self.image.copy()
-        img.set_colorkey((50, 50, 50))
-        image.blit(img, (0, 0))
-        
-        image.blit(Image_Manager.rect_outline(self.pic), self.rects['pic'])
-        
-        for e in self.elements.values(): 
-            e.draw(image)
-
-        return image
+    def save(self, nodes=None, suppress=False):
+        if nodes is not None:
+            self.set_node_data(nodes)
             
-    def events(self, input):
-        for e in self.elements.values():
-            e.events(input)
-            
-    def update(self):
-        for e in self.elements.values():
-            e.update()
-        
-    def draw(self, win):
-        win.blit(self.bg, self.rects['bg'])
-        win.blit(Image_Manager.rect_outline(self.pic), self.rects['pic'])
-        win.blit(self.image, self.rect)
-        
-        for e in self.elements.values():
-            e.draw(win)
-            
-    def save(self, suppress=False):
         import customsheet
         CUSTOMSHEET = customsheet.get_sheet()
         if not CUSTOMSHEET:
@@ -207,10 +240,12 @@ class Card:
         saved = CUSTOMSHEET.save_card(self)
         if not suppress:
             if not saved:
-                menu(notice, args=['A card with that name already exists.'], overlay=True)
+                menu = ui.Menu.notice('A card with that name already exists.', overlay=True)
+                menu.run()
                 return
             else:
-                new_message('card saved!', 2000)
+                menu = ui.Menu.timed_message('Card saved successfully!', 50, overlay=True)
+                menu.run()
         return saved
         
     

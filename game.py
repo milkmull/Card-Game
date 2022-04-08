@@ -3,6 +3,8 @@ import json
 import importlib
 
 import save
+import exceptions
+
 import func
 import custom_cards
 import testing_card
@@ -17,9 +19,6 @@ def load_testing_card():
 def load_custom_cards():
     importlib.reload(custom_cards)
 
-class InfiniteLoop(Exception):
-    pass
-    
 def any(elements):
     for e in elements:
         if e:
@@ -465,7 +464,7 @@ class Game:
             #for p in self.players:
                 #print(p.played, p.requests, p.active_card, p.game_over)
                 #print(self.status)
-            raise InfiniteLoop
+            raise exceptions.InfiniteLoop
 
     def main(self):
         if self.status != 'waiting':
@@ -950,7 +949,7 @@ class Game_Copy:
  
         if self.counter > 100:
             self.debug()
-            raise InfiniteLoop
+            raise exceptions.InfiniteLoop
                      
 #settings stuff---------------------------------------------------------------------------------------
 

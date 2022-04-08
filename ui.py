@@ -4,164 +4,26 @@ import pygame.freetype
 import sys
 from tkinter import Tk
 
-def init():
+def init(*args, **kwargs):
+    if args or kwargs:
+        size = kwargs.get('size', (1024, 576))
+        flags = kwargs.get('flags', [])
+        pg.display.set_mode(size, *flags)
     win = pg.display.get_surface()
     WIDTH, HEIGHT = win.get_size()
 
     globals()['WIDTH'] = WIDTH
     globals()['HEIGHT'] = HEIGHT
     
-class Circle:
-    def __init__(self, x, y, radius):
-        self.x = x
-        self.y = y
-        self.radius = radius
-        
-    def __eq__(self, circ):
-        if isinstance(circ, Circle):
-            return self.x == circ.x and self.y == circ.y and self.radius == circ.radius
-        return False
-        
-    @property
-    def center(self):
-        return (self.dx, self.dy)
-        
-    @center.setter
-    def center(self, center):
-        self.x = center[0]
-        self.y = center[1]
-        
-    @property
-    def top(self):
-        return self.y - self.radius
-        
-    @top.setter
-    def top(self, top):
-        self.y = round(top + self.radius)
-        
-    @property
-    def midtop(self):
-        return (self.x, self.y - self.radius)
-        
-    @midtop.setter
-    def midtop(self, midtop):
-        self.x = midtop[0]
-        self.y = midtop[1] + self.radius
-        
-    @property
-    def bottom(self):
-        return (self.x, self.y + self.radius)
-        
-    @bottom.setter
-    def bottom(self, bottom):
-        self.y = round(bottom - self.radius)
-        
-    @property
-    def midbottom(self):
-        return (self.x, self.y + self.radius)
-        
-    @midbottom.setter
-    def midbottom(self, midbottom):
-        self.x = midbottom[0]
-        self.y = midbottom[1] - self.radius
-        
-    @property
-    def left(self):
-        return (self.x - self.radius, self.y)
-        
-    @left.setter
-    def left(self, left):
-        self.x = round(left + self.radius)
-        
-    @property
-    def midleft(self):
-        return (self.x - self.radius, self.y)
-        
-    @midleft.setter
-    def midleft(self, midleft):
-        self.x = midleft[0] + self.radius
-        self.y = midleft[1]
-        
-    @property
-    def right(self):
-        return (self.x + self.radius, self.y)
-        
-    @right.setter
-    def right(self, right):
-        self.x = round(right - self.radius)
-        
-    @property
-    def midright(self):
-        return (self.x + self.radius, self.y)
-        
-    @midright.setter
-    def midright(self, midright):
-        self.x = midright[0] - self.radius
-        self.y = midright[1]
-        
-    @property
-    def diameter(self):
-        return self.radius * 2
-        
-    @diameter.setter
-    def diameter(self, diameter):
-        self.radius = round(diameter / 2)
-        
-    def copy(self):
-        return Circle(self.x, self.y, self.radius)
-        
-    def move(self, dx, dy):
-        return Circle(self.x + dx, self.y + dy, self.radius)
-        
-    def move_ip(self, dx, dy):
-        self.x += dx
-        self.y += dy
-      
-    def inflate(self, dr):
-        return Circle(self.x, self.y, self.radius + dr)
-        
-    def inflate_ip(self, dr):
-        self.radius += dr
-        
-    def update(self, x, y, radius):
-        self.x = x
-        self.y = y
-        self.radius = radius
-
-    def normalize(self):
-        self.radius = abs(self.radius)
-        
-    def contains(self, circ):
-        return sum([(a - b)**2 for a, b in zip(circ.center, self.center)])**0.5 + circ.radius <= self.radius
-        
-    def collidepoint(self, p):
-        return sum([(a - b)**2 for a, b in zip(p, self.center)])**0.5 < self.radius
- 
-    def collidecirc(self, circ):
-        return sum([(a - b)**2 for a, b in zip(circ.center, self.center)])**0.5 < self.radius
-    
-    def collidelist(self, circs):
-        for circ in circs:
-            if sum([(a - b)**2 for a, b in zip(circ.center, self.center)])**0.5 < self.radius + circ.radius:
-                return True
-        return False
-        
-    def collidelistall(self, circs):
-        for circ in circs:
-            if sum([(a - b)**2 for a, b in zip(circ.center, self.center)])**0.5 >= self.radius + circ.radius:
-                return False
-        return True
-        
-    def getoffset(self, circ):
-        return (self.x - circ.x, self.y - circ.y)
-        
-    def getrect(self):
-        return pg.Rect(self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2)
+def get_size():
+    return (WIDTH, HEIGHT)
 
 class Line:
+    @staticmethod
     def ccw(a, b, c):
         return (c[1] - a[1]) * (b[0] - a[0]) > (b[1] - a[1]) * (c[0] - a[0])
 
+    @staticmethod
     def intersect(a, b, c, d):
         return Line.ccw(a, c, d) != Line.ccw(b, c, d) and Line.ccw(a, b, c) != Line.ccw(a, b, d)
  
@@ -404,23 +266,27 @@ class Mover:
         
     def get_applied_rotation(self):
         return pg.transform.rotate(self.image, self.rotation)
-       
-class Draw_Lines:
-    def __init__(self, points, color=(0, 0, 0), width=3):
-        self.points = points
-        self.color = color
-        self.width = width
-        
-    def set_color(self, color):
-        self.color = color
-        
-    def set_points(self, points):
-        self.points = points
-        
-    def draw(self, surf):
-        pg.draw.lines(surf, self.color, False, self.points, width=self.width)
 
-class DraggerManager:
+class Logging:
+    def __init__(self):
+        self.logs = []
+        
+    def get_logs(self):
+        logs = self.logs.copy()
+        self.logs.clear()
+        return logs
+        
+    def clear_logs(self):
+        self.logs.clear()
+        
+    def add_log(self, log):
+        self.logs.append(log)
+        
+    def get_next_log(self):
+        if self.logs:
+            return self.logs.pop(-1)
+            
+class DraggerManager(Logging):
     def __init__(self, draggers):
         self.draggers = draggers
         self.held_list = []
@@ -428,7 +294,7 @@ class DraggerManager:
         
         self.rs = Rect_Selector(self.draggers)
         
-        self.log_queue = []
+        Logging.__init__(self)
         
     def cancel(self):
         self.rs.cancel()
@@ -488,65 +354,53 @@ class DraggerManager:
 
     def add_carry_log(self, carried):
         log = {'t': 'carry', 'draggers': carried}
-        self.log_queue.append(log)
-        
-    def get_logs(self):
-        logs = self.log_queue.copy()
-        self.log_queue.clear()
-        return logs
-        
-    def get_next_log(self):
-        if self.log_queue:
-            return self.log_queue.pop(-1)
-
-    def events(self, input):
-        self.rs.events(input)
-        
-        p = pg.mouse.get_pos()
-        
-        click_down = False
-        click_up = False
-        a = False
-        
-        for e in input:
+        self.add_log(log)
             
-            if e.type == pg.MOUSEBUTTONDOWN:
-                click_down = True    
-            elif e.type == pg.MOUSEBUTTONUP:
-                click_up = True
-                
-            elif e.type == pg.KEYDOWN:
-                if (e.key == pg.K_RCTRL) or (e.key == pg.K_LCTRL):
+    def events(self, events, rect=True):
+        if rect:
+            self.rs.events(events)
+        else:
+            self.cancel()
+        
+        p = events.get('p')
+        kd = events.get('kd')
+        ku = events.get('ku')
+        mbd = events.get('mbd')
+        mbu = events.get('mbu')
+        
+        a = False
+        hit_any = False
+        carried = {}
+        
+        if not mbd or mbu:
+            if kd:
+                if (kd.key == pg.K_RCTRL) or (kd.key == pg.K_LCTRL):
                     self.ctrl = True
-                elif e.key == pg.K_a:
+                elif kd.key == pg.K_a:
                     a = True
-            elif e.type == pg.KEYUP:
-                if (e.key == pg.K_RCTRL) or (e.key == pg.K_LCTRL):
+            elif ku:
+                if (ku.key == pg.K_RCTRL) or (ku.key == pg.K_LCTRL):
                     self.ctrl = False
                     
         if self.ctrl and a:
             self.select_all()
-        elif click_up:
+        elif mbu:
             selected = self.rs.get_selected()
             self.extend_held_list(selected)
-             
-        hit_any = False
-        
-        carried = {}
-             
+
         for d in self.draggers:
             if not getattr(d, 'visible', True):
                 continue
             hit = d.rect.collidepoint(p)
             d._hover = hit
-            if click_down:
+            if mbd:
                 if hit:
                     self.update_held_list(d)
                 elif not self.ctrl:
                     if d not in self.held_list:
                         d._selected = False
                         d.drop()
-            elif click_up:
+            elif mbu:
                 dist = d.get_carry_dist()
                 if dist:
                     carried[d] = dist
@@ -558,10 +412,10 @@ class DraggerManager:
         if carried:
             self.add_carry_log(carried)
                 
-        if click_down and hit_any:
+        if mbd and hit_any:
             self.rs.cancel()
                 
-        if click_down:
+        if mbd:
             if not hit_any:
                 self.reset_held_list()
             elif not self.ctrl:
@@ -666,20 +520,19 @@ class Rect_Selector:
         
     def get_selected(self):
         return self.selected.copy()
-
-    def events(self, input):
-        p = pg.mouse.get_pos()
         
-        for e in input:
-            if e.type == pg.MOUSEBUTTONDOWN:
-                if e.button == 1:
-                    self.anchor = p
-                break
-            elif e.type == pg.MOUSEBUTTONUP:
-                if e.button == 1:
-                    self.update_selected()
-                    self.anchor = None
-                break
+    def events(self, events):
+        p = events.get('p')
+        mbd = events.get('mbd')
+        mbu = events.get('mbu')
+        
+        if mbd:
+            if mbd.button == 1:
+                self.anchor = p
+        elif mbu:
+            if mbu.button == 1:
+                self.update_selected()
+                self.anchor = None
                 
     def update(self):
         if self.anchor:
@@ -756,6 +609,7 @@ class Base_Loop:
         cls.LAST_EVENT_BATCH = event_batch
         
         events = {}
+        events['all'] = event_batch
         events['p'] = pg.mouse.get_pos()
         for e in event_batch:
             if e.type == pg.QUIT:
@@ -798,6 +652,8 @@ class Base_Loop:
                     hit = o.set_cursor()
         if not hit:
             pg.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+            
+        return hit
 
     def events(self):
         hit = False
@@ -878,7 +734,7 @@ class Menu(Base_Loop):
 
     @classmethod
     def notice(cls, message, overlay=False, bcolor=(0, 200, 0), **kwargs):
-        objects, (_, lower) = Menu.get_window_objects(message=message, **kwargs)
+        objects, (_, lower) = cls.get_window_objects(message=message, **kwargs)
         
         b = Button.text_button('ok', size=(150, 25), tsize=25, color2=bcolor)
         b.set_tag('break')
@@ -890,7 +746,7 @@ class Menu(Base_Loop):
 
     @classmethod
     def yes_no(cls, message, overlay=False, yes_btn_color=(0, 200, 0), no_btn_color=(200, 0, 0), **kwargs):
-        objects, (_, lower) = Menu.get_window_objects(message=message, **kwargs)
+        objects, (_, lower) = cls.get_window_objects(message=message, **kwargs)
 
         b = Button.text_button('yes', size=(100, 30), tsize=25, color2=yes_btn_color, func=lambda: True)
         b.set_tag('return')
@@ -910,7 +766,7 @@ class Menu(Base_Loop):
 
     @classmethod
     def loading_screen(cls, func, fargs=[], fkwargs={}, overlay=False, **kwargs):
-        objects, (_, lower) = Menu.get_window_objects(**kwargs)
+        objects, (_, lower) = cls.get_window_objects(**kwargs)
 
         li = LoadingIcon()
         li.rect.topright = objects[0].rect.topright
@@ -927,7 +783,7 @@ class Menu(Base_Loop):
 
     @classmethod
     def timed_message(cls, message, timer, overlay=False, **kwargs):
-        objects, _ = Menu.get_window_objects(message=message, **kwargs)
+        objects, _ = cls.get_window_objects(message=message, **kwargs)
         
         t = Timer(timer, func=lambda: 1)
         t.set_tag('return')
@@ -966,7 +822,7 @@ class Menu(Base_Loop):
         self.set_funcs()
         
     def set_funcs(self):
-        for o in self.objects:
+        for o in self.objects.copy():
             if o.tag == 'break':
                 if o.func:
                     exit_func = self.wrap_exit_function(o)
@@ -979,6 +835,8 @@ class Menu(Base_Loop):
             elif o.tag == 'refresh':
                 refresh_func = self.wrap_refresh_function(o)
                 o.set_func(refresh_func)
+            if o.ohandle:
+                self.objects.remove(o)
                 
     def wrap_exit_function(self, o):
         f = o.func
@@ -1046,6 +904,11 @@ class Menu(Base_Loop):
             if o.visible and not o.window_draw:
                 o.draw(self.window)
         pg.display.flip()
+        
+    def lite_draw(self):
+        for o in self.objects:
+            if o.visible and not o.window_draw:
+                o.draw(self.window)
           
     def run(self):
         self.running = True
@@ -1075,10 +938,11 @@ class Base_Object:
         
         return New_Mover
         
-    def __init__(self, func=None, args=[], kwargs={}, tag=None, **okwargs):
+    def __init__(self, func=None, args=[], kwargs={}, tag=None, ohandle=False, **okwargs):
         if tag is None:
             tag = str(id(self))
         self.tag = tag
+        self.ohandle = ohandle
         self.visible = True
         self.enabled = True
         self.window_draw = False
@@ -1220,9 +1084,9 @@ class Position:
     def add_children(self, children):
         self.children += children
         
-    def add_child(self, child, **kwargs):
+    def add_child(self, child, set_parent=False, **kwargs):
         self.children.append(child)
-        if kwargs:
+        if set_parent or kwargs:
             child.set_parent(self.rect, **kwargs)
         
     def remove_child(self, child):
@@ -1234,6 +1098,14 @@ class Position:
 
     def get_children(self):
         return self.children
+        
+    def get_sub_children(self, children=None):
+        if children is None:
+            children = []
+        for c in self.children:
+            children.append(c)
+            c.get_sub_children(children=children)
+        return children
 
     def set_parent(self, parent_rect, offset=None, anchor_point='topleft', contain=False, bind_width=False, bind_height=False, current_offset=False):
         self.parent_rect = parent_rect
@@ -1364,6 +1236,35 @@ class Advanced_Object(Base_Object, Position):
         if self._draw:
             self._draw(surf)
 
+class Compound_Object(Base_Object, Position):
+    def __init__(self):
+        Base_Object.__init__(self)
+        Position.__init__(self)
+        
+    def collide(self, p):
+        return any({o.rect.collidepoint(p) for o in self.get_sub_children()})
+        
+    def set_cursor(self):
+        for o in self.children:
+            if o.visible and o.enabled:
+                if o.set_cursor():
+                    return True
+        
+    def events(self, events):
+        for o in self.children:
+            if o.visible and o.enabled:
+                o.events(events)
+            
+    def update(self):
+        self.update_position()
+        for o in self.children:
+            o.update()
+            
+    def draw(self, surf):
+        for o in self.children:
+            if o.visible:
+                o.draw(surf)
+
 class Timer(Base_Object):
     def __init__(self, start_time, *base_args, reset_timer=False, **base_kwargs):
         self.start_time = start_time
@@ -1399,7 +1300,7 @@ class On_Click(Base_Object):
 class Image(Base_Object, Position): 
     @classmethod
     def from_style(cls, *args, **kwargs):
-        img = Image_Manager(*args, **kwargs)
+        img = Image_Manager.get_surface(*args, **kwargs)
         return cls(img)
         
     def __init__(self, image, bgcolor=None):
@@ -1413,11 +1314,21 @@ class Image(Base_Object, Position):
     def get_image(self):
         return self.image
         
+    def set_image(self, image, keep_scale=True):
+        if keep_scale:
+            self.image = pg.transform.smoothscale(image, self.rect.size)
+        else:
+            self.image = image
+            self.rect.size = image.get_size()
+        
     def set_background(self, color):
         self.bgcolor = color
         
     def clear_background(self):
         self.bgcolor = None
+        
+    def fill(self, color):
+        self.image.fill(color)
         
     def scale(self, size):
         self.image = pg.transform.smoothscale(self.image, size)
@@ -1434,7 +1345,11 @@ class Image(Base_Object, Position):
 class Textbox(Base_Object, Position):
     pg.freetype.init()
     _FONT = 'arial.ttf'
-    FONT = pg.freetype.Font(_FONT)
+    try:
+        FONT = pg.freetype.Font(_FONT)
+    except OSError:
+        FONT = pg.freetype.Font(None)
+        _FONT = FONT.path
     FONT.pad = True
     OLCACHE = {}
     
@@ -1913,6 +1828,9 @@ class Textbox(Base_Object, Position):
     
     def draw(self, surf):
         surf.blit(self.image, self.rect)
+        
+    def to_static(self):
+        return Image(self.image)
 
 class Button(Base_Object, Position):
     @classmethod
@@ -1929,7 +1847,7 @@ class Button(Base_Object, Position):
         b.join_object(i, size=size, padding=padding, center_offset=center_offset)
         return b
 
-    def __init__(self, size=None, color1=(0, 0, 0), color2=(100, 100, 100), border_radius=5, func=lambda *args, **kwargs: None, args=[], kwargs={}, tag=None):
+    def __init__(self, size=None, color1=(0, 0, 0), color2=(100, 100, 100), border_radius=5, func=lambda *args, **kwargs: None, args=[], kwargs={}, tag=None, ohandle=False):
         self.size = size
         if not size:
             size = (0, 0)
@@ -1951,7 +1869,7 @@ class Button(Base_Object, Position):
         self.pressed = False
         self.update_object = True
         
-        Base_Object.__init__(self, tag=tag)
+        Base_Object.__init__(self, tag=tag, ohandle=ohandle)
         Position.__init__(self)
         
     def set_enabled(self, enabled):
@@ -2018,9 +1936,8 @@ class Button(Base_Object, Position):
             return True
 
     def click_down(self):
-        if self.active:
-            self.pressed = True
-            self.return_val = self.func(*self.args, **self.kwargs)
+        self.pressed = True
+        self.return_val = self.func(*self.args, **self.kwargs)
 
     def events(self, events):
         p = events['p']
@@ -2033,7 +1950,10 @@ class Button(Base_Object, Position):
         mbu = events.get('mbu')
         if mbd:
             if mbd.button == 1:
-                self.click_down()  
+                if self.active:
+                    self.click_down()  
+                    events.pop('mbd')
+                
         elif mbu:
             if mbu.button == 1:
                 self.pressed = False
@@ -2057,7 +1977,7 @@ class Button(Base_Object, Position):
         if self.object and self.update_object:
             self.object.draw(surf)
 
-class Input(Base_Object, Position):
+class Input(Base_Object, Position, Logging):
     VALID_CHARS = set(range(32, 127))
     VALID_CHARS.add(9)
     VALID_CHARS.add(10)
@@ -2096,7 +2016,7 @@ class Input(Base_Object, Position):
         return input
 
     def __init__(self, size, message='type here', tsize=20, padding=(5, 5), color=(0, 0, 0, 0), length=99, check=lambda char: True,
-                 fitted=False, scroll=False, allignment='c', size_lock=False, **kwargs):      
+                 fitted=False, scroll=False, allignment='c', size_lock=False, highlight=False, **kwargs):      
         self.textbox = Textbox(message, tsize=tsize, fitted=fitted, **kwargs)
 
         w, h = size
@@ -2128,6 +2048,7 @@ class Input(Base_Object, Position):
         self.index = 0
         self.selecting = False
         self.selection = []
+        self.hl = highlight
         
         self.btimer = 0
         self.timer = 0
@@ -2141,13 +2062,13 @@ class Input(Base_Object, Position):
         self.all = False
 
         self.last_message = message
-        self.logs = []
         
         self.text_rect = self.rect.inflate(-padding[0], -padding[1])
         self.update_message(self.textbox.get_message())
         
         Base_Object.__init__(self)
         Position.__init__(self)
+        Logging.__init__(self)
         
         if not self.fitted:
             anchor = 'topleft'
@@ -2277,6 +2198,12 @@ class Input(Base_Object, Position):
         if p[0] - r.centerx >= 0:
             i += 1
         return i
+        
+    def open(self):
+        self.active = True
+        self.set_index(len(self.get_message())) 
+        if self.hl:
+            self.highlight_full()
 
     def close(self):
         if self.active:
@@ -2286,7 +2213,7 @@ class Input(Base_Object, Position):
                 self.textbox.reset()
                 m = self.get_message()
             if self.last_message != m:
-                self.logs.append({'t': 'val', 'i': self, 'm': (self.last_message, m)})
+                self.add_log({'t': 'val', 'i': self, 'm': (self.last_message, m)})
                 self.last_message = m
             self.selection.clear()
             if self.scroll:
@@ -2344,13 +2271,13 @@ class Input(Base_Object, Position):
 
             if clicks == 1:
                 if not self.active:
-                    self.active = True
-                    self.set_index(len(self.get_message()))                       
+                    self.open()                       
                 else:
                     self.selecting = True
                     i = self.get_closest_index(p=p)
                     self.set_index(i)
-                self.selection.clear()
+                if not self.hl:
+                    self.selection.clear()
                 
             elif clicks == 2:
                 self.highlight_word()
@@ -2389,63 +2316,67 @@ class Input(Base_Object, Position):
                 
         elif self.active:
 
-            if kd:
-                
-                if kd.key == pg.K_BACKSPACE:
-                    self.backspace = True
-                    
-                elif (kd.key == pg.K_RCTRL) or (kd.key == pg.K_LCTRL):
-                    self.ctrl = True
-                elif kd.key == pg.K_c:
-                    self.copy = True
-                elif kd.key == pg.K_x:
-                    self.cut = True
-                elif kd.key == pg.K_v: 
-                    self.paste = True
-                elif kd.key == pg.K_a:
-                    self.all = True
-                    
-                elif kd.key == pg.K_DELETE:
-                    self.delete()
-                    
-                elif kd.key == pg.K_RIGHT:
-                    self.shift_index('r')
-                elif kd.key == pg.K_LEFT:
-                    self.shift_index('l')
-                    
-                elif kd.key == pg.K_RETURN:
-                    if not self.fitted:
-                        self.close()
-                    else:
-                        self.send_keys('\n')
+            for e in events.get('all'):
+            
+                if e.type == pg.KEYDOWN:
+                    kd = e
+
+                    if kd.key == pg.K_BACKSPACE:
+                        self.backspace = True
                         
-                elif kd.key == pg.K_TAB:
-                    self.send_keys('    ')
-                    sent = True
+                    elif (kd.key == pg.K_RCTRL) or (kd.key == pg.K_LCTRL):
+                        self.ctrl = True
+                    elif kd.key == pg.K_c:
+                        self.copy = True
+                    elif kd.key == pg.K_x:
+                        self.cut = True
+                    elif kd.key == pg.K_v: 
+                        self.paste = True
+                    elif kd.key == pg.K_a:
+                        self.all = True
                         
-                if not sent:
-                    if not (self.ctrl or self.backspace) and hasattr(kd, 'unicode'):
-                        char = kd.unicode
-                        if char:
-                            self.send_keys(char)
+                    elif kd.key == pg.K_DELETE:
+                        self.delete()
                         
-            elif ku:
+                    elif kd.key == pg.K_RIGHT:
+                        self.shift_index('r')
+                    elif kd.key == pg.K_LEFT:
+                        self.shift_index('l')
+                        
+                    elif kd.key == pg.K_RETURN:
+                        if not self.fitted:
+                            self.close()
+                        else:
+                            self.send_keys('\n')
+                            
+                    elif kd.key == pg.K_TAB:
+                        self.send_keys('    ')
+                        sent = True
+                            
+                    if not sent:
+                        if not (self.ctrl or self.backspace) and hasattr(kd, 'unicode'):
+                            char = kd.unicode
+                            if char:
+                                self.send_keys(char)
+                                
+                elif e.type == pg.KEYUP:
+                    ku = e
                 
-                if ku.key == pg.K_BACKSPACE:
-                    self.backspace = False
-                    self.bhold = False
-                    self.btimer = 0
-                
-                elif (ku.key == pg.K_RCTRL) or (ku.key == pg.K_LCTRL):
-                    self.ctrl = False
-                elif ku.key == pg.K_c:
-                    self.copy = False
-                elif ku.key == pg.K_x:
-                    self.cut = False
-                elif ku.key == pg.K_v: 
-                    self.paste = False
-                elif ku.key == pg.K_a:
-                    self.all = False
+                    if ku.key == pg.K_BACKSPACE:
+                        self.backspace = False
+                        self.bhold = False
+                        self.btimer = 0
+                    
+                    elif (ku.key == pg.K_RCTRL) or (ku.key == pg.K_LCTRL):
+                        self.ctrl = False
+                    elif ku.key == pg.K_c:
+                        self.copy = False
+                    elif ku.key == pg.K_x:
+                        self.cut = False
+                    elif ku.key == pg.K_v: 
+                        self.paste = False
+                    elif ku.key == pg.K_a:
+                        self.all = False
                         
         if self.ctrl:
         
@@ -2613,7 +2544,7 @@ class Flipper(Base_Object, Position):
         self.base_image.fill(self.color)
         self.right_button.draw(surf)
         self.left_button.draw(surf)
-        self.objects[self.index].draw_on(self.base_image, rect=self.rect)
+        self.objects[self.index].draw_on(self.base_image, self.rect)
         surf.blit(self.base_image, self.rect)
 
 class Scroll_Bar(Base_Object, Position):
@@ -2708,6 +2639,10 @@ class Scroll_Bar(Base_Object, Position):
         set = self.up_button.set_cursor()
         if not set:
             set = self.down_button.set_cursor()
+        if not set:
+            if self.rect.collidepoint(pg.mouse.get_pos()):
+                pg.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+                set = True
         return set
         
     def events(self, events):                
@@ -2823,7 +2758,7 @@ class Static_Window(Base_Object, Position, Scroll_Pair):
     def __bool__(self):
         return bool(self.objects)
         
-    def set_label_stuyle(self, **kwargs):
+    def set_label_style(self, **kwargs):
         self.label.update_style(**kwargs)
         
     def resize(self, w=None, h=None, anchor_point='center'):
@@ -2987,10 +2922,24 @@ class Live_Window(Static_Window):
     def set_window(self, r):
         Scroll_Pair.set_window(self, r)
         
+    def set_cursor(self):
+        for o in self.objects:
+            if hasattr(o, 'set_cursor'):
+                if o.visible and o.enabled:
+                    if o.set_cursor():
+                        return True
+        return super().set_cursor()
+        
     def join_objects(self, *args, **kwargs):
         super().join_objects(*args, **kwargs)
         for o in self.objects:
             o.set_window_draw(True)
+            
+    def events(self, events):
+        super().events(events)
+        for o in self.objects:
+            if o.visible and o.enabled:
+                o.events(events)
             
     def update(self):
         super().update()
@@ -3016,10 +2965,22 @@ class Popup_Base(Static_Window, Mover):
         self.t = None
         self.o = None
         
+        self.inflation = [50, 0]
+        
         self.timer = 0
         self.locked = False
         
         Mover.__init__(self) 
+        
+    @property
+    def sense_rect(self):
+        return self.get_total_rect().inflate(self.inflation[0], self.inflation[1])
+        
+    def set_inflation(self, x=None, y=None):
+        if x:
+            self.inflation[0] = x
+        if y:
+            self.inflation[1] = y
         
     def is_visible(self):
         return self.t != self.o
@@ -3040,7 +3001,7 @@ class Popup_Base(Static_Window, Mover):
                         self.locked = not self.locked
                     self.timer = 0
         
-        if self.get_total_rect().inflate(50, 0).collidepoint(p):
+        if self.sense_rect.collidepoint(p):
             if not self.t:
                 t = self.get_target()
                 self.t = t
@@ -3078,10 +3039,22 @@ class Live_Popup(Live_Window, Mover):
         self.t = None
         self.o = None
         
+        self.inflation = [50, 0]
+        
         self.timer = 0
         self.locked = False
         
         Mover.__init__(self)
+        
+    @property
+    def sense_rect(self):
+        return self.get_total_rect().inflate(self.inflation[0], self.inflation[1])
+        
+    def set_inflation(self, x=None, y=None):
+        if x:
+            self.inflation[0] = x
+        if y:
+            self.inflation[1] = y
         
     def is_visible(self):
         return self.t != self.o
@@ -3109,7 +3082,7 @@ class Live_Popup(Live_Window, Mover):
                         self.locked = not self.locked
                     self.timer = 0
         
-        if total_rect.inflate(50, 0).collidepoint(p):
+        if self.sense_rect.collidepoint(p):
             if not self.t:
                 t = self.get_target()
                 self.t = t
@@ -3182,10 +3155,10 @@ class Slider(Base_Object, Position):
         self.adjust_handel()
         
         if self.dir == 'x':
-            dx = self.handel.centerx - self.rect.x
+            dx = self.handel.rect.centerx - self.rect.x
             ratio = dx / self.rect.width 
         elif self.dir == 'y':
-            dy = self.handel.centery - self.rect.y
+            dy = self.handel.rect.centery - self.rect.y
             ratio = dy / self.rect.height
             
         if self.flipped:
@@ -3207,10 +3180,11 @@ class Slider(Base_Object, Position):
             
         if self.dir == 'x':   
             dx = ratio * self.rect.width
-            self.handel.centerx = dx + self.rect.x
+            self.handel.rect.centerx = dx + self.rect.x
         elif self.dir == 'y':
             dy = ratio * self.rect.height
-            self.handel.centery = dy + self.rect.y
+            self.handel.rect.centery = dy + self.rect.y
+        self.adjust_handel()
             
     def adjust_handel(self):
         if self.dir == 'x':
@@ -3245,8 +3219,10 @@ class Slider(Base_Object, Position):
         if self.held:
             p = pg.mouse.get_pos()
             self.handel.rect.center = p
+            self.adjust_handel()
             self.func(*self.args, **self.kwargs) 
-        self.adjust_handel()
+        else:
+            self.handel.update_position()
 
     def draw(self, surf):
         pg.draw.rect(surf, self.color, self.rect)

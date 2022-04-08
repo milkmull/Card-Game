@@ -23,7 +23,8 @@ class Customsheet(Base_Sheet):
         return img
     
     def __init__(self):
-        super().__init__(tuple(c['name'] for c in self.cards), 'img/customsheet.png')
+        names = tuple([c['name'] for c in self.cards])
+        super().__init__(names, 'img/customsheet.png')
         if self.failed_to_load():
             self.create_blank_sheet()
             self.restore_data()
@@ -37,7 +38,7 @@ class Customsheet(Base_Sheet):
         self.save_card(c)
         
     def refresh(self):
-        self.names = tuple(c['name'] for c in self.cards)
+        self.names = tuple([c['name'] for c in self.cards])
         self.refresh_sheet()
         
     @property
@@ -52,6 +53,7 @@ class Customsheet(Base_Sheet):
         else:
             w = 375 * 9
             h = 575 * ((len(cards) // 9) + 1)
+        print(w, h)
         surf = pg.Surface((w, h)).convert()
         self.resave_sheet(surf)
         
@@ -77,8 +79,17 @@ class Customsheet(Base_Sheet):
         if name in self.names:
             return self.names.index(name)
             
+    def check_exists(self, card):
+        if card.name in NAMES:
+            return True
+        if card.name in self.names and card.id != self.get_id(card.name):
+            return True
+        #for c in self.cards:
+        #    if c.get('classname') == card.classname and card.id != self.get_id(c['name']):
+        #        return True
+            
     def save_card(self, card):
-        if card.name in NAMES or (card.name in self.names and card.id != self.get_id(card.name)):
+        if self.check_exists(card):
             return
 
         id = card.id
@@ -106,8 +117,8 @@ class Customsheet(Base_Sheet):
         surf.blit(sheet, (0, 0))
         surf.blit(card.get_card_image(), pos)
 
-        pg.image.save(card.pic, card.get_image_path())
-        self.resave_sheet(surf)        
+        pg.image.save(card.pic, card.image_path)
+        self.resave_sheet(surf)  
         SAVE.update_cards(card.get_info())
         self.refresh()
         return True
@@ -152,4 +163,4 @@ class Customsheet(Base_Sheet):
         
         self.resave_sheet(surf)
         SAVE.del_card(entry)
-        self.refresh_names()
+        self.refresh()
