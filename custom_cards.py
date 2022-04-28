@@ -1,16 +1,5 @@
 from card_base import *
 
-class Player_1(Card):
-    name = 'player 1'
-    tags = []
-    def __init__(self, game, uid):
-        super().__init__(game, uid)
-    
-    def start(self, player):
-        self.reset()
-        if True:
-            player.gain(self, 0)
-
 class Player_2(Card):
     name = 'player 2'
     tags = []
@@ -43,3 +32,14 @@ class Player_2(Card):
             self.wait = 'select'
         else:
             player.give_card(self.extra_card, sel_p)
+
+class Player_1(Card):
+    name = 'player 1'
+    tags = []
+    def __init__(self, game, uid):
+        super().__init__(game, uid)
+    
+    def start(self, player):
+        self.reset()
+        for i1 in range(0, 10):
+            player.gain(self, i1)

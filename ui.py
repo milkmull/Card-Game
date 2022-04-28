@@ -16,7 +16,7 @@ def init(*args, **kwargs):
     globals()['HEIGHT'] = HEIGHT
     
 def get_size():
-    return (WIDTH, HEIGHT)
+    return pg.display.get_surface().get_size()
 
 class Line:
     @staticmethod
@@ -556,6 +556,7 @@ class Rect_Selector:
             pg.draw.lines(surf, self.color, True, points, self.rad)
 
 class Image_Manager:
+    @staticmethod
     def get_surface(size, color=(0, 0, 0), width=1, olcolor=None, key=None, **border_kwargs):
         s = pg.Surface(size).convert()
         r = s.get_rect()
@@ -571,6 +572,7 @@ class Image_Manager:
             s.set_colorkey(key)
         return s
 
+    @staticmethod
     def rect_outline(img, color=(0, 0, 0), width=2):
         ol = img.copy()
         ol.fill(color)
@@ -579,6 +581,7 @@ class Image_Manager:
         ol.blit(img, (width, width))
         return ol
         
+    @staticmethod
     def get_arrow(dir, size, padding=(0, 0), color=(255, 255, 255), bgcolor=(0, 0, 0, 0)):
         s = pg.Surface(size).convert_alpha()
         s.fill(bgcolor)
@@ -801,7 +804,7 @@ class Menu(Base_Loop):
         menu = cls(objects=objects, args=args, kwargs=kwargs, overlay=overlay)
         menu.run()
 
-    def __init__(self, get_objects=None, objects=[], args=[], kwargs={}, overlay=False):
+    def __init__(self, get_objects=None, objects=[], args=[], kwargs={}, overlay=False, quit=True):
         if get_objects:
             objects = get_objects(*args, **kwargs)
         super().__init__(objects)
@@ -820,6 +823,15 @@ class Menu(Base_Loop):
             self.background = s
 
         self.set_funcs()
+
+        self._quit = quit
+        
+    def add_object(self, object):
+        self.objects.append(object)
+        
+    def romove_object(self, object):
+        while object in self.objects:
+            self.objects.remove(object)
         
     def set_funcs(self):
         for o in self.objects.copy():
@@ -873,8 +885,11 @@ class Menu(Base_Loop):
         return r
         
     def quit(self):
-        pg.quit()
-        sys.exit()
+        if self._quit:
+            pg.quit()
+            sys.exit()
+        else:
+            self.running = False
         
     def events(self):
         hit = False
@@ -998,6 +1013,12 @@ class Base_Object:
         self.return_val = None
         return r
         
+    def run_func(self):
+        if self.func:
+            r = self.func(*self.args, **self.kwargs)
+            if r is not None:
+                self.return_val = r
+        
     def set_cursor(self):
         pass
         
@@ -1009,9 +1030,7 @@ class Base_Object:
         
     def update(self):
         if self.enable_func:
-            r = self.func(*self.args, **self.kwargs)
-            if r is not None:
-                self.return_val = r
+            self.run_func()
         
     def draw(self, surf):
         pass
@@ -1292,7 +1311,7 @@ class On_Click(Base_Object):
         e = events.get('mbd')
         if e:
             if e.button == self.button:
-                self.func(*self.args, **self.kwargs)
+                self.run_func()
                 
     def update(self):
         pass
@@ -1315,17 +1334,22 @@ class Image(Base_Object, Position):
         return self.image
         
     def set_image(self, image, keep_scale=True):
+        c = self.rect.center
         if keep_scale:
             self.image = pg.transform.smoothscale(image, self.rect.size)
         else:
             self.image = image
             self.rect.size = image.get_size()
+        self.rect.center = c
         
     def set_background(self, color):
         self.bgcolor = color
         
     def clear_background(self):
         self.bgcolor = None
+        
+    def set_colorkey(self, key):
+        self.image.set_colorkey(key)
         
     def fill(self, color):
         self.image.fill(color)
@@ -1937,7 +1961,7 @@ class Button(Base_Object, Position):
 
     def click_down(self):
         self.pressed = True
-        self.return_val = self.func(*self.args, **self.kwargs)
+        self.run_func()
 
     def events(self, events):
         p = events['p']
@@ -2345,6 +2369,7 @@ class Input(Base_Object, Position, Logging):
                         
                     elif kd.key == pg.K_RETURN:
                         if not self.fitted:
+                            self.run_func()
                             self.close()
                         else:
                             self.send_keys('\n')
@@ -3220,7 +3245,7 @@ class Slider(Base_Object, Position):
             p = pg.mouse.get_pos()
             self.handel.rect.center = p
             self.adjust_handel()
-            self.func(*self.args, **self.kwargs) 
+            self.run_func()
         else:
             self.handel.update_position()
 

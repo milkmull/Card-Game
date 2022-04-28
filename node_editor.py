@@ -17,12 +17,6 @@ def init():
     allnodes.init()
     tester.init()
     globals()['SAVE'] = save.get_save()
-    
-class Builder:
-    builder = None
-    @classmethod
-    def set_builder(cls, b):
-        cls.builder = b
 
 #visual stuff-----------------------------------------------------------------------
 
