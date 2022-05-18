@@ -6,12 +6,12 @@ class Node_Parser:
         self.nodes = nodes
         self.start_node = next(iter(n for n in self.nodes if n.name == 'start'), None)
 
-        self.header = f"\nclass {self.card.classname}(Card):\n\tname = '{self.card.name}'\n\ttags = []\n\tdef __init__(self, game, uid):\n\t\tsuper().__init__(game, uid)\n"
+        self.header = f"\nclass {self.card.classname}(Card):\n\tname = '{self.card.name}'\n\ttags = []\n"
         self.dec_line = ''
 
         self.funcs = {}
         
-        self.text = self.run().replace('\t', '    ')
+        self.text = self.run()
         
     def get_text(self):
         return self.text
@@ -43,8 +43,7 @@ class Node_Parser:
         
         out = self.header
 
-        for func in self.funcs:
-            info = self.funcs[func]
+        for func, info in self.funcs.items():
             header = info['header']
             start = info['start']
             dec = info['dec']
@@ -53,7 +52,8 @@ class Node_Parser:
             if not start + body + end:
                 body = '\t\tpass\n'
             out += header + start + dec + body + end
-
+        
+        out = out.replace('\t', '    ')
         return out
         
     def find_locals(self, node):
@@ -64,7 +64,7 @@ class Node_Parser:
             if n.type == 'dec':
                 line = n.get_dec()
                 if line not in dec_line:
-                    dec_line += (2 * '\t') + n.get_dec()
+                    dec_line += '\t\t' + n.get_dec()
                 
         return dec_line
 

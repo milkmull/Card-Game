@@ -783,6 +783,23 @@ class Menu(Base_Loop):
         objects.append(o)
 
         return cls(objects=objects, overlay=overlay)
+        
+    @classmethod
+    def loading_bar(cls, func, fargs=[], fkwargs={}, overlay=False, **kwargs):
+        objects, (_, lower) = cls.get_window_objects(**kwargs)
+
+        li = Progress_Bar(auto=True)
+        li.rect.topright = objects[0].rect.topright
+        li.rect.top += 10
+        li.rect.right -= 10
+        li.set_parent(objects[0].rect, anchor_point='center', current_offset=True)
+        objects.append(li)
+        
+        o = Base_Object(func=func, args=fargs, kwargs=fkwargs)
+        o.set_tag('return')
+        objects.append(o)
+
+        return cls(objects=objects, overlay=overlay)
 
     @classmethod
     def timed_message(cls, message, timer, overlay=False, **kwargs):
@@ -836,7 +853,7 @@ class Menu(Base_Loop):
     def set_funcs(self):
         for o in self.objects.copy():
             if o.tag == 'break':
-                if o.func:
+                if o._func:
                     exit_func = self.wrap_exit_function(o)
                 else:
                     exit_func = self.exit
@@ -851,14 +868,14 @@ class Menu(Base_Loop):
                 self.objects.remove(o)
                 
     def wrap_exit_function(self, o):
-        f = o.func
+        f = o._func
         def exit_func(*args, **kwargs):
             f(*args, **kwargs)
             self.exit()
         return exit_func
                 
     def wrap_return_function(self, o):
-        f = o.func
+        f = o._func
         def return_func(*args, **kwargs):
             val = f(*args, **kwargs)
             o.return_val = val
@@ -866,7 +883,7 @@ class Menu(Base_Loop):
         return return_func
         
     def wrap_refresh_function(self, o):
-        f = o.func
+        f = o._func
         def refresh_func(*args, **kwargs):
             f(*args, **kwargs)
             self.refresh()
@@ -965,11 +982,10 @@ class Base_Object:
         self.flag = False
 
         self.enable_func = bool(func)
-        if func:
-            self.func = func
-            self.args = args
-            self.kwargs = kwargs
-            self.return_val = None
+        self._func = func
+        self._args = args
+        self._kwargs = kwargs
+        self._return_val = None
 
         for name, value in okwargs.items():
             setattr(self, name, value)
@@ -997,27 +1013,42 @@ class Base_Object:
             return self.rect.collidepoint(pg.mouse.get_pos())
         
     def set_func(self, func, args=None, kwargs=None):    
-        self.func = func
+        self._func = func
         if args is not None:
-            self.args = args
+            self._args = args
         elif not self.enable_func:
-            self.args = []
+            self._args = []
         if kwargs is not None:
-            self.kwargs = kwargs
+            self._kwargs = kwargs
         elif not self.enable_func:
-            self.kwargs = {}
+            self._kwargs = {}
         self.enable_func = True
+        
+    def set_args(self, args=None, kwargs=None):
+        if args is not None:
+            self._args = args
+        if kwargs is not None:
+            self._kwargs = kwargs
+            
+    def clear_args(self):
+        self.set_args(args=[], kwargs={})
+        
+    def set_return(self, r):
+        self._return_val = r
+        
+    def peek_return(self):
+        return self._return_val
 
     def get_return(self):
-        r = self.return_val
-        self.return_val = None
+        r = self._return_val
+        self._return_val = None
         return r
         
     def run_func(self):
-        if self.func:
-            r = self.func(*self.args, **self.kwargs)
+        if self._func:
+            r = self._func(*self._args, **self._kwargs)
             if r is not None:
-                self.return_val = r
+                self._return_val = r
         
     def set_cursor(self):
         pass
@@ -1871,7 +1902,7 @@ class Button(Base_Object, Position):
         b.join_object(i, size=size, padding=padding, center_offset=center_offset)
         return b
 
-    def __init__(self, size=None, color1=(0, 0, 0), color2=(100, 100, 100), border_radius=5, func=lambda *args, **kwargs: None, args=[], kwargs={}, tag=None, ohandle=False):
+    def __init__(self, size=None, color1=(0, 0, 0), color2=(100, 100, 100), border_radius=5, **kwargs):
         self.size = size
         if not size:
             size = (0, 0)
@@ -1884,16 +1915,11 @@ class Button(Base_Object, Position):
         self.current_color = color1
         self.border_radius = border_radius
 
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-        self.return_val = None
-
         self.active = False
         self.pressed = False
         self.update_object = True
         
-        Base_Object.__init__(self, tag=tag, ohandle=ohandle)
+        Base_Object.__init__(self, **kwargs)
         Position.__init__(self)
         
     def set_enabled(self, enabled):
@@ -1906,28 +1932,6 @@ class Button(Base_Object, Position):
         
     def reset(self):
         self.pressed = False
-        
-    def set_func(self, func, args=None, kwargs=None):
-        self.func = func
-        if args is not None:
-            self.args = args
-        if kwargs is not None:
-            self.kwargs = kwargs
-        
-    def set_args(self, args=None, kwargs=None):
-        if args is not None:
-            self.args = args
-        if kwargs is not None:
-            self.kwargs = kwargs
-
-    def clear_args(self):
-        self.set_args(args=[], kwargs={})
-        
-    def get_return(self, reset=True):
-        r = self.return_val
-        if reset:
-            self.return_val = None
-        return r
         
     def join_object(self, object, size=None, padding=(0, 0), center_offset=(0, 0), update_object=True):
         if size is None:
@@ -3140,7 +3144,7 @@ class Live_Popup(Live_Window, Mover):
                 self.label.draw(surf)
 
 class Slider(Base_Object, Position):
-    def __init__(self, size, ran, dir='x', handel_size=None, color=(255, 255, 255), hcolor=(0, 0, 0), flipped=False, func=lambda *args, **kwargs: None, args=[], kwargs={}):
+    def __init__(self, size, ran, dir='x', handel_size=None, color=(255, 255, 255), hcolor=(0, 0, 0), flipped=False, **kwargs):
         self.rect = pg.Rect(0, 0, size[0], size[1])
         self.color = color
         
@@ -3159,15 +3163,11 @@ class Slider(Base_Object, Position):
         
         self.range = ran
         self.dir = dir
-        
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-        
+
         if flipped:
             self.flip()
             
-        Base_Object.__init__(self)
+        Base_Object.__init__(self, **kwargs)
         Position.__init__(self)
         
         self.handel.set_parent(self.rect, anchor_point=anchor)
@@ -3314,6 +3314,46 @@ class LoadingIcon(Base_Object, Position):
         
     def draw(self, surf):
         pg.draw.arc(surf, self.color, self.rect, self.angle, self.angle + LoadingIcon.DA, width=4)
+        
+class Progress_Bar(Base_Object, Position):
+    def __init__(self, size=(20, 50), olcolor=(255, 255, 255), color=(0, 0, 0), rad=2, auto=True):
+        w, h = size
+        self.rect = pg.Rect(0, 0, w, h)
+        self.inner_rect = self.rect.inflate(rad * 2, rad * 2)
+        
+        self.olcolor = olcolor
+        self.color = color
+        
+        self.rad = rad
+        self.auto = auto
+        self.state = 0
+        
+        Base_Object.__init__(self)
+        Position.__init__(self)
+        
+    @property
+    def total_width(self):
+        return self.rect.width - (self.rad * 2)
+        
+    def set_state(self, state):
+        self.state = state
+        self.inner_rect.width = self.total_width * state
+    
+    def update_state(self):
+        self.set_state(self.state)
+        
+    def fill(self):
+        self.set_state(1)
+        
+    def update(self):
+        if self.auto:
+            self.set_state(self.state + 1)
+        self.inner_rect.center = self.rect.center
+    
+    def draw(self, surf):
+        pg.draw.rect(surf, self.olcolor, self.rect)
+        pg.draw.rect(surf, self.color, self.inner_rect)
+        
     
     
     

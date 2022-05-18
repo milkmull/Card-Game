@@ -2754,6 +2754,10 @@ class Deploy(Node):
 
 class GetFlipResults(Node):
     categories = ['flow']
+    info = "This node will return the results of a flip request made to other players using a 'Deploy' node'. The results are a list of players and a list of boolean values representing the flip results. The order of the lists indicates which result belongs to which player."
+    tips = "Generally, the best way to process these results is to use a 'Zipped For' node which will allow you to loop through the player list and result list at the same time. The best practice is to remove the player from this card's list of players after their results have been processed. This can be done with the 'Self Players' node"
+    op1 = "Returns a list of players whoes flip results are ready."
+    op2 = "Returns a list of boolean values representing the flip results of each player."
     def __init__(self, id):
         super().__init__(id, 'get flip results', [Port(1, ['flow']), Port(-1, ['ps'], desc='players'), Port(-2, ['bs'], desc='flip results'), Port(-3, ['flow'])])   
         
@@ -2768,6 +2772,10 @@ class GetFlipResults(Node):
             
 class GetRollResults(Node):
     categories = ['flow']
+    info = "This node will return the results of a roll request made to other players using a 'Deploy' node'. The results are a list of players and a list of numbers representing the roll results. The order of the lists indicates which result belongs to which player."
+    tips = GetFlipResults.tips
+    op1 = "Returns a list of players whoes roll results are ready."
+    op2 = "Returns a list of numbers representing the roll results of each player."
     def __init__(self, id):
         super().__init__(id, 'get roll results', [Port(1, ['flow']), Port(-1, ['ps'], desc='players'), Port(-2, ['ns'], desc='roll results'), Port(-3, ['flow'])])   
         
@@ -2782,8 +2790,12 @@ class GetRollResults(Node):
             
 class GetSelectResults(Node):
     categories = ['flow']
+    info = "This node will return the results of a select request made to other players using a 'Deploy' node'. The results are a list of players and a list of cards representing the select results. The order of the lists indicates which result belongs to which player."
+    tips = GetFlipResults.tips
+    op1 = "Returns a list of players whoes select results are ready."
+    op2 = "Returns a list of cards representing the select results of each player."
     def __init__(self, id):
-        super().__init__(id, 'get select results', [Port(1, ['flow']), Port(-1, ['ps'], desc='players'), Port(-2, ['cs'], desc='select results'), Port(-3, ['flow'])])   
+        super().__init__(id, 'get select results (card)', [Port(1, ['flow']), Port(-1, ['ps'], desc='players'), Port(-2, ['cs'], desc='select results'), Port(-3, ['flow'])])   
         
     def get_text(self):
         return f'players{self.id}, results{self.id} = self.get_select_results()\n'
@@ -2796,6 +2808,8 @@ class GetSelectResults(Node):
 
 class SelfIndex(Node):
     categories = ['card', 'iterator']
+    info = "This node returns a number representing the index of this card if it exists in the user's played cards. Make sure to check if this card is actually in the user's played cards before calling this node. If the card does not exist, an IndexError will be thrown."
+    op1 = "Returns number representing the index of this card in the user's played cards."
     def __init__(self, id):
         super().__init__(id, 'self index', [Port(-1, ['num'])])  
 
@@ -2804,6 +2818,9 @@ class SelfIndex(Node):
         
 class IndexAbove(Node):
     categories = ['card', 'iterator']
+    info = "This node returns a number representing the index of the card above this card in the user's played cards. If this card is the first card in the user's played cards, 0 will be returned."
+    tipe = "Like the 'Self Index' node, an IndexError will be raised if this card does not exist in the user's played cards."
+    op1 = "Returns number representing the index of the card above this card in the user's played cards."
     def __init__(self, id):
         super().__init__(id, 'index above', [Port(-1, ['num'], desc='self index - 1')])  
 
@@ -2812,6 +2829,9 @@ class IndexAbove(Node):
         
 class IndexBelow(Node):
     categories = ['card', 'iterator']
+    info = "This node returns a number representing the index of the card below this card in the user's played cards. If this card is the last card in the user's played cards, the length of the played cards - 1 will be returned."
+    tipe = "Like the 'Self Index' node, an IndexError will be raised if this card does not exist in the user's played cards."
+    op1 = "Returns number representing the index of the card above this card in the user's played cards."
     def __init__(self, id):
         super().__init__(id, 'index below', [Port(-1, ['num'], desc='self index + 1')])  
 
@@ -2822,8 +2842,8 @@ class CheckIndex(Node):
     categories = ['card', 'iterator']
     info = "This function will check a card at a given index in a players 'played' deck. The card at the index and a boolean value are returned. This card will keep a memory of cards it has checked. If an unrecognized card is found at the given index, the boolean value will be True, otherwise it will be False."
     tips = "This function is best used in an ongoing process with the 'cont' condition. It will continuously check an index to see if there is a new card."
-    ip1 = "The player whos 'played' deck will be checked. This will default to the original player."
-    ip2 = "The index which is being checked. It is safe to index out of range if the length of the 'played' deck is unknown. The boolean value will return False. This will default to the index at the end of the deck."
+    ip1 = "The player whoes 'played' deck will be checked. This will default to the original player."
+    ip2 = "The index that is being checked. It is safe to index out of range if the length of the 'played' deck is unknown. The boolean value will return False. This will default to the index of the last value in the deck."
     ip3 = "An optional tag used as additional criteria to verrify a new card. The returned boolean value will only trigger if the card at the given index is new AND has the given tag."
     op1 = "The card that is found at the given index. If the index is out of range, this will be a None value."
     op2 = "Boolean value representing if a new card was found at the given index. If the index is out of range or no new card is found that meets the criteria, this value will be False, otherwise it will be True."
@@ -2860,6 +2880,7 @@ class CheckIndex(Node):
 
 class Splitter(Node):
     categories = ['other']
+    info = "This node is purly for editing the node layout of your custom card. It allows for any variable to be split such that it is easier to see the flow of your card."
     def __init__(self, id):
         super().__init__(id, 'splitter', [Port(1, Port.get_comparison_types(), desc='value'), Port(-1, [], desc='value'), Port(-2, [], desc='value')])
         
@@ -2890,6 +2911,9 @@ class Splitter(Node):
         
 class CheckFirst(Node):
     categories = ['player', 'boolean']
+    info = "This function can be used to check if a given player was the first player to play their card during a turn."
+    ip1 = "Player who will be checked. This will default to the user."
+    op1 = "Returns boolean value. True if the player played their card first this turn and False otherwise."
     def __init__(self, id):
         super().__init__(id, 'check first', [Port(1, ['player']), Port(-1, ['bool'], desc='player is first')])   
         
@@ -2902,6 +2926,9 @@ class CheckFirst(Node):
         
 class CheckLast(Node):
     categories = ['player', 'boolean']
+    info = "This function can be used to check if a given player will be the last player to play their card during a turn."
+    ip1 = "Player who will be checked. This will default to the user."
+    op1 = "Returns boolean value. True if the player played will be the last to play their card this turn and False otherwise."
     def __init__(self, id):
         super().__init__(id, 'check last', [Port(1, ['player']), Port(-1, ['bool'], desc='player is last')])   
         
@@ -2914,6 +2941,12 @@ class CheckLast(Node):
 
 class DrawCards(Node):
     categories = ['flow', 'card']
+    info = "This function allows a player to draw cards. The type of cards can be specified via an input string. The cards will be automatically added to the correct deck."
+    tips = "The drawn cards are returned in a card list. You can check to see if the player drew a specific card or type of card by referencing this list."
+    ip1 = "A string representing the type of cards to be drawn. This will default to treasure."
+    ip2 = "A number representing the number of cards to be drawn. This will default to 1."
+    ip3 = "Player who will recieve the cards. This will default to the user."
+    op1 = "A list containing the drawn cards."
     def __init__(self, id):
         super().__init__(id, 'draw cards', [Port(1, ['string'], desc='card type'), Port(2, ['num'], desc='number of cards'), Port(3, ['player']), Port(4, ['flow']), Port(-1, ['cs'], desc='cards'), Port(-2, ['flow'])])   
         
@@ -2935,6 +2968,9 @@ class DrawCards(Node):
         
 class IsEvent(Node):
     categories = ['boolean', 'card']
+    info = "This function can be used to check if a specific event is in play."
+    ip1 = "A string representing the name of the event card to check for."
+    op1 = "Returns boolean value. True if the event card in play matches the name provided, and False otherwise."
     def __init__(self, id):
         super().__init__(id, 'is event', [Port(1, ['string'], desc='event name'), Port(-1, ['bool'], desc='event has name')])   
         
@@ -2946,6 +2982,10 @@ class IsEvent(Node):
                 
 class PlayCard(Node):
     categories = ['flow', 'card']
+    info = "This function can be used to play a card. This will only work for cards which have a 'start' function. Types such as items, spells and landscapes are not playable, and when sent to this function will cause an error."
+    tips = "If a card which already exists in the user's played cards is passed to this function, the card will be played a second time but will not be added again to the user's played cards. This is how landscapes work."
+    ip1 = "Card which is to be played. This will default to this card."
+    ip2 = "Player who is to play the card. This will default to the user."
     def __init__(self, id):
         super().__init__(id, 'play card', [Port(1, ['card']), Port(2, ['player']), Port(3, ['flow']), Port(-1, ['flow'])])   
         
@@ -2960,6 +3000,8 @@ class PlayCard(Node):
            
 class Copy(Node):
     categories = ['card']
+    info = "This function will produce a copy of a given card. The copy will not retain any stored cards or players."
+    ip1 = "Card to be copied."
     def __init__(self, id):
         super().__init__(id, 'copy', [Port(1, ['card']), Port(-1, ['card'], desc='card copy')])
         
@@ -2971,6 +3013,8 @@ class Copy(Node):
 
 class SetExtraCard(Node):
     categories = ['flow', 'card']
+    info = "This function can be used to store an extra card for reference later. It can be referenced through the 'Get Extra Card' function."
+    ip1 = "Card which is to be stored."
     def __init__(self, id):
         super().__init__(id, 'set extra card', [Port(1, ['card'], desc='new extra card'), Port(2, ['flow']), Port(-1, ['flow'])])
             
@@ -2982,6 +3026,8 @@ class SetExtraCard(Node):
 
 class GetExtraCard(Node):
     categories = ['card']
+    info = "This function returns a stored card. If no extra card has been set through the 'Set Extra Card' function, None will be returned."
+    op1 = "The extra card."
     def __init__(self, id):
         super().__init__(id, 'get extra card', [Port(-1, ['card'], desc='extra card')])
             
@@ -2990,6 +3036,8 @@ class GetExtraCard(Node):
         
 class SetExtraPlayer(Node):
     categories = ['flow', 'player']
+    info = "This function can be used to store an extra player for reference later. It can be referenced through the 'Get Extra Player' function."
+    ip1 = "Player which is to be stored."
     def __init__(self, id):
         super().__init__(id, 'set extra player', [Port(1, ['player'], desc='new extra player'), Port(2, ['flow']), Port(-1, ['flow'])])
             
@@ -3001,6 +3049,8 @@ class SetExtraPlayer(Node):
 
 class GetExtraPlayer(Node):
     categories = ['flow', 'player']
+    info = "This function returns a stored player. If no extra player has been set through the 'Set Extra Player' function, None will be returned."
+    op1 = "The extra player."
     def __init__(self, id):
         super().__init__(id, 'get extra player', [Port(-1, ['player'], desc='extra player')])
             
@@ -3009,6 +3059,10 @@ class GetExtraPlayer(Node):
         
 class Index(Node):
     categories = ['iterator']
+    info = "This function returns a value from a list at a given index. the list must contain either players or cards. If the index given is out of range, an IndexError will be raised."
+    ip1 = "Number representing the index of the list to be returned. This will default to the index at the end of the list."
+    ip2 = "The list to pull the value from. This will defult to the user's played cards."
+    op1 = "The value pulled from the list."
     def __init__(self, id):
         super().__init__(id, 'index', [Port(1, ['num'], desc='index'), Port(2, ['ps'], desc='list'), Port(-1, ['player'], desc='list value at index')])
         
@@ -3032,10 +3086,14 @@ class Index(Node):
         if p == 1:
             return '-1'
         elif p == 2:
-            return 'player.get_played.copy()'
+            return 'player.get_played().copy()'
         
 class SafeIndex(Node):
     categories = ['iterator']
+    info = "This function is a safe way to retrieve a value from a list. If the index is out of range, a None value will be returned."
+    ip1 = "Number representing the index of the list to be returned. This will default to the index at the end of the list."
+    ip2 = "The list to pull the value from."
+    op1 = "The value pulled from the list. This will default to the user's played cards."
     def __init__(self, id):
         super().__init__(id, 'safe index', [Port(1, ['num'], desc='index'), Port(2, ['ps'], desc='list'), Port(-1, ['player'], desc='list value at index')])
         
@@ -3063,6 +3121,10 @@ class SafeIndex(Node):
         
 class Discard(Node):
     categories = ['flow', 'card']
+    info = "This function is used to discard any card. The discarded card will be removed from any associated decks including played cards."
+    tips = "Keep in mind that discarding a card will also end any ongoing process the card might be running."
+    ip1 = "Player who will discard the card. This defaults to the user."
+    ip2 = "The card to be discarded."
     def __init__(self, id):
         super().__init__(id, 'discard', [Port(1, ['player']), Port(2, ['card']), Port(3, ['flow']), Port(-1, ['flow'])])
 
@@ -3077,6 +3139,10 @@ class Discard(Node):
             
 class SafeDiscard(Node):
     categories = ['flow', 'card']
+    info = "This function is used to discard any card. The discarded card will be removed from any associated decks including played cards. It is considered safe because the discarded card will not be added to the game's discard deck."
+    tips = "A safe discard is usually used when the card is to be removed from a player and given to another. Also, keep in mind that discarding a card will also end any ongoing process the card might be running."
+    ip1 = "Player who will discard the card. This defaults to the user."
+    ip2 = "The card to be discarded."
     def __init__(self, id):
         super().__init__(id, 'safe discard', [Port(1, ['player']), Port(2, ['card']), Port(3, ['flow']), Port(-1, ['flow'])])
 
@@ -3091,6 +3157,8 @@ class SafeDiscard(Node):
             
 class UseItem(Node):
     categories = ['flow', 'card']
+    info = "This function is a special form of discard for item cards. Unlike the discard function, 'Use Item' will trigger an item discard log which can be referenced by other cards."
+    ip1 = "The card to be discarded. This defaults to this card."
     def __init__(self, id):
         super().__init__(id, 'use item', [Port(1, ['card'], desc='item'), Port(2, ['flow']), Port(-1, ['flow'])])
 
@@ -3102,22 +3170,27 @@ class UseItem(Node):
             
 class GiveCard(Node):
     categories = ['flow', 'card']
+    info = "This function is used to give a card to an opponent. The card will be removed from the owner's decks."
+    tips = "Keep in mind that discarding a card will also end any ongoing process the card might be running."
+    ip1 = "Card to be given. This will default to this card."
+    ip2 = "The player who will recieve the card. This will default to the owner. If no other player is specified, the card will be transfered back to the correct deck of the owner."
     def __init__(self, id):
-        super().__init__(id, 'give card', [Port(1, ['player']), Port(2, ['card']), Port(3, ['player'], desc='target'), Port(4, ['flow']), Port(-1, ['flow'])])
+        super().__init__(id, 'give card', [Port(1, ['card']), Port(2, ['player'], desc='target'), Port(3, ['flow']), Port(-1, ['flow'])])
 
     def get_text(self):
-        return '{0}.give_card({1}, {2})\n'.format(*self.get_input())
+        return 'player.give_card({0}, {1})\n'.format(*self.get_input())
         
     def get_default(self, p):
         if p == 1:
-            return 'player'
-        elif p == 2:
             return 'self'
-        elif p == 3:
+        elif p == 2:
             return 'player'
      
 class GetNewCard(Node):
     categories = ['card']
+    info = "This function is used to generate a new card with the given name. If an invalid name is passed in, None will returned."
+    ip1 = "String representing the name of the card to be generated. This will default to the name of this card."
+    op1 = "New card. Will be None if invalid name is passed."
     def __init__(self, id):
         super().__init__(id, 'get new card', [Port(1, ['string'], desc='card name')])
 
@@ -3129,6 +3202,9 @@ class GetNewCard(Node):
      
 class Transfom(Node):
     categories = ['card']
+    info = "This function is used to transform a card into a different card. If an invalid name is passed in, nothing will happen."
+    ip1 = "String representing the name of the card for the target card to be changed to. This defaults to the name of this card."
+    ip2 = "The card to be transformed."
     def __init__(self, id):
         super().__init__(id, 'transform', [Port(1, ['string'], desc='new card name'), Port(2, ['card']), Port(3, ['flow']), Port(-1, ['flow'])])
 
@@ -3143,6 +3219,10 @@ class Transfom(Node):
             
 class Swap(Node):
     categories = ['card']
+    info = "This function is used to swap the location of one card wth another."
+    tips = "Both input values will default to this card, so if no input is specified this card will be swapped with itsself."
+    ip1 = "The first card to be swapped."
+    ip2 = "The second card to be swapped."
     def __init__(self, id):
         super().__init__(id, 'swap', [Port(1, ['card']), Port(2, ['card']), Port(3, ['flow']), Port(-1, ['flow'])])
 
@@ -3154,14 +3234,20 @@ class Swap(Node):
         
 class GetDiscard(Node):
     categories = ['card', 'iterator']
+    info = "This function is used to get the discard deck from the game."
+    tips = "The discard deck can be used to revive cards that have previously been used or discarded."
+    op1 = "A list of discarded cards."
     def __init__(self, id):
         super().__init__(id, 'get discard', [Port(-1, ['cs'], desc='discarded cards')])
         
     def get_output(self, p):
-        return 'self.game.discard.copy()'
+        return 'self.game.get_discard()'
      
 class SetMode(Node):
     categories = ['other']
+    info = "This function is used to set the mode of a card. The mode is simply a number which can be used to control the flow of your card. The mode can be retrieved using the 'Get Mode' node."
+    tips = "A card's mode can be used to store any number. If an amount of points or some other number needs to be preserved, the mode can be set to that value to be referenced later."
+    ip1 = "Number representing what the mode should be set to. This defaults to 0."
     def __init__(self, id):
         super().__init__(id, 'set mode', [Port(1, ['num'], desc='new mode'), Port(2, ['flow']), Port(-1, ['flow'])])   
         
@@ -3174,6 +3260,8 @@ class SetMode(Node):
         
 class GetMode(Node):
     categories = ['other']
+    info = "This function is used to retrieve the mode of a card. The mode is simply a number which can be used to control the flow of your card. The mode can be set using the 'Set Mode' node."
+    ip1 = "Number representing the card's current mode."
     def __init__(self, id):
         super().__init__(id, 'get mode', [Port(-1, ['num'], desc='mode')])   
         
@@ -3182,20 +3270,33 @@ class GetMode(Node):
 
 class StealRandom(Node):
     categories = ['card']
+    info = "This function is used to steal a random card from a player. The deck from which the card is stolen is specified with a string."
+    tips = "If the specified deck is empty, no cards will be stolen. The treasure deck is an exception to this. If the treasure deck of the specified player is empty, a new treasure card will be drawn and given to the user."
+    ip1 = "String representing which deck the card should be stolen from. This defaults to 'treasure'."
+    ip2 = "Player for the card to be stolen from. This defaults to the user."
+    op1 = "Card that was stolen. This can return a None value if the deck was empty so be sure to check before doing anything with the card."
     def __init__(self, id):
-        super().__init__(id, 'steal random', [Port(1, ['string'], desc='deck'), Port(2, ['player']), Port(3, ['player'], desc='target'), Port(4, ['flow']), Port(-1, ['flow'])])   
+        super().__init__(id, 'steal random', [Port(1, ['string'], desc='deck'), Port(2, ['player'], desc='target'), Port(3, ['flow']), Port(-1, ['card']), Port(-2, ['flow'])])   
         
     def get_default(self, p):
         if p == 1:
             return "'treasure'"
-        elif p == 2 or p == 3:
+        elif p == 2:
             return 'player'
 
     def get_text(self):
-        return "{2}.steal_random_card({0}, {1})\n".format(*self.get_input())
+        input = self.get_input()
+        input.insert(0, self.get_output())
+        return "{0} = player.steal_random_card({1}, {2})\n".format(*input)
+        
+    def get_output(self):
+        return f'c{self.id}'
         
 class AddCard(Node):
     categories = ['card']
+    info = "This function is used to give a card to a player. It will automatically add the card to the correct deck of the specified player based on the card's type."
+    ip1 = "The player who will receive the card. This will default to the user."
+    ip2 = "The card to be given to the player. This will default to a None value."
     def __init__(self, id):
         super().__init__(id, 'add card', [Port(1, ['player']), Port(2, ['card']), Port(3, ['flow']), Port(-1, ['flow'])])   
         
@@ -3210,6 +3311,10 @@ class AddCard(Node):
         
 class GetDeck(Node):
     categories = ['card', 'iterator']
+    info = "This function is used to retrieve the deck of a specified player based on the deck's name."
+    ip1 = "String representing the name of the deck to be retrieved. This wil default to 'played'."
+    ip2 = "The player to retrieve the deck from. This will default to the user."
+    op1 = "The returned deck."
     def __init__(self, id):
         super().__init__(id, 'get deck', [Port(1, ['string'], desc='deck name'), Port(2, ['player']), Port(-1, ['cs'], desc='deck')])   
         
@@ -3233,10 +3338,13 @@ class GetDeck(Node):
             return 'player'
             
     def get_output(self, p):
-        return 'getattr({1}, {0}, []).copy()'.format(*self.get_input())
+        return 'getattr({1}, {0}).copy()'.format(*self.get_input())
         
 class GetScore(Node):
     categories = ['player']
+    info = "This function is used to retrieve a player's current score."
+    ip1 = "The player to retrieve the score from. This will default to the user."
+    op1 = "The specified player's score."
     def __init__(self, id):
         super().__init__(id, 'get score', [Port(1, ['player']), Port(-1, ['num'], desc='points')])   
         
@@ -3248,6 +3356,10 @@ class GetScore(Node):
         
 class HasCard(Node):
     categories = ['card', 'player', 'boolean']
+    info = "This function is a generalized function to check wheather or not a player has a specific card."
+    tips = "If the type of card you are checking for is know, it is generally better to retrieve the deck which you expect the card to be in and use a 'Contains' Node."
+    ip1 = "String representing the name of the card to check for. This will default to the name of this card."
+    ip2 = "Player to check for card ownership. This will default to the user."
     def __init__(self, id):
         super().__init__(id, 'has card', [Port(1, ['string'], desc='card name'), Port(2, ['player']), Port(-1, ['bool'], desc='player has card')])   
         

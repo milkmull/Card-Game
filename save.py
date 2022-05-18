@@ -265,7 +265,7 @@ class Save:
         return data
         
     def get_custom_names(self):
-        return tuple(c['name'] for c in self.get_data('cards'))
+        return tuple([c['name'] for c in self.get_data('cards')])
         
     def publish_card(self, card):
         shift_start = 0

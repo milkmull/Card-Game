@@ -27,7 +27,6 @@ def any(elements):
     
 def sort_logs(log):
     u = log.get('u')
-    
     if u == 'g':
         return -1
     else:
@@ -811,8 +810,8 @@ class Game_Copy:
         
         cards = random.choices(list(deck.keys()), weights=weights, k=num)
         
-        for i, card in enumerate(cards):
-            cards[i] = self.get_card(card)
+        for i, name in enumerate(cards):
+            cards[i] = self.get_card(name)
 
         return cards
         

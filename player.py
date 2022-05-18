@@ -1168,7 +1168,7 @@ class Player_Copy:
             return 'landscapes'
 
     def draw_cards(self, pdeck, num=1):
-        if pdeck in ('played', 'unplayed'):
+        if pdeck == 'unplayed':
             gdeck = 'play'  
         elif pdeck in ('items', 'spells', 'treasure', 'landscapes'):
             gdeck = pdeck
@@ -1305,6 +1305,7 @@ class Player_Copy:
         target.add_card(c, deck)
         
     def steal_random_card(self, pdeck, target):
+        c = None
         deck = getattr(target, pdeck)
         
         if deck:  
@@ -1314,7 +1315,10 @@ class Player_Copy:
             
         else:
             if pdeck == 'treasure':
-                self.draw_cards('treasure')
+                cards = self.draw_cards('treasure')
+                c = cards[0]
+                
+        return c
 
 #equipment stuff------------------------------------------------------------------------------------
 
