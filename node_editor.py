@@ -68,32 +68,48 @@ class Sorter(ui.Compound_Object):
 
         self.groups = {}
         self.buttons = {}
+        self.labels = {}
         for name in allnodes.NAMES:
             n = getattr(allnodes, name)
-            if hasattr(n, 'categories'):
-                for g in n.categories:
-                    if g not in self.groups:
-                        self.groups[g] = [name]
-                    else:
-                        self.groups[g].append(name)
+            if hasattr(n, 'cat'):
+                cat = n.cat
+                subcat = getattr(n, 'subcat', 'base')
+                if cat not in self.groups:
+                    self.groups[cat] = {}
+                if subcat not in self.groups[cat]:
+                    self.groups[cat][subcat] = [name]
+                else:
+                    self.groups[cat][subcat].append(name)
                 img = allnodes.Node.RAW_CACHE[name]
                 b = ui.Button.image_button(img, border_radius=0, func=ne.get_node, args=[name])
                 self.buttons[name] = b
+                if subcat not in self.labels:
+                    tb = ui.Textbox(subcat, tsize=40, underline=True)
+                    space_width = tb.get_text_rect(' ').width
+                    spaces = ((self.popup.rect.width - tb.rect.width) // space_width) - 1
+                    tb.set_message(subcat + (' ' * spaces))
+                    tb = tb.to_static()
+                    self.labels[subcat] = tb
                 
-        for g in self.groups:
-            self.groups[g].sort(key=lambda name: self.buttons[name].rect.height)
+        for cat in self.groups:
+            for subcat in self.groups[cat]:
+                self.groups[cat][subcat].sort(key=lambda name: self.buttons[name].rect.height)
                        
         x = self.rect.x - 5
         y = self.rect.y + 5
-        for g, nodes in self.groups.items():
-            b = ui.Button.text_button(g, func=self.set_selection, args=[g])
+        for cat, _ in self.groups.items():
+            b = ui.Button.text_button(cat, func=self.set_selection, args=[cat])
             b.rect.topright = (x, y)
             self.add_child(b, current_offset=True)
             y += b.rect.height + 5
 
-    def set_selection(self, group):
-        buttons = [self.buttons[name] for name in self.groups[group]]
-        self.popup.join_objects(buttons, xpad=10, ypad=10, dir='x', pack=True)
+    def set_selection(self, cat):
+        items = []
+        for subcat in self.groups[cat]:
+            items.append(self.labels[subcat])
+            for name in self.groups[cat][subcat]:
+                items.append(self.buttons[name])
+        self.popup.join_objects(items, xpad=10, ypad=10, dir='x', pack=True)
 
 #string sorting stuff-----------------------------------------------------------------------
 

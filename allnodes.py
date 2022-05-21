@@ -1295,7 +1295,7 @@ class GroupNode(Node):
         super().update()
 
 class Start(Node):
-    categories = ['func']
+    cat = 'func'
     info = "This node is a function. Function nodes are green. They have no in-flow ports and a single out-flow port. When a card is played, this is the first process that will be run. Every play card must have a 'Start' function."
     def __init__(self, id):
         super().__init__(id, 'start', [Port(-1, ['flow'], desc='flow')], type='func')
@@ -1307,8 +1307,8 @@ class Start(Node):
         return '\n\tdef start(self, player):\n'
    
 class If(Node):
-    categories = ['flow']
-    sub_cat = 'conditional'
+    cat = 'flow'
+    subcat = 'conditional'
     info = "If the boolean input is True, the split path is run before continuing the main path. If it is False, the split path is skipped."
     tips = "If nodes can evaluate all kinds of data, not just boolean values.\n\nIf you plug in a number, if the number is not 0 it will evaluate to True, otherwise False.\n\nIf you plug in a list, if the list is not empty it will evaluate to True, otherwise False.\n\n"
     ip1 = "This boolean argument decides if the split path is run or skipped"
@@ -1325,8 +1325,8 @@ class If(Node):
         return text
         
 class Elif(Node):
-    categories = ['flow']
-    sub_cat = 'conditional'
+    cat = 'flow'
+    subcat = 'conditional'
     info = "This node can only be placed after 'if' or 'elif' nodes. If the previous node is evaluated to be False, this node will be evaluated as an 'if' node. If the previous node is evaluated to be True, this whole node will be skipped."
     tips = "Elif nodes can evaluate all kinds of data, not just boolean values.\n\nIf you plug in a number, if the number is not 0 it will evaluate to True, otherwise False.\n\nIf you plug in a list, if the list is not empty it will evaluate to True, otherwise False.\n\n"
     ip1 = "This boolean argument decides if the split path is run or skipped"
@@ -1349,8 +1349,8 @@ class Elif(Node):
         return text
         
 class Else(Node):
-    categories = ['flow']
-    sub_cat = 'conditional'
+    cat = 'flow'
+    subcat = 'conditional'
     info = "This node can only be placed after 'if' or 'elif' nodes. If all previous nodes are evaluated to be False, this node will run its split path. Otherwise, the split path will be skipped."
     ip1 = "This in-flow port can only be wired to the out-flow of an 'if' or 'elif' node."
     def __init__(self, id):
@@ -1367,7 +1367,7 @@ class Else(Node):
         
 class Bool(Node):
     size = (50, 40)
-    categories = ['boolean']
+    cat = 'boolean'
     info = "Produces a boolean value of either True or False. Type 'T' or 't' for True, and 'F' for 'f' for False."
     tips = "If a node requires a boolean input, double click on the boolean input port to spawn a 'Bool' node that will automatically be wired into the port."
     op1 = "Boolean value"
@@ -1386,7 +1386,7 @@ class Bool(Node):
         
 class Num(Node):
     size = (50, 40)
-    categories = ['numeric']
+    cat = 'numeric'
     info = "Produces a numeric value. The value can be either positive or negative. Floating point numbers are not allowed."
     tips = "If a node requires a numeric input, double click on the numeric input port to spawn a 'Num' node that will automatically be wired into the port."
     op1 = "Numeric value"
@@ -1404,7 +1404,7 @@ class Num(Node):
         
 class String(Node):
     size = (100, 50)
-    categories = ['string']
+    cat = 'string'
     info = "Produces a string of characters. These are often used to access card names and tags which are stored as string values. Player decks also must be accessed using string values that represent the name of the deck."
     tips = "If a node requires a string input, double click on the string input port to spawn a 'string' node that will automatically be wired into the port."
     op1 = "String value"
@@ -1416,8 +1416,8 @@ class String(Node):
         return f"'{val.lower()}'"
         
 class And(Node):
-    categories = ['boolean']
-    sub_cat = 'operators'
+    cat = 'boolean'
+    subcat = 'operators'
     info = "Used to compare two boolean values. This node will output True if and only if both input values are True, otherwise False."
     tips = "And nodes can evaluate all kinds of data, not just boolean values.\n\nIf you plug in a number, if the number is not 0 it will evaluate to True, otherwise False.\n\nIf you plug in a list, if the list is not empty it will evaluate to True, otherwise False.\n\n"
     ip1 = "Boolean input (x)"
@@ -1434,8 +1434,8 @@ class And(Node):
         return text
         
 class Or(Node):
-    categories = ['boolean']
-    sub_cat = 'operators'
+    cat = 'boolean'
+    subcat = 'operators'
     info = "Used to compare two boolean values. This node will output True if one or both input values are True, otherwise False."
     tips = "Or nodes can evaluate all kinds of data, not just boolean values.\n\nIf you plug in a number, if the number is not 0 it will evaluate to True, otherwise False.\n\nIf you plug in a list, if the list is not empty it will evaluate to True, otherwise False.\n\n"
     ip1 = "Boolean input (x)"
@@ -1452,8 +1452,8 @@ class Or(Node):
         return text
         
 class Not(Node):
-    categories = ['boolean']
-    sub_cat = 'operators'
+    cat = 'boolean'
+    subcat = 'operators'
     info = "Used to flip a boolean value. If the input is True, it will output False, and vice-versa."
     ip1 = "Boolean input"
     op1 = "If the input is True, this port will output False. If it is False it will output True."
@@ -1468,8 +1468,8 @@ class Not(Node):
         return text
         
 class Equal(Node):
-    categories = ['boolean', 'numeric']
-    sub_cat = 'operators'
+    cat = 'comparison'
+    subcat = 'operators'
     info = "Used to compare two input values. If they are the same, this node will output True, otherwise False."
     tips = "This node can evaluate the equality if almost any type of data including players, cards, lists, numbers and strings. Inputting two different data types will always yeild 'False'"
     ip1 = "value x"
@@ -1500,8 +1500,8 @@ class Equal(Node):
         return text
       
 class Greater(Node):
-    categories = ['boolean', 'numeric']
-    sub_cat = 'operators'
+    cat = 'comparison'
+    subcat = 'operators'
     info = "Used to compare two numeric values. This node will output True if the first is greater than the second input, otherwise False."
     tips = "This node is not like the 'Equal' node, and can only be used to compare numeric values."
     ip1 = "Numeric input (x), defaults to 0"
@@ -1518,8 +1518,8 @@ class Greater(Node):
         return text
         
 class Less(Node):
-    categories = ['boolean', 'numeric']
-    sub_cat = 'operators'
+    cat = 'comparison'
+    subcat = 'operators'
     info = "Used to compare two numeric values. This node will output True if the first is less than the second input, otherwise False."
     tips = "This node is not like the 'Equal' node, and can only be used to compare numeric values."
     ip1 = "Numeric input (x), defaults to 0"
@@ -1536,11 +1536,11 @@ class Less(Node):
         return text
      
 class Max(Node):
-    categories = ['numeric']
-    sub_cat = 'statistical'
-    info = "Use this node to find the max value in a numeric sequence. This node is only used when evaluating roll results from a deployed card."
+    cat = 'numeric'
+    subcat = 'statistical'
+    info = "Use this node to find the maximum value in a numeric sequence. This node is only used when evaluating roll results from a deployed card."
     ip1 = 'Numeric sequence'
-    op1 = "Max value from input sequence."
+    op1 = "Outputs a numeric value representing the maximum value from the input sequence."
     def __init__(self, id):
         super().__init__(id, 'max', [Port(1, ['ns'], desc='[0, 1, 2...]'), Port(-1, ['num'], desc='max value')])
         
@@ -1552,11 +1552,11 @@ class Max(Node):
         return text
         
 class Min(Node):
-    categories = ['numeric']
-    sub_cat = 'statistical'
-    info = "Use this node to find the min value in a numeric sequence. This node is only used when evaluating roll results from a deployed card."
+    cat = 'numeric'
+    subcat = 'statistical'
+    info = "Use this node to find the minimum value in a numeric sequence. This node is only used when evaluating roll results from a deployed card."
     ip1 = "Numeric sequence"
-    op1 = "Min value from input sequence."
+    op1 = "Outputs a numeric value representing the minimum value from the input sequence."
     def __init__(self, id):
         super().__init__(id, 'min', [Port(1, ['ns'], desc='[0, 1, 2...]'), Port(-1, ['num'], desc='min value')])
         
@@ -1568,8 +1568,8 @@ class Min(Node):
         return text
      
 class Add(Node):
-    categories = ['numeric']
-    sub_cat = 'operators'
+    cat = 'numeric'
+    subcat = 'operators'
     info = "Outputs the sum of two numeric inputs."
     ip1 = "Numeric input (x)"
     ip2 = "Numeric input (y)"
@@ -1584,10 +1584,10 @@ class Add(Node):
         return '({} + {})'.format(*self.get_input())
         
 class Incriment(Node):
-    categories = ['numeric']
-    sub_cat = 'operators'
+    cat = 'numeric'
+    subcat = 'operators'
     info = "Outputs a numeric input + 1."
-    tips = "This node if often used to obtain the index below this card. Use the 'self index' node and incriment to obtain the index of the card below."
+    tips = "This node if often used to obtain the index below this card. Use the 'self index' node and incriment to obtain the index of the card below in a list of cards."
     ip1 = "Numeric input x"
     op1 = "x + 1"
     def __init__(self, id):
@@ -1600,8 +1600,8 @@ class Incriment(Node):
         return '({} + 1)'.format(*self.get_input())
         
 class Subtract(Node):
-    categories = ['numeric']
-    sub_cat = 'operators'
+    cat = 'numeric'
+    subcat = 'operators'
     info = "Outputs the difference of two numeric inputs."
     ip1 = "Numeric input (x)"
     ip2 = "Numeric input (y)"
@@ -1616,8 +1616,8 @@ class Subtract(Node):
         return '({0} - {1})'.format(*self.get_input())
         
 class Multiply(Node):
-    categories = ['numeric']
-    sub_cat = 'operators'
+    cat = 'numeric'
+    subcat = 'operators'
     info = "Outputs the product of two numeric inputs."
     ip1 = "Numeric input (a)"
     ip2 = "Numeric input (b)"
@@ -1632,8 +1632,8 @@ class Multiply(Node):
         return '({0} * {1})'.format(*self.get_input())
         
 class Negate(Node):
-    categories = ['numeric']
-    sub_cat = 'operators'
+    cat = 'numeric'
+    subcat = 'operators'
     info = "Outputs the additive inverse of a numeric input."
     tips = "This node will convert positive numbers to negative, and negative numbers to positive. It is the equivalent of multiplying by -1."
     ip1 = "Numeric input a"
@@ -1648,8 +1648,8 @@ class Negate(Node):
         return '(-1 * {0})'.format(*self.get_input())
         
 class Divide(Node):
-    categories = ['numeric']
-    sub_cat = 'operators'
+    cat = 'numeric'
+    subcat = 'operators'
     info = "Outputs the quotient of two numeric inputs."
     tips = "This operation uses floor division meaning the output will always be rounded to the lowest integer."
     ip1 = "Numeric input (a)"
@@ -1665,12 +1665,12 @@ class Divide(Node):
         return '({0} // {1})'.format(*self.get_input())
   
 class Exists(Node):
-    categories = ['boolean']
-    sub_cat = 'operators'
-    info = "Outputs True if the input is not a None value, otherwise False."
-    tips = "This node is often used to validate a card or player output. For example, the 'Safe Index' node allows you to index a deck. If there is no value at the index, it will return a None value. Use this node to check wheather or not a card was found."
+    cat = 'boolean'
+    subcat = 'operators'
+    info = "Outputs True if the input is not a 'None' value, otherwise False."
+    tips = "This node is often used to validate a card or player output. For example, the 'Safe Index' node allows you to index a deck. If there is no value at the index, it will return a 'None' value. Use this node to check wheather or not a card was found."
     ip1 = "Takes either a player or card argument."
-    op1 = "Input is not None"
+    op1 = "Boolean value indicating wheather the input value is a 'None' value."
     def __init__(self, id):
         super().__init__(id, 'exists', [Port(1, ['player', 'card'], desc='x'), Port(-1, ['bool'], desc='x is not None')])
         
@@ -1678,11 +1678,11 @@ class Exists(Node):
         return '1'
         
     def get_output(self, p):
-        return '{0} is not None'.format(*self.get_input())
+        return '({0} is not None)'.format(*self.get_input())
   
 class For(Node):
-    categories = ['flow']
-    sub_cat = 'loop'
+    cat = 'flow'
+    subcat = 'loop'
     info = "This node can be used to pull out each individual value from a list and run a process on them. Plug in a list of values to port 1. Port -1 will then open up with the type of values that the list contains. If an empty list is plugged in, the split path will be skipped."
     tips = "Say you want all players to gain 5 points. Just plug in a list containing all players, then add in a 'Gain' node wired to port -2. Finally wire in the output player to the 'Gain' node."
     ip1 = "This input takes any type of list."
@@ -1743,8 +1743,8 @@ class For(Node):
         return text
         
 class ZippedFor(Node):
-    categories = ['flow']
-    sub_cat = 'loop'
+    cat = 'flow'
+    subcat = 'loop'
     info = "This node can be used to pull out each individual value from two lists at the same time and run a process on them. Plug in two lists of values to ports 1 and 2. Ports -1 and -2 will then open up with the type of values that their corresponding list contains."
     tips = "This node is most commonly used to check flip, roll and selection results. The 'Get _ Results' nodes will output a list of players and a list of results. You can plug in those lists to this node to get player and result pairs."
     ip1 = "This input takes any type of list."
@@ -1804,8 +1804,8 @@ class ZippedFor(Node):
             return self.get_loop_var(2)
         
 class Break(Node):
-    categories = ['flow']
-    sub_cat = 'loop'
+    cat = 'flow'
+    subcat = 'loop'
     info = "This node can be used to exit a 'For' node split path prematurly. If you are only looking for a specific result, you can place this node after your result is found to return to the main path."
     tips = "This node can only be used within the split path of a 'For' or 'Zipped For' node."
     def __init__(self, id):
@@ -1828,8 +1828,8 @@ class Break(Node):
         return 'break\n'
         
 class Continue(Node):
-    categories = ['flow']
-    sub_cat = 'loop'
+    cat = 'flow'
+    subcat = 'loop'
     info = "This node can be used to skip to the next value in a 'For' node split path. If you don't want to evaluate a value, use this node to skip to the next."
     tips = "This node can only be used within the split path of a 'For' or 'Zipped For' node."
     def __init__(self, id):
@@ -1852,7 +1852,7 @@ class Continue(Node):
         return 'continue\n'
         
 class Range(Node):
-    categories = ['iterator', 'numeric']
+    cat = 'iterator'
     info = "This node outputs a list of numbers between the two input values. If the input values are the same, or the max value is smaller than the min value, the list will be empty."
     tips = "This node is usually used when checking each index of a deck. Use the 'Length' node to generate a range of indicies based on the length of the deck. Then loop over those indecies with a 'For' node, using the 'Check Index' node."
     ip1 = "This numeric input is where the range will start. The default value is 0 so if you need numbers between 0 and an upper value you can leave this port blank."
@@ -1871,22 +1871,22 @@ class Range(Node):
         text = 'range({0}, {1})'.format(*self.get_input()) 
         return text
        
-class Player(Node):
-    categories = ['player']
-    info = "This node returns the player in any given scope. The player is the player who plays your card."
-    tips = "The actual player this node represents could change depending on where it is used. If you use a 'Deploy' node to deploy cards to opponents to request that they flip a coin, In the 'Flip' function, this node will represent your opponents."
-    op1 = "A player value. Any time a node requires a player input, this will almost always be the default value."
+class User(Node):
+    cat = 'player'
+    info = "This node returns the user of the card."
+    tips = "The actual player this node represents could change depending on where it is used. If you use a 'Deploy' node to deploy cards to opponents to request that they flip a coin, In the 'Flip' function, this node will represent your opponents and not the user."
+    op1 = "The card user. Any time a node requires a player input, this will almost always be the default value."
     def __init__(self, id):
-        super().__init__(id, 'player', [Port(-1, ['player'], desc='player')])  
+        super().__init__(id, 'user', [Port(-1, ['player'], desc='player')])  
 
     def get_output(self, p):
         return 'player'
        
 class Players(Node):
-    categories = ['player']
-    sub_cat = 'lists'
+    cat = 'player'
+    subcat = 'lists'
     info = "This node returns a list of all players."
-    op1 = "A list of all players"
+    op1 = "A list of all players."
     def __init__(self, id):
         super().__init__(id, 'all players', [Port(-1, ['ps'], desc='player list')])
 
@@ -1894,10 +1894,10 @@ class Players(Node):
         return 'self.game.players.copy()'
         
 class SelfPlayers(Node):
-    categories = ['player', 'card attributes']
+    cat = 'card attributes'
     info = "This node returns a list of stored players. Players can be added to or removed from this list to be referened later."
     tips = "Any time you call a 'Deploy' node, this list will be emptied and populated with new player values from the players passed to the 'Deploy' node."
-    op1 = "A list of stored players"
+    op1 = "A list of stored players."
     def __init__(self, id):
         super().__init__(id, 'stored players', [Port(-1, ['ps'], desc='player list')])
         
@@ -1905,10 +1905,10 @@ class SelfPlayers(Node):
         return 'self.players'
         
 class SelfCards(Node):
-    categories = ['card', 'card attributes']
+    cat = 'card attributes'
     info = "This node returns a list of stored cards. Cards can be added to or removed from this list to be referenced later."
     tips = "Any time you call a 'Deploy' node, this list will be emptied and populated with new card values."
-    op1 = "A list of stored cards"
+    op1 = "A list of stored cards."
     def __init__(self, id):
         super().__init__(id, 'stored cards', [Port(-1, ['cs'], desc='card list')])
         
@@ -1916,10 +1916,10 @@ class SelfCards(Node):
         return 'self.cards'
         
 class Opponents(Node):
-    categories = ['player']
-    sub_cat = 'lists'
-    info = "This node returns a list of all opponents. The player who played the card is filtered out."
-    op1 = "A list of opponents"
+    cat = 'player'
+    subcat = 'lists'
+    info = "This node returns a list of all opponents not including the user."
+    op1 = "A list of opponents."
     def __init__(self, id):
         super().__init__(id, 'opponents', [Port(-1, ['ps'], desc='player list')])
         
@@ -1927,11 +1927,11 @@ class Opponents(Node):
         return 'self.sort_players(player)'
         
 class StealOpp(Node):
-    categories = ['player']
-    sub_cat = 'lists'
+    cat = 'player'
+    subcat = 'lists'
     info = "This node returns a list of all opponents who have points."
     tips = "You cannot steal points from a player with a score of 0 so use this node when you want to ensure you get a list of players who have points."
-    op1 = "A list of all players with a score greater than 0"
+    op1 = "A list of all players with a score greater than 0."
     def __init__(self, id):
         super().__init__(id, 'opponents with points', [Port(-1, ['ps'], desc='player list')])
         
@@ -1939,9 +1939,9 @@ class StealOpp(Node):
         return '[p for p in self.game.players if p.score > 0]'
       
 class Self(Node):
-    categories = ['card', 'card attributes']
-    info = "This node returns a reference to your card."
-    op1 = "Your card"
+    cat = 'card'
+    info = "This node returns a reference to this card."
+    op1 = "This card."
     def __init__(self, id):
         super().__init__(id, 'card', [Port(-1, ['card'], desc='this card')])  
 
@@ -1949,7 +1949,7 @@ class Self(Node):
         return 'self'
       
 class Length(Node):
-    categories = ['iterator']
+    cat = 'iterator'
     info = "This node returns the number of values in a list."
     ip1 = "Any type of list"
     op1 = "Length of the given list"
@@ -1963,7 +1963,7 @@ class Length(Node):
         return 'len({})'.format(*self.get_input())
       
 class NewList(Node):
-    categories = ['iterator']
+    cat = 'iterator'
     info = "This node declares a new empty list. Double click the node to swap between a player list and a card list."
     tips = "Often times you will want to use this node to create a new list of filtered values from a larger list based on some criteria. Use a 'For' node to check each value in the larger list. If the value meets some criteria, add it to your new list."
     op1 = "A brand new empty list."
@@ -1985,8 +1985,8 @@ class NewList(Node):
         return f'ls{self.id}'
 
 class MergLists(Node):
-    categories = ['iterator']
-    sub_cat = 'operators'
+    cat = 'iterator'
+    subcat = 'operators'
     info = "This node returns a new list with values from both input lists."
     tips = "Double click to swap between merging player lists and card lists."
     ip1 = "List 1"
@@ -2012,8 +2012,8 @@ class MergLists(Node):
         return '({} + {})'.format(*self.get_input())
         
 class MergLists_ip(Node):
-    categories = ['iterator']
-    sub_cat = 'operators'
+    cat = 'iterator'
+    subcat = 'operators'
     info = "This node adds all values from list 2 to list 1."
     tips = "Double click to swap between player lists and card lists."
     ip1 = "All values from this list will be added to the list at port 2"
@@ -2038,12 +2038,12 @@ class MergLists_ip(Node):
         return '{1} += {0}\n'.format(*self.get_input())
        
 class AddTo(Node):
-    categories = ['iterator']
-    sub_cat = 'operators'
+    cat = 'iterator'
+    subcat = 'operators'
     info = "This node adds a value to a list."
-    tips = "Double click to swap between player lists, and card lists."
-    ip1 = "List to add value to"
-    ip2 = "Value to add to list"
+    tips = "Double click to swap between player lists and card lists."
+    ip1 = "List to add value to."
+    ip2 = "Value to add to list."
     def __init__(self, id):
         super().__init__(id, 'add to', [Port(1, ['cs'], desc='value'), Port(2, ['card'], desc='list'), Port(3, ['flow']), Port(-1, ['flow'])])
 
@@ -2069,12 +2069,12 @@ class AddTo(Node):
         return "{0}.append({1})\n".format(*self.get_input())
         
 class RemoveFrom(Node):
-    categories = ['iterator']
-    sub_cat = 'operators'
-    info = "This node removes a value from a list. If the given value is not in the list, an error will be raised. Make sure to check if the value is in the list before attempting to remove it."
+    cat = 'iterator'
+    subcat = 'operators'
+    info = "This node removes a value from a list. If the given value is not in the list, a 'ValueError' will be raised. Make sure to check if the value is in the list before attempting to remove it."
     tips = "Double click to swap between player lists, and card lists."
-    ip1 = "List to remove value from"
-    ip2 = "Value to remove from list"
+    ip1 = "List to remove value from."
+    ip2 = "Value to remove from list."
     def __init__(self, id):
         super().__init__(id, 'remove from', [Port(1, ['cs'], desc='list'), Port(2, ['card'], desc='value'), Port(3, ['flow']), Port(-1, ['flow'])])
 
@@ -2100,10 +2100,10 @@ class RemoveFrom(Node):
         return "{0}.remove({1})\n".format(*self.get_input())
         
 class ClearList(Node):
-    categories = ['iterator']
-    sub_cat = 'operators'
+    cat = 'iterator'
+    subcat = 'operators'
     info = "This node removes all values from the given list."
-    ip1 = "List to clean"
+    ip1 = "List to clear."
     def __init__(self, id):
         super().__init__(id, 'clear list', [Port(1, ['cs', 'ps'], desc='list'), Port(2, ['flow']), Port(-1, ['flow'])])
         
@@ -2114,12 +2114,12 @@ class ClearList(Node):
         return "{0}.clear()\n".format(*self.get_input())
 
 class Contains(Node):
-    categories = ['boolean', 'iterator']
-    sub_cat = 'operators'
+    cat = 'iterator'
+    subcat = 'operators'
     info = "This node checks if a value is in a list. If the value is found, it returns True, otherwise False."
     tips = "Use this node to check if a value is in a list before attempting to remove it."
-    ip1 = "List to check for value in"
-    ip2 = "Value to check for"
+    ip1 = "List to check for value in."
+    ip2 = "Value to check for."
     op1 = "Returns True if value is in list, and False if not."
     def __init__(self, id):
         super().__init__(id, 'contains', [Port(1, ['ps', 'cs'], desc='list'), Port(2, ['player', 'card'], desc='value'), Port(-1, ['bool'], desc='value in list')])  
@@ -2140,10 +2140,10 @@ class Contains(Node):
         return text
   
 class HasTag(Node):
-    categories = ['boolean', 'card']
+    cat = 'card attributes'
     info = "This node can be used to check if a card has a specific tag. It will return True if the card has the tag, and False if not."
-    ip1 = "Tag to check for"
-    ip2 = "Card to evaluate"
+    ip1 = "Tag to check for."
+    ip2 = "Card to evaluate. This will default to this card."
     op1 = "Returns True if the card has the tag, and False if not."
     def __init__(self, id):
         super().__init__(id, 'has tag', [Port(1, ['string'], desc='tag'), Port(2, ['card'], desc='card'), Port(-1, ['bool'], desc='card has tag')])   
@@ -2159,7 +2159,7 @@ class HasTag(Node):
         return text
       
 class GetName(Node):
-    categories = ['card', 'string', 'card attributes']
+    cat = 'card attributes'
     info = "This node returns the name of a card."
     ip1 = "Card"
     op1 = "Name of card"
@@ -2174,7 +2174,7 @@ class GetName(Node):
         return text 
       
 class HasName(Node):
-    categories = ['boolean', 'card']
+    cat = 'card attributes'
     info = "This node returns True if the given card has the given name, and False if it does not."
     ip1 = "Name"
     ip2 = "Card"
@@ -2193,10 +2193,10 @@ class HasName(Node):
         return text
     
 class FindOwner(Node):
-    categories = ['card', 'player']
-    info = "This node returns the owner of a given card. If no owner is found, a None value will be returned."
+    cat = 'card'
+    info = "This node returns the owner of a given card. If no owner is found, a 'None' value will be returned."
     ip1 = "Card"
-    op1 = "Player who has card. If no owner is found, this will return a None value."
+    op1 = "Player who has the card card. If no owner is found, this will return a 'None' value."
     def __init__(self, id):
         super().__init__(id, 'find owner', [Port(1, ['card'], desc='card'), Port(-1, ['player'], desc='card owner')])   
         
@@ -2208,12 +2208,12 @@ class FindOwner(Node):
         return text
 
 class TagFilter(Node):
-    categories = ['iterator', 'string']
+    cat = 'iterator'
     info = "This node returns a new list of cards that all have a given tag."
-    tips = "If you don't want your card to be included in the new filtered list, set the boolean input to True."
-    ip1 = "This is the tag which will be used as filtering criteria."
-    ip2 = "This is an optional boolean argument. If True, your card will be filtered out regardless of wheather or not it has the given tag. This will default to False."
-    ip3 = "This is the card list which will be filtered."
+    tips = "If you don't want this card to be included in the new filtered list, set the boolean input to True."
+    ip1 = "String representing a tag which will be used as filtering criteria."
+    ip2 = "This is an optional boolean argument. If True, this card will be filtered out regardless of wheather or not it has the given tag. This will default to False."
+    ip3 = "A list of cards which will be filtered."
     op1 = "Returns a new list of cards, all of which have the given tag."
     def __init__(self, id):
         super().__init__(id, 'tag filter', [Port(1, ['string'], desc='tag'), Port(2, ['bool'], desc='filter self'), Port(3, ['cs'], desc='card list'), Port(-1, ['cs'], desc='cards with tag from list')])
@@ -2237,12 +2237,12 @@ class TagFilter(Node):
         return text
         
 class NameFilter(Node):
-    categories = ['iterator', 'string']
+    cat = 'iterator'
     info = "This node returns a new list of cards that all have a given name."
-    tips = "If you don't want your card to be included in the new filtered list, set the boolean input to True."
-    ip1 = "This is the name which will be used as filtering criteria."
-    ip2 = "This is an optional boolean argument. If True, your card will be filtered out regardless of wheather or not it has the given name. This will default to False."
-    ip3 = "This is the card list which will be filtered."
+    tips = "If you don't want this card to be included in the new filtered list, set the boolean input to True."
+    ip1 = "String representing a name which will be used as filtering criteria."
+    ip2 = "This is an optional boolean argument. If True, this card will be filtered out regardless of wheather or not it has the given name. This will default to False."
+    ip3 = "A list of cards which will be filtered."
     op1 = "Returns a new list of cards, all of which have the given name."
     def __init__(self, id):
         super().__init__(id, 'name filter', [Port(1, ['string'], desc='name'), Port(2, ['bool'], desc='include self'), Port(3, ['cs'], desc='list'), Port(-1, ['cs'], desc='cards with name from list')])
@@ -2266,11 +2266,11 @@ class NameFilter(Node):
         return text
    
 class Gain(Node):
-    categories = ['player']
+    cat = 'player'
     info = "This node adds points to a players score."
     tips = "This node only accepts positive numbers as input. Use the 'Lose' node to subtract from a players score."
-    ip1 = "The number of points that the player will gain."
-    ip2 = "The player who will gain points. This will default to the player who played your card."
+    ip1 = "Number representing the amount of points that the player will gain."
+    ip2 = "The player who will gain points. This will default to the user."
     def __init__(self, id):
         super().__init__(id, 'gain', [Port(1, ['num'], desc='points'), Port(2, ['player']), Port(3, ['flow']), Port(-1, ['flow'])])  
      
@@ -2285,11 +2285,11 @@ class Gain(Node):
         return text      
 
 class Lose(Node):
-    categories = ['player']
+    cat = 'player'
     info = "This node subtracts points from a players score."
     tips = "This node only accepts positive numbers as input. Players cannot go into negative point values. If a player has a score of 0, they will not go any lower."
     ip1 = "The number of points that the player will lose."
-    ip2 = "The player who will lose points. This will default to the player who played your card."
+    ip2 = "The player who will lose points. This will default to the user."
     def __init__(self, id):
         super().__init__(id, 'lose', [Port(1, ['num'], desc='points'), Port(2, ['player']), Port(3, ['flow']), Port(-1, ['flow'])])  
      
@@ -2304,10 +2304,10 @@ class Lose(Node):
         return text      
         
 class Steal(Node):
-    categories = ['player']
+    cat = 'player'
     info = "This node transfers points from one player to another."
     tips = "This node only accepts positive numbers as input."
-    ip1 = "The number of points that will be transferred."
+    ip1 = "Number representing the amount of points that will be transferred."
     ip2 = "The player who will gain points. This will default to the player who played your card."
     ip3 = "The player who will lose points."
     def __init__(self, id):
@@ -2324,7 +2324,7 @@ class Steal(Node):
         return text      
 
 class StartFlip(Node):
-    categories = ['func']
+    cat = 'func'
     info = "This node initiates a coin flip request. Coin flip requests must be processed in a separate function with a 'Flip' node."
     tips = "Be careful when initiating a coin flip within a 'Flip' process. It's possible to create an endless loop of flips which will result in an 'InfiniteLoop' error being raised."
     def __init__(self, id):
@@ -2348,7 +2348,7 @@ class StartFlip(Node):
         return text
 
 class Flip(Node):
-    categories = ['func']
+    cat = 'func'
     info = "This node is a function. It is used to process the results of a flip request. This process will only activate if a 'Start Flip' node is called somewhere in a separate process."
     op1 = "This port will output the result of the coin flip as a boolean value. This value will be True if the result was heads, and False if it was tails."
     def __init__(self, id):
@@ -2365,7 +2365,7 @@ class Flip(Node):
             return 'coin'
 
 class StartRoll(Node):
-    categories = ['func']
+    cat = 'func'
     info = "This node initiates a dice roll request. Dice roll requests must be processed in a separate function with a 'Roll' node."
     tips = "Be careful when initiating a dice roll within a 'Roll' process. It's possible to create an endless loop of rolls which will result in an 'InfiniteLoop' error being raised."
     def __init__(self, id):
@@ -2389,7 +2389,7 @@ class StartRoll(Node):
         return text
         
 class Roll(Node):
-    categories = ['func']
+    cat = 'func'
     info = "This node is a function. It is used to process the results of a roll request. This process will only activate if a 'Start Roll' node is called somewhere in a separate process."
     op1 = "This port will output the result of the dice roll as a numeric value. The value will range from 1 to 6."
     def __init__(self, id):
@@ -2406,7 +2406,7 @@ class Roll(Node):
             return 'dice'
             
 class StartSelect(Node):
-    categories = ['func']
+    cat = 'func'
     info = "This node initiates a select request. Select requests must be dealt with in a separate function using a 'Select' node. There must also be a 'Get Selection' process which will return a list of players or cards that the player will select from."
     def __init__(self, id):
         super().__init__(id, 'start select', [Port(1, ['flow'])]) 
@@ -2434,7 +2434,7 @@ class StartSelect(Node):
         return text
             
 class GetSelection(Node):
-    categories = ['func']
+    cat = 'func'
     info = "This node is used to put together a list of players or cards for the player to select from. This process will only activate if a 'Start Select' node is present somewhere in a separate process. After this process returns a list, the selection that the player makes can be assessed in a separate process using a 'Select' node."
     tips = "Two lists are provided at ports -1 and -2. These lists can be used to add values to and will be automatically returned after the process. If you wish to return a different list, it must be done using the 'Return List' node. This will override the default lists."
     op1 = "This port will output a player list. If you wish for the player to select a player, add players to this list."
@@ -2473,10 +2473,10 @@ class GetSelection(Node):
         return text
         
 class ReturnList(Node):
-    categories = ['flow', 'func']
-    info = "This node can only be used in a 'Get Selecion' function. Use this node to return a list of cards or players for the player to select from."
+    cat = 'func'
+    info = "This node can only be used in a 'Get Selecion' function. Use this node to return a list of cards or players for the user to select from."
     tips = "If you want to return a filtered list, instead of merging the list with one of the pre-generated lists from the 'Get Selection' node, just use this node to return the list directly."
-    ip1 = "List of players or cards from which the player will select."
+    ip1 = "List of players or cards from which the user will select."
     def __init__(self, id):
         super().__init__(id, 'return list', [Port(1, ['cs', 'ps'], desc='list'), Port(2, ['flow'])]) 
         
@@ -2499,10 +2499,10 @@ class ReturnList(Node):
         return 'return {0}\n'.format(*self.get_input())
 
 class Select(Node):
-    categories = ['func']
+    cat = 'func'
     info = "This node is a function. It is used to process the results of a select request. This process will only activate if a 'Start Select' function has been called and a 'Get Selection' node is present."
-    tips = "If the player is prompted to select a player or card value, be sure to check which they have selected before processing the result. the 'Check Exists' node can be used to see wheather a card or a player has been returned."
-    op1 = "Length of player's selected deck. If the player has selected 2 items, 2 will be returned here."
+    tips = "If the user is prompted to select a player or card value, be sure to check which they have selected before processing the result. the 'Check Exists' node can be used to see wheather a card or a player has been returned."
+    op1 = "Length of user's selected deck. For example, if the player has selected 2 items, 2 will be returned here."
     op2 = "If the selected item was a player, this will return that player. If it was a card, this port will return a 'None' value."
     op3 = "If the selected item was a card, this will return that card. If it was a player, this port will return a 'None' value."
     def __init__(self, id):
@@ -2529,9 +2529,9 @@ class Select(Node):
         return text
   
 class ReturnBool(Node):
-    categories = ['flow', 'func']
+    cat = 'func'
     info = "This node can only be used in a 'Can Cast' or 'Can Use' function. Use this node to return a boolean value representing wheather or not your item can be used or spell can be casted on any opponent at this time."
-    ip1 = "Boolenan value to return"
+    ip1 = "Boolenan value to return."
     def __init__(self, id):
         super().__init__(id, 'return bool', [Port(1, ['bool'], desc='return bool'), Port(2, ['flow'])]) 
         
@@ -2554,10 +2554,10 @@ class ReturnBool(Node):
         return 'return {0}\n'.format(*self.get_input())
 
 class CanCast(Node):
-    categories = ['func']
-    info = "This node is a function. It is used only for Spell cards to check wheather or not the card can be cast on any opponent. Every spell card must have a 'Can Cast' node. This function is run for every spell card when the player clicks on it. If True is returned, the card will activate, otherwise, nothing will happen."
+    cat = 'func'
+    info = "This node is a function. It is used only for Spell cards to check wheather or not the card can be cast on any opponent. Every spell card must have a 'Can Cast' node. This function is run for every spell card when the user clicks on it. If True is returned, the card will activate, otherwise, nothing will happen."
     tips = "A boolean value of True is provided at node -1. If no additional nodes are added to this function, the default value of True will be returned. If you wish to return a different value, use the 'Return Bool' node."
-    op1 = "Boolean value of True"
+    op1 = "Boolean value of True."
     def __init__(self, id):
         super().__init__(id, 'can cast', [Port(-1, ['bool'], desc='can cast'), Port(-2, ['flow'])], type='func') 
             
@@ -2581,7 +2581,7 @@ class CanCast(Node):
             return 'cancast'   
 
 class CanUse(Node):
-    categories = ['func']
+    cat = 'func'
     info = "This node is a function. It is used only for Item cards to check wheather or not the card can be used at a given time. Every item card must have a 'Can Use' node. This function is run for every item card when the player clicks on it. If True is returned, the card will activate, otherwise, nothing will happen."
     tips = "A boolean value of True is provided at node -1. If no additional nodes are added to this function, the default value of True will be returned. If you wish to return a different value, use the 'Return Bool' node."
     op1 = "Boolean value of True"
@@ -2608,7 +2608,7 @@ class CanUse(Node):
             return 'canuse'             
   
 class StartOngoing(Node):
-    categories = ['flow', 'func']
+    cat = 'func'
     info = "This node will initiate an ongoing process. To have a complete ongoing process, 'Init ongoing', 'Add to Ongoing', and 'Ongoing' nodes will all need to be added."
     def __init__(self, id):
         super().__init__(id, 'start ongoing', [Port(1, ['flow'])]) 
@@ -2626,7 +2626,7 @@ class StartOngoing(Node):
         return "self.start_ongoing(player)\n"
         
 class InitOngoing(Node):
-    categories = ['func']
+    cat = 'func'
     info = "This node is a function. It is used only for Play cards to set up and ongoing process. Use an 'Add to Ongoing' node within this function to finish setting up the ongoing process."
     tips = "This function may seem unnecessary, however it is used when a card is transferred to a players deck through means other than playing. The game will check to see if any new cards in a player's sequence have an 'Init Ongoing' function. If they do, the game will run it, adding the card to the new player's ongoing cards."
     def __init__(self, id):
@@ -2636,7 +2636,7 @@ class InitOngoing(Node):
         return '\n\tdef start_ongoing(self, player):\n'
         
 class AddToOg(Node):
-    categories = ['flow']
+    cat = 'flow'
     info = "This node can only be used inside an 'Init Ongoing' function. It is used to tell the game which type of log the card will wait for in order to activate."
     tips = "Port 1 takes a string representing the type of log to wait for. Passing 'cont' to the port will let your card continuously run its ongoing function every time the player is updated."
     op1 = "A string representing the type of log to wait for. Pass 'cont' for continuous updating."
@@ -2662,7 +2662,7 @@ class AddToOg(Node):
         return 'player.add_og(self, {0})\n'.format(*self.get_input())
         
 class Ongoing(Node):
-    categories = ['func']
+    cat = 'func'
     info = "This node is a function. It represents an ongoing process. Ongoing processes wait for a specific log to initiate. When that log appears, this function will run."
     tips = "Many cards depend on waiting for a card with a specific name or tag to be placed around it. To achieve this, simply activate an ongoing process with the 'cont' condition. In the ongoing process, check the index where you expect the special card to be played."
     op1 = "This port will return the log that triggered your card's ongoing process. Different information from the log can be extracted using the 'Extract Value' node."
@@ -2677,11 +2677,11 @@ class Ongoing(Node):
             return 'log'
 
 class ExtractVal(Node):
-    categories = ['string']
+    cat = 'string'
     info = "This is a special node which extracts data from a log inside an ongoing process."
-    tips = "The node will attempt to find the value in the log based on the string you pass. If no value is found, a None value will be returned."
+    tips = "The node will attempt to find the value in the log based on the string you pass. If no value is found, a 'None' value will be returned."
     ip1 = "A string representing the value to extract from the log."
-    op1 = "The extracted value. If no such value is found, a None value will be returned."
+    op1 = "The extracted value. If no such value is found, a 'None' value will be returned."
     def __init__(self, id):
         super().__init__(id, 'extract value', [Port(1, ['string'], desc='key'), Port(2, ['log'], desc='value'), Port(-1, [])]) 
         
@@ -2727,13 +2727,13 @@ class ExtractVal(Node):
             op.clear_types()
 
 class Deploy(Node):
-    categories = ['flow', 'func']
-    info = "This node deploys copies of your card to a passed list of players. You can use deployed cards to request that an opponent flips a coin or rolls the dice or makes a selection. This will automatically add your card to the original player's ongoing cards with a 'cont' condition. Once the other players have finished their requests, you can access their results from the original card inside an 'Ongoing' function."
-    tips = "Using ports 3 and 4, you can pass player and card values for the deployed cards to set as their extra player and extra card values. This is an easy way to allow trojan cards to access the original player and parent card."
+    cat = 'func'
+    info = "This node deploys copies of this card to a passed list of players. You can use deployed cards to request that an opponent flips a coin or rolls the dice or makes a selection. This will automatically add this card to the user's ongoing cards with a 'cont' condition. Once the other players have finished their requests, you can access their results from the original card inside an 'Ongoing' function."
+    tips = "Using ports 3 and 4, you can pass player and card values for the deployed cards to set as their extra player and extra card values. This is an easy way to allow trojan cards to access the original user and parent card."
     ip1 = "A string representing what the trojan card is to do once passed to an opponent. 'flip' will activate a flip request, 'roll' a roll request, 'select' a select request and 'og' will start an ongoing process."
-    ip2 = "List of players who will recieve deployed cards. The main player is automatically filtered out if they are included in the given list."
+    ip2 = "List of players who will recieve deployed cards. The user is automatically filtered out if they are included in the given list."
     ip3 = "A card which will be set as the extra card for all deployed cards. Often you will want to set this value to the original card (accessed by a 'self' node). This will allow you to access the parent card from any trojan card."
-    ip4 = "A player which will be set as the extra player for all deployed cards. Often you will want to set this value to the original player. This will allow you to access the original player from any trojan card."
+    ip4 = "A player which will be set as the extra player for all deployed cards. Often you will want to set this value to the original user. This will allow you to access the original user from any trojan card."
     def __init__(self, id):
         super().__init__(id, 'deploy', [Port(1, ['string'], desc='type'), Port(2, ['ps'], desc='players to send to'), Port(3, ['card'], desc='set stored card'), Port(4, ['player'], desc='set stored player'), Port(5, ['flow']), Port(-1, ['flow'])]) 
         
@@ -2753,9 +2753,9 @@ class Deploy(Node):
         return "self.deploy(player, {1}, {0}, extra_card={2}, extra_player={3})\n".format(*input)
 
 class GetFlipResults(Node):
-    categories = ['flow']
+    cat = 'flow'
     info = "This node will return the results of a flip request made to other players using a 'Deploy' node'. The results are a list of players and a list of boolean values representing the flip results. The order of the lists indicates which result belongs to which player."
-    tips = "Generally, the best way to process these results is to use a 'Zipped For' node which will allow you to loop through the player list and result list at the same time. The best practice is to remove the player from this card's list of players after their results have been processed. This can be done with the 'Self Players' node"
+    tips = "Generally, the best way to process these results is to use a 'Zipped For' node which will allow you to loop through the player list and result list at the same time. The best practice is to remove the processed players from this card's list of players after their results have been processed. This can be done with the 'Self Players' node"
     op1 = "Returns a list of players whoes flip results are ready."
     op2 = "Returns a list of boolean values representing the flip results of each player."
     def __init__(self, id):
@@ -2771,7 +2771,7 @@ class GetFlipResults(Node):
             return f'results{self.id}'
             
 class GetRollResults(Node):
-    categories = ['flow']
+    cat = 'flow'
     info = "This node will return the results of a roll request made to other players using a 'Deploy' node'. The results are a list of players and a list of numbers representing the roll results. The order of the lists indicates which result belongs to which player."
     tips = GetFlipResults.tips
     op1 = "Returns a list of players whoes roll results are ready."
@@ -2789,7 +2789,7 @@ class GetRollResults(Node):
             return f'results{self.id}'
             
 class GetSelectResults(Node):
-    categories = ['flow']
+    cat = 'flow'
     info = "This node will return the results of a select request made to other players using a 'Deploy' node'. The results are a list of players and a list of cards representing the select results. The order of the lists indicates which result belongs to which player."
     tips = GetFlipResults.tips
     op1 = "Returns a list of players whoes select results are ready."
@@ -2807,8 +2807,8 @@ class GetSelectResults(Node):
             return f'results{self.id}'
 
 class SelfIndex(Node):
-    categories = ['card', 'iterator']
-    info = "This node returns a number representing the index of this card if it exists in the user's played cards. Make sure to check if this card is actually in the user's played cards before calling this node. If the card does not exist, an IndexError will be thrown."
+    cat = 'iterator'
+    info = "This node returns a number representing the index of this card if it exists in the user's played cards. Make sure to check if this card is actually in the user's played cards before calling this node. If the card does not exist, an 'IndexError' will be raised."
     op1 = "Returns number representing the index of this card in the user's played cards."
     def __init__(self, id):
         super().__init__(id, 'self index', [Port(-1, ['num'])])  
@@ -2817,9 +2817,9 @@ class SelfIndex(Node):
         return 'player.played.index(self)'
         
 class IndexAbove(Node):
-    categories = ['card', 'iterator']
+    cat = 'iterator'
     info = "This node returns a number representing the index of the card above this card in the user's played cards. If this card is the first card in the user's played cards, 0 will be returned."
-    tipe = "Like the 'Self Index' node, an IndexError will be raised if this card does not exist in the user's played cards."
+    tipe = "Like the 'Self Index' node, an 'IndexError' will be raised if this card does not exist in the user's played cards."
     op1 = "Returns number representing the index of the card above this card in the user's played cards."
     def __init__(self, id):
         super().__init__(id, 'index above', [Port(-1, ['num'], desc='self index - 1')])  
@@ -2828,9 +2828,9 @@ class IndexAbove(Node):
         return 'max({player.played.index(self) - 1, 0})'
         
 class IndexBelow(Node):
-    categories = ['card', 'iterator']
+    cat = 'iterator'
     info = "This node returns a number representing the index of the card below this card in the user's played cards. If this card is the last card in the user's played cards, the length of the played cards - 1 will be returned."
-    tipe = "Like the 'Self Index' node, an IndexError will be raised if this card does not exist in the user's played cards."
+    tipe = "Like the 'Self Index' node, an 'IndexError' will be raised if this card does not exist in the user's played cards."
     op1 = "Returns number representing the index of the card above this card in the user's played cards."
     def __init__(self, id):
         super().__init__(id, 'index below', [Port(-1, ['num'], desc='self index + 1')])  
@@ -2839,14 +2839,14 @@ class IndexBelow(Node):
         return 'min({player.played.index(self) + 1, len(player.played)})'
         
 class CheckIndex(Node):
-    categories = ['card', 'iterator']
-    info = "This function will check a card at a given index in a players 'played' deck. The card at the index and a boolean value are returned. This card will keep a memory of cards it has checked. If an unrecognized card is found at the given index, the boolean value will be True, otherwise it will be False."
-    tips = "This function is best used in an ongoing process with the 'cont' condition. It will continuously check an index to see if there is a new card."
+    cat = 'iterator'
+    info = "This node will check a card at a given index in a players 'played' deck. The card at the index and a boolean value are returned. This card will keep a memory of cards it has checked. If an unrecognized card is found at the given index, the boolean value will be True, otherwise it will be False."
+    tips = "This node is best used in an ongoing process with the 'cont' condition. It will continuously check an index to see if there is a new card."
     ip1 = "The player whoes 'played' deck will be checked. This will default to the original player."
     ip2 = "The index that is being checked. It is safe to index out of range if the length of the 'played' deck is unknown. The boolean value will return False. This will default to the index of the last value in the deck."
     ip3 = "An optional tag used as additional criteria to verrify a new card. The returned boolean value will only trigger if the card at the given index is new AND has the given tag."
-    op1 = "The card that is found at the given index. If the index is out of range, this will be a None value."
-    op2 = "Boolean value representing if a new card was found at the given index. If the index is out of range or no new card is found that meets the criteria, this value will be False, otherwise it will be True."
+    op1 = "Returns the card that is found at the given index. If the index is out of range, this will be a 'None' value."
+    op2 = "Returns a boolean value representing if a new card was found at the given index. If the index is out of range or no new card is found that meets the criteria, this value will be False, otherwise it will be True."
     def __init__(self, id):
         super().__init__(id, 'check index', [Port(1, ['player']), Port(2, ['num'], desc='index'), Port(3, ['string'], desc='tag'), Port(4, ['flow']), Port(-1, ['card'], desc='card at index'), Port(-2, ['bool'], desc='new card'), Port(-3, ['flow'])])   
  
@@ -2879,8 +2879,8 @@ class CheckIndex(Node):
             return f'added{self.id}'
 
 class Splitter(Node):
-    categories = ['other']
-    info = "This node is purly for editing the node layout of your custom card. It allows for any variable to be split such that it is easier to see the flow of your card."
+    cat = 'other'
+    info = "This node is purly for editing the node layout of your custom card. It allows for any wire to be split such that it is easier to see the flow of your card."
     def __init__(self, id):
         super().__init__(id, 'splitter', [Port(1, Port.get_comparison_types(), desc='value'), Port(-1, [], desc='value'), Port(-2, [], desc='value')])
         
@@ -2910,10 +2910,10 @@ class Splitter(Node):
         return text.format(*ip)
         
 class CheckFirst(Node):
-    categories = ['player', 'boolean']
-    info = "This function can be used to check if a given player was the first player to play their card during a turn."
+    cat = 'player'
+    info = "This node can be used to check if a given player was the first player to play their card during a turn."
     ip1 = "Player who will be checked. This will default to the user."
-    op1 = "Returns boolean value. True if the player played their card first this turn and False otherwise."
+    op1 = "Returns a boolean value. True if the player played their card first this turn and False otherwise."
     def __init__(self, id):
         super().__init__(id, 'check first', [Port(1, ['player']), Port(-1, ['bool'], desc='player is first')])   
         
@@ -2925,10 +2925,10 @@ class CheckFirst(Node):
         return 'self.game.check_first({0})'.format(*self.get_input())  
         
 class CheckLast(Node):
-    categories = ['player', 'boolean']
-    info = "This function can be used to check if a given player will be the last player to play their card during a turn."
+    cat = 'player'
+    info = "This node can be used to check if a given player will be the last player to play their card during a turn."
     ip1 = "Player who will be checked. This will default to the user."
-    op1 = "Returns boolean value. True if the player played will be the last to play their card this turn and False otherwise."
+    op1 = "Returns a boolean value. True if the player played will be the last to play their card this turn and False otherwise."
     def __init__(self, id):
         super().__init__(id, 'check last', [Port(1, ['player']), Port(-1, ['bool'], desc='player is last')])   
         
@@ -2940,10 +2940,10 @@ class CheckLast(Node):
         return 'self.game.check_last({0})'.format(*self.get_input())  
 
 class DrawCards(Node):
-    categories = ['flow', 'card']
-    info = "This function allows a player to draw cards. The type of cards can be specified via an input string. The cards will be automatically added to the correct deck."
+    cat = 'card'
+    info = "This node allows a player to draw cards. The type of cards can be specified via an input string. The cards will be automatically added to the correct deck."
     tips = "The drawn cards are returned in a card list. You can check to see if the player drew a specific card or type of card by referencing this list."
-    ip1 = "A string representing the type of cards to be drawn. This will default to treasure."
+    ip1 = "A string representing the type of cards to be drawn. This will default to 'treasure'."
     ip2 = "A number representing the number of cards to be drawn. This will default to 1."
     ip3 = "Player who will recieve the cards. This will default to the user."
     op1 = "A list containing the drawn cards."
@@ -2967,8 +2967,8 @@ class DrawCards(Node):
         return f'seq{self.id}'
         
 class IsEvent(Node):
-    categories = ['boolean', 'card']
-    info = "This function can be used to check if a specific event is in play."
+    cat = 'card'
+    info = "This node can be used to check if a specific event is in play."
     ip1 = "A string representing the name of the event card to check for."
     op1 = "Returns boolean value. True if the event card in play matches the name provided, and False otherwise."
     def __init__(self, id):
@@ -2981,9 +2981,9 @@ class IsEvent(Node):
         return 'self.game.is_event({0})'.format(*self.get_input())
                 
 class PlayCard(Node):
-    categories = ['flow', 'card']
-    info = "This function can be used to play a card. This will only work for cards which have a 'start' function. Types such as items, spells and landscapes are not playable, and when sent to this function will cause an error."
-    tips = "If a card which already exists in the user's played cards is passed to this function, the card will be played a second time but will not be added again to the user's played cards. This is how landscapes work."
+    cat = 'card'
+    info = "This node can be used to play a card. This will only work for cards which have a 'start' function. Types such as items, spells and landscapes are not playable, and when sent to this function will cause an error."
+    tips = "If a card which already exists in the user's played cards is passed to this node, the card will be played a second time but will not be added again to the user's played cards. This is how landscapes work."
     ip1 = "Card which is to be played. This will default to this card."
     ip2 = "Player who is to play the card. This will default to the user."
     def __init__(self, id):
@@ -2999,9 +2999,9 @@ class PlayCard(Node):
         return "{1}.play_card({0})\n".format(*self.get_input())
            
 class Copy(Node):
-    categories = ['card']
-    info = "This function will produce a copy of a given card. The copy will not retain any stored cards or players."
-    ip1 = "Card to be copied."
+    cat = 'card'
+    info = "This node will produce a copy of a given card. The copy will not retain any stored cards or players."
+    ip1 = "Card to be copied. This will default to this card."
     def __init__(self, id):
         super().__init__(id, 'copy', [Port(1, ['card']), Port(-1, ['card'], desc='card copy')])
         
@@ -3012,9 +3012,9 @@ class Copy(Node):
         return "{0}.copy()".format(*self.get_input())
 
 class SetExtraCard(Node):
-    categories = ['flow', 'card']
-    info = "This function can be used to store an extra card for reference later. It can be referenced through the 'Get Extra Card' function."
-    ip1 = "Card which is to be stored."
+    cat = 'card'
+    info = "This node can be used to store an extra card for reference later. It can be referenced through the 'Get Extra Card' function."
+    ip1 = "Card which is to be stored. This will default to a 'None' value"
     def __init__(self, id):
         super().__init__(id, 'set extra card', [Port(1, ['card'], desc='new extra card'), Port(2, ['flow']), Port(-1, ['flow'])])
             
@@ -3025,9 +3025,9 @@ class SetExtraCard(Node):
         return 'None'
 
 class GetExtraCard(Node):
-    categories = ['card']
-    info = "This function returns a stored card. If no extra card has been set through the 'Set Extra Card' function, None will be returned."
-    op1 = "The extra card."
+    cat = 'card'
+    info = "This node returns a stored card. If no extra card has been set through the 'Set Extra Card' function, a 'None' value will be returned."
+    op1 = "Returns the extra card."
     def __init__(self, id):
         super().__init__(id, 'get extra card', [Port(-1, ['card'], desc='extra card')])
             
@@ -3035,8 +3035,8 @@ class GetExtraCard(Node):
         return 'self.extra_card'   
         
 class SetExtraPlayer(Node):
-    categories = ['flow', 'player']
-    info = "This function can be used to store an extra player for reference later. It can be referenced through the 'Get Extra Player' function."
+    cat = 'player'
+    info = "This node can be used to store an extra player for reference later. It can be referenced through the 'Get Extra Player' function."
     ip1 = "Player which is to be stored."
     def __init__(self, id):
         super().__init__(id, 'set extra player', [Port(1, ['player'], desc='new extra player'), Port(2, ['flow']), Port(-1, ['flow'])])
@@ -3048,9 +3048,9 @@ class SetExtraPlayer(Node):
         return 'None'
 
 class GetExtraPlayer(Node):
-    categories = ['flow', 'player']
-    info = "This function returns a stored player. If no extra player has been set through the 'Set Extra Player' function, None will be returned."
-    op1 = "The extra player."
+    cat = 'player'
+    info = "This node returns a stored player. If no extra player has been set through the 'Set Extra Player' function, a 'None' value will be returned."
+    op1 = "Returns the extra player."
     def __init__(self, id):
         super().__init__(id, 'get extra player', [Port(-1, ['player'], desc='extra player')])
             
@@ -3058,11 +3058,11 @@ class GetExtraPlayer(Node):
         return 'self.extra_player' 
         
 class Index(Node):
-    categories = ['iterator']
-    info = "This function returns a value from a list at a given index. the list must contain either players or cards. If the index given is out of range, an IndexError will be raised."
-    ip1 = "Number representing the index of the list to be returned. This will default to the index at the end of the list."
+    cat = 'iterator'
+    info = "This node returns a value from a list at a given index. The list must contain either players or cards. If the index given is out of range, an 'IndexError' will be raised."
+    ip1 = "A number representing the index of the list to be returned. This will default to the index at the end of the list."
     ip2 = "The list to pull the value from. This will defult to the user's played cards."
-    op1 = "The value pulled from the list."
+    op1 = "Returns the value pulled from the list."
     def __init__(self, id):
         super().__init__(id, 'index', [Port(1, ['num'], desc='index'), Port(2, ['ps'], desc='list'), Port(-1, ['player'], desc='list value at index')])
         
@@ -3089,8 +3089,8 @@ class Index(Node):
             return 'player.get_played().copy()'
         
 class SafeIndex(Node):
-    categories = ['iterator']
-    info = "This function is a safe way to retrieve a value from a list. If the index is out of range, a None value will be returned."
+    cat = 'iterator'
+    info = "This node is a safe way to retrieve a value from a list. If the index is out of range, a 'None' value will be returned."
     ip1 = "Number representing the index of the list to be returned. This will default to the index at the end of the list."
     ip2 = "The list to pull the value from."
     op1 = "The value pulled from the list. This will default to the user's played cards."
@@ -3120,11 +3120,11 @@ class SafeIndex(Node):
             return 'player.get_played.copy()'
         
 class Discard(Node):
-    categories = ['flow', 'card']
-    info = "This function is used to discard any card. The discarded card will be removed from any associated decks including played cards."
+    cat = 'card'
+    info = "This node is used to discard any card. The discarded card will be removed from any associated decks including played cards."
     tips = "Keep in mind that discarding a card will also end any ongoing process the card might be running."
-    ip1 = "Player who will discard the card. This defaults to the user."
-    ip2 = "The card to be discarded."
+    ip1 = "The player who will discard the card. This defaults to the user."
+    ip2 = "The card to be discarded. This will default to a 'None' value"
     def __init__(self, id):
         super().__init__(id, 'discard', [Port(1, ['player']), Port(2, ['card']), Port(3, ['flow']), Port(-1, ['flow'])])
 
@@ -3138,8 +3138,8 @@ class Discard(Node):
             return 'None'
             
 class SafeDiscard(Node):
-    categories = ['flow', 'card']
-    info = "This function is used to discard any card. The discarded card will be removed from any associated decks including played cards. It is considered safe because the discarded card will not be added to the game's discard deck."
+    cat = 'card'
+    info = "This node is used to discard any card. The discarded card will be removed from any associated decks including played cards. It is considered safe because the discarded card will not be added to the game's discard deck."
     tips = "A safe discard is usually used when the card is to be removed from a player and given to another. Also, keep in mind that discarding a card will also end any ongoing process the card might be running."
     ip1 = "Player who will discard the card. This defaults to the user."
     ip2 = "The card to be discarded."
@@ -3156,8 +3156,8 @@ class SafeDiscard(Node):
             return 'None'
             
 class UseItem(Node):
-    categories = ['flow', 'card']
-    info = "This function is a special form of discard for item cards. Unlike the discard function, 'Use Item' will trigger an item discard log which can be referenced by other cards."
+    cat = 'card'
+    info = "This node is a special form of discard for item cards. Unlike the 'Discard' node, 'Use Item' will trigger an item discard log which can be referenced by other cards."
     ip1 = "The card to be discarded. This defaults to this card."
     def __init__(self, id):
         super().__init__(id, 'use item', [Port(1, ['card'], desc='item'), Port(2, ['flow']), Port(-1, ['flow'])])
@@ -3169,11 +3169,11 @@ class UseItem(Node):
         return 'self'
             
 class GiveCard(Node):
-    categories = ['flow', 'card']
-    info = "This function is used to give a card to an opponent. The card will be removed from the owner's decks."
+    cat = 'card'
+    info = "This node is used to give a card to an opponent. The card will be removed from the owner's decks."
     tips = "Keep in mind that discarding a card will also end any ongoing process the card might be running."
-    ip1 = "Card to be given. This will default to this card."
-    ip2 = "The player who will recieve the card. This will default to the owner. If no other player is specified, the card will be transfered back to the correct deck of the owner."
+    ip1 = "The card to be given. This will default to this card."
+    ip2 = "The player who will recieve the card. This will default to the owner."
     def __init__(self, id):
         super().__init__(id, 'give card', [Port(1, ['card']), Port(2, ['player'], desc='target'), Port(3, ['flow']), Port(-1, ['flow'])])
 
@@ -3187,10 +3187,10 @@ class GiveCard(Node):
             return 'player'
      
 class GetNewCard(Node):
-    categories = ['card']
-    info = "This function is used to generate a new card with the given name. If an invalid name is passed in, None will returned."
-    ip1 = "String representing the name of the card to be generated. This will default to the name of this card."
-    op1 = "New card. Will be None if invalid name is passed."
+    cat = 'card'
+    info = "This node is used to generate a new card with the given name. If an invalid name is passed in, a 'None' value will be returned."
+    ip1 = "A string representing the name of the card to be generated. This will default to the name of this card."
+    op1 = "Returns a new card. Will be a 'None' value if an invalid name is passed."
     def __init__(self, id):
         super().__init__(id, 'get new card', [Port(1, ['string'], desc='card name')])
 
@@ -3201,10 +3201,10 @@ class GetNewCard(Node):
         return 'self.name'
      
 class Transfom(Node):
-    categories = ['card']
-    info = "This function is used to transform a card into a different card. If an invalid name is passed in, nothing will happen."
-    ip1 = "String representing the name of the card for the target card to be changed to. This defaults to the name of this card."
-    ip2 = "The card to be transformed."
+    cat = 'card'
+    info = "This node is used to transform a card into a different card. If an invalid name is passed in, nothing will happen."
+    ip1 = "A string representing the name of the card for the target card to be changed to. This defaults to the name of this card."
+    ip2 = "The card to be transformed. This defaults to this card."
     def __init__(self, id):
         super().__init__(id, 'transform', [Port(1, ['string'], desc='new card name'), Port(2, ['card']), Port(3, ['flow']), Port(-1, ['flow'])])
 
@@ -3218,8 +3218,8 @@ class Transfom(Node):
             return 'self'
             
 class Swap(Node):
-    categories = ['card']
-    info = "This function is used to swap the location of one card wth another."
+    cat = 'card'
+    info = "This node is used to swap the location of one card with another."
     tips = "Both input values will default to this card, so if no input is specified this card will be swapped with itsself."
     ip1 = "The first card to be swapped."
     ip2 = "The second card to be swapped."
@@ -3233,10 +3233,10 @@ class Swap(Node):
         return 'self'
         
 class GetDiscard(Node):
-    categories = ['card', 'iterator']
-    info = "This function is used to get the discard deck from the game."
+    cat = 'card'
+    info = "This node is used to get the discard deck from the game."
     tips = "The discard deck can be used to revive cards that have previously been used or discarded."
-    op1 = "A list of discarded cards."
+    op1 = "Returns a list containing all discarded cards."
     def __init__(self, id):
         super().__init__(id, 'get discard', [Port(-1, ['cs'], desc='discarded cards')])
         
@@ -3244,10 +3244,10 @@ class GetDiscard(Node):
         return 'self.game.get_discard()'
      
 class SetMode(Node):
-    categories = ['other']
-    info = "This function is used to set the mode of a card. The mode is simply a number which can be used to control the flow of your card. The mode can be retrieved using the 'Get Mode' node."
+    cat = 'other'
+    info = "This node is used to set the mode of a card. The mode is simply a number which can be used to control the flow of your card. The mode can be retrieved using the 'Get Mode' node."
     tips = "A card's mode can be used to store any number. If an amount of points or some other number needs to be preserved, the mode can be set to that value to be referenced later."
-    ip1 = "Number representing what the mode should be set to. This defaults to 0."
+    ip1 = "A number representing what the mode should be set to. This defaults to 0."
     def __init__(self, id):
         super().__init__(id, 'set mode', [Port(1, ['num'], desc='new mode'), Port(2, ['flow']), Port(-1, ['flow'])])   
         
@@ -3259,9 +3259,9 @@ class SetMode(Node):
         return 'self.mode = {0}\n'.format(*self.get_input())
         
 class GetMode(Node):
-    categories = ['other']
-    info = "This function is used to retrieve the mode of a card. The mode is simply a number which can be used to control the flow of your card. The mode can be set using the 'Set Mode' node."
-    ip1 = "Number representing the card's current mode."
+    cat = 'other'
+    info = "This node is used to retrieve the mode of a card. The mode is simply a number which can be used to control the flow of your card. The mode can be set using the 'Set Mode' node."
+    ip1 = "A number representing the card's current mode."
     def __init__(self, id):
         super().__init__(id, 'get mode', [Port(-1, ['num'], desc='mode')])   
         
@@ -3269,12 +3269,12 @@ class GetMode(Node):
         return 'self.mode'
 
 class StealRandom(Node):
-    categories = ['card']
-    info = "This function is used to steal a random card from a player. The deck from which the card is stolen is specified with a string."
+    cat = 'card'
+    info = "This node is used to steal a random card from a player. The deck from which the card is stolen is specified with a string."
     tips = "If the specified deck is empty, no cards will be stolen. The treasure deck is an exception to this. If the treasure deck of the specified player is empty, a new treasure card will be drawn and given to the user."
-    ip1 = "String representing which deck the card should be stolen from. This defaults to 'treasure'."
-    ip2 = "Player for the card to be stolen from. This defaults to the user."
-    op1 = "Card that was stolen. This can return a None value if the deck was empty so be sure to check before doing anything with the card."
+    ip1 = "A string representing which deck the card should be stolen from. This defaults to 'treasure'."
+    ip2 = "A player for the card to be stolen from. This defaults to the user."
+    op1 = "Returns the card that was stolen. This can return a 'None' value if the deck was empty so be sure to check before doing anything with the card."
     def __init__(self, id):
         super().__init__(id, 'steal random', [Port(1, ['string'], desc='deck'), Port(2, ['player'], desc='target'), Port(3, ['flow']), Port(-1, ['card']), Port(-2, ['flow'])])   
         
@@ -3293,10 +3293,10 @@ class StealRandom(Node):
         return f'c{self.id}'
         
 class AddCard(Node):
-    categories = ['card']
-    info = "This function is used to give a card to a player. It will automatically add the card to the correct deck of the specified player based on the card's type."
+    cat = 'card'
+    info = "This node is used to give a card to a player. It will automatically add the card to the correct deck of the specified player based on the card's type."
     ip1 = "The player who will receive the card. This will default to the user."
-    ip2 = "The card to be given to the player. This will default to a None value."
+    ip2 = "The card to be given to the player. This will default to a 'None' value."
     def __init__(self, id):
         super().__init__(id, 'add card', [Port(1, ['player']), Port(2, ['card']), Port(3, ['flow']), Port(-1, ['flow'])])   
         
@@ -3310,11 +3310,11 @@ class AddCard(Node):
         return "{0}.safe_add({1})\n".format(*self.get_input())
         
 class GetDeck(Node):
-    categories = ['card', 'iterator']
-    info = "This function is used to retrieve the deck of a specified player based on the deck's name."
+    cat = 'card'
+    info = "This node is used to retrieve the deck of a specified player based on the deck's name."
     ip1 = "String representing the name of the deck to be retrieved. This wil default to 'played'."
     ip2 = "The player to retrieve the deck from. This will default to the user."
-    op1 = "The returned deck."
+    op1 = "Returns the deck as a list of cards."
     def __init__(self, id):
         super().__init__(id, 'get deck', [Port(1, ['string'], desc='deck name'), Port(2, ['player']), Port(-1, ['cs'], desc='deck')])   
         
@@ -3341,10 +3341,10 @@ class GetDeck(Node):
         return 'getattr({1}, {0}).copy()'.format(*self.get_input())
         
 class GetScore(Node):
-    categories = ['player']
-    info = "This function is used to retrieve a player's current score."
+    cat = 'player'
+    info = "This node is used to retrieve a player's current score."
     ip1 = "The player to retrieve the score from. This will default to the user."
-    op1 = "The specified player's score."
+    op1 = "Returns a number representing the specified player's score."
     def __init__(self, id):
         super().__init__(id, 'get score', [Port(1, ['player']), Port(-1, ['num'], desc='points')])   
         
@@ -3355,11 +3355,11 @@ class GetScore(Node):
         return "{0}.score".format(*self.get_input())
         
 class HasCard(Node):
-    categories = ['card', 'player', 'boolean']
-    info = "This function is a generalized function to check wheather or not a player has a specific card."
+    cat = 'card'
+    info = "This node will check if a player has a specific card."
     tips = "If the type of card you are checking for is know, it is generally better to retrieve the deck which you expect the card to be in and use a 'Contains' Node."
-    ip1 = "String representing the name of the card to check for. This will default to the name of this card."
-    ip2 = "Player to check for card ownership. This will default to the user."
+    ip1 = "A string representing the name of the card to check for. This will default to the name of this card."
+    ip2 = "A player to check for card ownership. This will default to the user."
     def __init__(self, id):
         super().__init__(id, 'has card', [Port(1, ['string'], desc='card name'), Port(2, ['player']), Port(-1, ['bool'], desc='player has card')])   
         
@@ -3372,7 +3372,31 @@ class HasCard(Node):
     def get_output(self):
         return "{1}.has_card({0})".format(*self.get_input())
         
+class IsPlayer(Node):
+    cat = 'boolean'
+    info = "Sometimes, a node will output a player or a card value and it can be hard to figure out which. This node will output True if the input value is a player, otherwise False."
+    ip1 = "Either a card or player value."
+    op1 = "Returns boolean value representing wheather or not the input is a player. The value will be True if the input value is a player and False otherwise."
+    def __init__(self, id):
+        super().__init__(id, 'is player', [Port(1, ['card', 'player']), Port(-1, ['bool'])])   
         
+    def get_default(self, p):
+        return 'player'
+
+    def get_output(self):
+        return "({0}.__name__ == 'Player')".format(*self.get_input())        
         
+class IsCard(Node):
+    cat = 'boolean'
+    info = "Sometimes, a node will output a player or a card value and it can be hard to figure out which. This node will output True if the input value is a card, otherwise False."
+    ip1 = "Either a card or player value."
+    op1 = "Returns boolean value representing wheather or not the input is a card. The value will be True if the input value is a card and False otherwise."
+    def __init__(self, id):
+        super().__init__(id, 'is card', [Port(1, ['card', 'player']), Port(-1, ['bool'])])   
         
+    def get_default(self, p):
+        return 'self'
+
+    def get_output(self):
+        return "({0}.__name__ == 'Card')".format(*self.get_input())  
         

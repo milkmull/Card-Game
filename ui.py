@@ -1525,18 +1525,18 @@ class Textbox(Base_Object, Position):
             self.set_fitted(True)
             
         if kwargs:
-            if kwargs.get('antialiased'):
-                self.set_antialiased(antialiased)
-            if kwargs.get('kerning'):
-                self.set_kerning(kerning)
-            if kwargs.get('underline'):
-                self.set_underline(underline)
-            if kwargs.get('strong'):
-                self.set_strong(strong)
-            if kwargs.get('oblique'):
-                self.set_oblique(oblique)
-            if kwargs.get('wide'):
-                self.set_wide(wide)
+            if kwargs.get('antialiased', False):
+                self.set_antialiased(True)
+            if kwargs.get('kerning', False):
+                self.set_kerning(True)
+            if kwargs.get('underline', False):
+                self.set_underline(True)
+            if kwargs.get('strong', False):
+                self.set_strong(True)
+            if kwargs.get('oblique', False):
+                self.set_oblique(True)
+            if kwargs.get('wide', False):
+                self.set_wide(True)
 
     def __str__(self):
         return self.message

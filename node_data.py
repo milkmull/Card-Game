@@ -108,6 +108,7 @@ class Node_Data:
                         n0.new_output_port(n0.get_port(parent_port))
                     port = int(port)
                     p0 = n0.get_port(port)
+                    print(n0.name)
                     p0.set_types(types)
                     p0.suppressed = suppressed
                     p0.visible = visible
