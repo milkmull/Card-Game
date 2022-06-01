@@ -773,13 +773,14 @@ class TreasureCurse(Card):
         return not any({c.name == self.name for c in player.active_spells})
         
     def start_ongoing(self, player):
-        player.add_og(self, 'dt')
+        player.add_og(self, 'draw')
         
     def ongoing(self, player, log):
-        t = log['c']
-        self.extra_card = t
-        player.add_request(self, 'flip')
-        
+        if log['deck'] == 'treasure':
+            t = log['c']
+            self.extra_card = t
+            player.add_request(self, 'flip')
+            
     def coin(self, player, coin):
         if not coin:
             target = random.choice(self.sort_players(player))
@@ -1021,7 +1022,7 @@ class Knife(Card):
             
 class MagicWand(Card):
     name = 'magic wand'
-    tags = 'item'
+    tags = ['item']
     def can_use(self, player):
         return True
         
@@ -1752,13 +1753,14 @@ class Stardust(Card):
         if not self.extra_player:
             self.deploy(player, self.sort_players(player), 'og')
         else:
-            player.add_og(self, 'dt')
+            player.add_og(self, 'draw')
         
     def ongoing(self, player, log):
-        p = self.extra_player
-        c = self.extra_card
-        if p.requests.count(c) < 5 and len(p.treasure) < 6:
-            p.add_request(c, 'flip')
+        if log['deck'] == 'treasure':
+            p = self.extra_player
+            c = self.extra_card
+            if p.requests.count(c) < 5 and len(p.treasure) < 6:
+                p.add_request(c, 'flip')
                 
     def coin(self, player, coin):
         if coin:

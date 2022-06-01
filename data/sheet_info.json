@@ -1,0 +1,130 @@
+{
+    "tags": {
+        "types": [
+            "item",
+            "equipment",
+            "treasure",
+            "spell",
+            "event",
+            "landscape"
+        ],
+        "biomes": [
+            "city",
+            "forest",
+            "farm",
+            "water",
+            "sky",
+            "garden",
+            "desert",
+            "graveyard"
+        ],
+        "descriptors": [
+            "human",
+            "animal",
+            "plant",
+            "monster",
+            "dog",
+			"bug"
+        ]
+    },
+    "player decks": [
+        "played",
+        "unplayed",
+        "items",
+        "spells",
+        "active_spells",
+        "equipment",
+        "treasure",
+        "landscapes"
+    ],
+	"request strings": [
+		"flip",
+		"roll",
+		"select",
+		"og"
+	],
+    "logs": {
+		"cont": {
+			"info": "Occurs when the player is updated every frame. Use this tag if you would like the card's ongoing function to run every time the player is updated.",
+			"data": {
+				"t": "'cont'"
+			}
+		},
+        "draw": {
+            "info": "Occurs when a player draws a new card or cards.",
+            "data": {
+                "t": "'draw'",
+				"deck": "Deck string where cards were added. Can be 'unplayed', 'items', 'spells', 'treasure' or 'landscapes'.",
+                "c": "List of cards drawn."
+            }
+        },
+        "play": {
+            "info": "When a player plays a card.",
+            "data": {
+				"t": "'p'",
+				"c": "The card that was played."
+			}
+        },
+		"use item": {
+            "info": "Occurs when a player uses an item. This log is triggered through the 'Use Item' node.",
+            "data": {
+				"t": "'ui'",
+				"c": "The item card that was used."
+			}
+        },
+		"cast spell": {
+            "info": "Occurs when a player casts a spell.",
+            "data": {
+				"t": "'cast'",
+				"c": "The spell card that was used.",
+				"target": "The target player."
+			}
+        },
+		"buy": {
+            "info": "Occurs when a player buys a card from the shop.",
+            "data": {
+				"t": "'buy'",
+				"c": "The card that was bought."
+			}
+        },
+		"coin flip end": {
+            "info": "Occurs when the results of a coin flip have been decided. If you are looking to manually set the results of a coin flip, you should do it once this log appears.",
+            "data": {
+				"t": "'cfe'",
+				"coin": "Flip result as boolean value."
+			}
+        },
+		"dice roll end": {
+            "info": "Occurs when the results of a dice roll have been decided. If you are looking to manually set the results of a dice roll, you should do it once this log appears.",
+            "data": {
+				"t": "'dre'",
+				"dice": "Roll number."
+			}
+        },
+		"steal points": {
+            "info": "Occurs when the user steals points from another player.",
+            "data": {
+				"t": "'sp'",
+				"c": "The card that was used.",
+				"target": "The player who had points stolen.",
+				"sp": "Number of points that were stolen."
+			}
+        },
+		"gain points": {
+            "info": "Occurs when the user gains points.",
+            "data": {
+				"t": "'gp'",
+				"c": "The card that was used.",
+				"gp": "Number of points that were gained."
+			}
+        },
+		"lose points": {
+            "info": "Occurs when the user loses points.",
+            "data": {
+				"t": "'lp'",
+				"c": "The card that was used.",
+				"lp": "Number of points that were lost."
+			}
+        }
+    }
+}

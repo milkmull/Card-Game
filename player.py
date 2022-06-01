@@ -264,11 +264,8 @@ class Player:
         if pdeck == 'landscapes': 
             for c in cards:
                 c.start_ongoing(self)
-                
-        if len(cards) == 1:     
-            self.add_log({'t': f'd{pdeck[0]}', 'c': cards[0]})
             
-        self.add_log({'t': 'draw', 'deck': pdeck, 'num': len(cards)}) #why two draw logs
+        self.add_log({'t': 'draw', 'deck': pdeck, 'c': cards.copy()})
                 
         return cards
    

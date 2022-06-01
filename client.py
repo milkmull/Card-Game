@@ -1211,9 +1211,6 @@ class Client(ui.Menu):
                 elif type == 'dre':
                     p.end_roll(log.get('dice'), log.get('rt'))
                     
-                elif type == 'draw':
-                    p.draw(log.get('deck'), log.get('num'))
-                    
                 elif type == 'v':
                     p.set_vote(log['v'])
                       

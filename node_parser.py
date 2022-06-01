@@ -1,4 +1,4 @@
-import allnodes
+import mapping
 
 class Node_Parser:  
     def __init__(self, card, nodes):
@@ -58,7 +58,7 @@ class Node_Parser:
         
     def find_locals(self, node):
         dec_line = ''
-        ports = set(allnodes.Mapping.map_ports(node, []))
+        ports = set(mapping.map_ports(node, []))
         for p in ports:
             n = p.node
             if n.type == 'dec':
@@ -81,7 +81,8 @@ class Node_Parser:
         else:
             out_text = node.get_text()
             if out_text:
-                text = (tabs * '\t') + out_text
+                for line in out_text.splitlines():
+                    text += (tabs * '\t') + line + '\n'
                 self.funcs[func]['body'] += text
         
         split_found = False

@@ -1,7 +1,8 @@
+import json
+
 import pygame as pg
 
 import ui
-
 from constants import *
 
 class Draw_Lines(ui.Base_Object):
@@ -92,9 +93,14 @@ def error_screen(errors):
     
 def info_menu(n):
     objects = []
-    n = type(n)(-1)
-    
-    title = ui.Textbox(n.name, tsize=35)
+    n = type(n)(None, -1)
+    n.set_enabled(False)
+
+    with open('data/node_info.json', 'r') as f:
+        data = json.load(f)    
+    data = data.get(n.name, {})
+
+    title = ui.Textbox(n.get_name(), tsize=35)
     title.rect.topleft = (30, 20)
     objects.append(title)
     
@@ -112,13 +118,13 @@ def info_menu(n):
     label.rect.y -= 5
     objects.append(label)
     
-    node_info = ui.Textbox(n.info)
+    node_info = ui.Textbox(data.get('info', ''))
     node_info.fit_text(info_rect.inflate(-10, -10), tsize=20, allignment='l')
     node_info.rect.center = info_rect.center
     
-    if hasattr(n, 'tips'):
+    if data.get('tips'):
     
-        node_tips = ui.Textbox(n.tips)
+        node_tips = ui.Textbox(data['tips'])
         node_tips.fit_text(info_rect.inflate(-10, -10), tsize=20, allignment='l')
         node_tips.rect.center = info_rect.center
         
@@ -161,17 +167,17 @@ def info_menu(n):
     port_data = []
     port_index = [0]
     for p in n.ports:
-        info_text = getattr(n, f"{'ip' if p.port > 0 else 'op'}{abs(p.port)}", '')
-        if not info_text:
+        info_text = data.get('ports', {}).get(str(p.port))
+        if info_text is None:
             continue
-        data = {'port': p, 'color': p.get_color()}
+        d = {'port': p, 'color': p.get_color(p.types)}
         p_label = ui.Textbox(f'Port {p.port}', fgcolor=(0, 0, 0))
         p_label.fit_text(port_label_rect, tsize=20, allignment='l')
-        data['label'] = p_label.image
+        d['label'] = p_label.image
         p_info = ui.Textbox(info_text)
         p_info.fit_text(port_info_rect, tsize=15, allignment='l')
-        data['info'] = p_info.image
-        port_data.append(data)
+        d['info'] = p_info.image
+        port_data.append(d)
 
     n.rect.midtop = port_box.rect.midbottom
     n.rect.y += 100
@@ -212,12 +218,12 @@ def info_menu(n):
                     port_index[0] = (port_index[0] + dir) % len(port_data)
                 else:
                     port_index[0] = i
-                data = port_data[port_index[0]]
-                port_label.image = data['label']
-                port_info.image = data['info']
-                port_box.set_background(data['color'])
-                o.set_color(data['color'])
-                o.set_points(update_points(data['port']))
+                d = port_data[port_index[0]]
+                port_label.image = d['label']
+                port_info.image = d['info']
+                port_box.set_background(d['color'])
+                o.set_color(d['color'])
+                o.set_points(update_points(d['port']))
                 
             b = ui.Button.text_button('>', padding=(15, 15), func=update_port_info, args=[port_index], kwargs={'dir': 1}, border_radius=20)
             b.rect.midleft = port_box.rect.midright
@@ -241,4 +247,66 @@ def info_menu(n):
     objects.append(b)
     
     return objects
+    
+def log_menu(name, data):
+    objects = []
+    
+    title = ui.Textbox.static_textbox(name, tsize=35)
+    title.rect.topleft = (30, 20)
+    objects.append(title)
+    
+    info_rect = pg.Rect(0, 0, 400, 200)
+    info_surf = pg.Surface(info_rect.size).convert()
+    pg.draw.rect(info_surf, (255, 255, 255), info_rect, width=3, border_radius=10)
+    info_rect.topleft = (30, 150)
+    i = ui.Image(info_surf)
+    i.rect = info_rect.copy()
+    objects.append(i)
+    
+    label = ui.Textbox.static_textbox('info:', tsize=20)
+    label.rect.bottomleft = info_rect.topleft
+    label.rect.x += 10
+    label.rect.y -= 5
+    objects.append(label)
+    
+    node_info = ui.Textbox(data['info'])
+    node_info.fit_text(info_rect.inflate(-10, -10), tsize=20, allignment='l')
+    node_info.rect.center = info_rect.center
+    objects.append(node_info)
+    
+    key_tb = ui.Textbox.static_textbox('key')
+    key_tb.rect.topleft = (width // 2, 40)
+    objects.append(key_tb)
+    
+    value_tb = ui.Textbox.static_textbox('return value')
+    value_tb.rect.x = key_tb.rect.right + 30
+    value_tb.rect.y = key_tb.rect.y
+    objects.append(value_tb)
+    
+    value_rect = value_tb.rect.inflate(150, 50)
+    
+    y = value_tb.rect.bottom + 20
+    
+    for key, value in data['data'].items():
+        k = ui.Textbox.static_textbox(key)
+        k.rect.right = key_tb.rect.right
+        k.rect.y = y
+        objects.append(k)
+        
+        v = ui.Textbox(value)
+        v.fit_text(value_rect, allignment='l')
+        v.crop_fitted()
+        v.rect.left = value_tb.rect.left
+        v.rect.y = y
+        objects.append(v)
+        
+        y = v.rect.bottom + 5
+        
+    b = ui.Button.text_button('back', color2=(0, 200, 0), tag='break')
+    b.rect.centerx = width // 2
+    b.rect.bottom = height - 10
+    objects.append(b)
+        
+    return objects
+    
 

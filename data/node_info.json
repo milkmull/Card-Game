@@ -1,0 +1,936 @@
+{
+    "Start": {
+        "info": "This node is a function. Function nodes are green. They have no in-flow ports and a single out-flow port. When a card is played, this is the first process that will be run. Every play card must have a 'Start' function.",
+        "tips": null,
+        "ports": {
+            "-1": null
+        }
+    },
+    "If": {
+        "info": "If the boolean input is True, the split path is run before continuing the main path. If it is False, the split path is skipped.",
+        "tips": "If nodes can evaluate all kinds of data, not just boolean values.\n\nIf you plug in a number, if the number is not 0 it will evaluate to True, otherwise False.\n\nIf you plug in a list, if the list is not empty it will evaluate to True, otherwise False.\n\n",
+        "ports": {
+            "1": "This boolean argument decides if the split path is run or skipped",
+            "2": null,
+            "-1": null,
+            "-2": "This out-flow port can be wired to an 'elif' node or an 'else' node."
+        }
+    },
+    "Elif": {
+        "info": "This node can only be placed after 'if' or 'elif' nodes. If the previous node is evaluated to be False, this node will be evaluated as an 'if' node. If the previous node is evaluated to be True, this whole node will be skipped.",
+        "tips": "Elif nodes can evaluate all kinds of data, not just boolean values.\n\nIf you plug in a number, if the number is not 0 it will evaluate to True, otherwise False.\n\nIf you plug in a list, if the list is not empty it will evaluate to True, otherwise False.\n\n",
+        "ports": {
+            "1": "This boolean argument decides if the split path is run or skipped",
+            "2": "This in-flow port can only be wired to the out-flow of an 'if' node or another 'elif' node.",
+            "-1": null,
+            "-2": "This out-flow port can be wired to an additional 'elif' node or an 'else' node."
+        }
+    },
+    "Else": {
+        "info": "This node can only be placed after 'if' or 'elif' nodes. If all previous nodes are evaluated to be False, this node will run its split path. Otherwise, the split path will be skipped.",
+        "tips": null,
+        "ports": {
+            "1": "This in-flow port can only be wired to the out-flow of an 'if' or 'elif' node.",
+            "-1": null,
+            "-2": null
+        }
+    },
+    "Bool": {
+        "info": "Produces a boolean value of either True or False. Type 'T' or 't' for True, and 'F' for 'f' for False.",
+        "tips": "If a node requires a boolean input, double click on the boolean input port to spawn a 'Bool' node that will automatically be wired into the port.",
+        "ports": {
+            "-1": "Boolean value"
+        }
+    },
+    "Num": {
+        "info": "Produces a numeric value. The value can be either positive or negative. Floating point numbers are not allowed.",
+        "tips": "If a node requires a numeric input, double click on the numeric input port to spawn a 'Num' node that will automatically be wired into the port.",
+        "ports": {
+            "-1": "Numeric value"
+        }
+    },
+    "String": {
+        "info": "Produces a string of characters. These are often used to access card names and tags which are stored as string values. Player decks also must be accessed using string values that represent the name of the deck.",
+        "tips": "If a node requires a string input, double click on the string input port to spawn a 'string' node that will automatically be wired into the port.",
+        "ports": {
+            "-1": "String value"
+        }
+    },
+    "Line": {
+        "info": "If you really feel like you know what you are doing, use this node to write lines of code. The new line characters will automatically be inserted onto the end of each line.",
+        "tips": "Be very careful when using this node. You can damage your game or mess up save data depending on what you try to do.",
+        "ports": {
+            "1": null,
+            "-1": "line of code"
+        }
+    },
+    "Block": {
+        "info": "If you really feel like you know what you are doing, use this node to write lines of code. The new line characters will automatically be inserted onto the end of each line.",
+        "tips": "Be very careful when using this node. You can damage your game or mess up save data depending on what you try to do.",
+        "ports": {
+            "1": null,
+            "-1": "block of code"
+        }
+    },
+    "And": {
+        "info": "Used to compare two boolean values. This node will output True if and only if both input values are True, otherwise False.",
+        "tips": "And nodes can evaluate all kinds of data, not just boolean values.\n\nIf you plug in a number, if the number is not 0 it will evaluate to True, otherwise False.\n\nIf you plug in a list, if the list is not empty it will evaluate to True, otherwise False.\n\n",
+        "ports": {
+            "1": "Boolean input (x)",
+            "2": "Boolean input (y)",
+            "-1": "If x is True and y is True, this port will output True, otherwise it will output False."
+        }
+    },
+    "Or": {
+        "info": "Used to compare two boolean values. This node will output True if one or both input values are True, otherwise False.",
+        "tips": "Or nodes can evaluate all kinds of data, not just boolean values.\n\nIf you plug in a number, if the number is not 0 it will evaluate to True, otherwise False.\n\nIf you plug in a list, if the list is not empty it will evaluate to True, otherwise False.\n\n",
+        "ports": {
+            "1": "Boolean input (x)",
+            "2": "Boolean input (y)",
+            "-1": "If x is True or y is True or both x and y are True, this port will output True, otherwise it will output False."
+        }
+    },
+    "Not": {
+        "info": "Used to flip a boolean value. If the input is True, it will output False, and vice-versa.",
+        "tips": null,
+        "ports": {
+            "1": "Boolean input",
+            "-1": "If the input is True, this port will output False. If it is False it will output True."
+        }
+    },
+    "Equal": {
+        "info": "Used to compare two input values. If they are the same, this node will output True, otherwise False.",
+        "tips": "This node can evaluate the equality if almost any type of data including players, cards, lists, numbers and strings. Inputting two different data types will always yeild 'False'",
+        "ports": {
+            "1": "value x",
+            "2": "value y",
+            "-1": "True if x and y are equal, otherwise False."
+        }
+    },
+    "Greater": {
+        "info": "Used to compare two numeric values. This node will output True if the first is greater than the second input, otherwise False.",
+        "tips": "This node is not like the 'Equal' node, and can only be used to compare numeric values.",
+        "ports": {
+            "1": "Numeric input (x), defaults to 0",
+            "2": "Numeric input (y), defaults to 0",
+            "-1": "If x > y this port will output True, otherwise it will output False."
+        }
+    },
+    "Less": {
+        "info": "Used to compare two numeric values. This node will output True if the first is less than the second input, otherwise False.",
+        "tips": "This node is not like the 'Equal' node, and can only be used to compare numeric values.",
+        "ports": {
+            "1": "Numeric input (x), defaults to 0",
+            "2": "Numeric input (y), defaults to 0",
+            "-1": "If x < y this port will output True, otherwise it will output False."
+        }
+    },
+    "Max": {
+        "info": "Use this node to find the maximum value in a numeric sequence. This node is only used when evaluating roll results from a deployed card.",
+        "tips": null,
+        "ports": {
+            "1": "Numeric sequence",
+            "-1": "Outputs a numeric value representing the maximum value from the input sequence."
+        }
+    },
+    "Min": {
+        "info": "Use this node to find the minimum value in a numeric sequence. This node is only used when evaluating roll results from a deployed card.",
+        "tips": null,
+        "ports": {
+            "1": "Numeric sequence",
+            "-1": "Outputs a numeric value representing the minimum value from the input sequence."
+        }
+    },
+    "Add": {
+        "info": "Outputs the sum of two numeric inputs.",
+        "tips": null,
+        "ports": {
+            "1": "Numeric input (x)",
+            "2": "Numeric input (y)",
+            "-1": "x + y"
+        }
+    },
+    "Incriment": {
+        "info": "Outputs a numeric input + 1.",
+        "tips": "This node if often used to obtain the index below this card. Use the 'self index' node and incriment to obtain the index of the card below in a list of cards.",
+        "ports": {
+            "1": "Numeric input x",
+            "-1": "x + 1"
+        }
+    },
+    "Subtract": {
+        "info": "Outputs the difference of two numeric inputs.",
+        "tips": null,
+        "ports": {
+            "1": "Numeric input (x)",
+            "2": "Numeric input (y)",
+            "-1": "x - y"
+        }
+    },
+    "Multiply": {
+        "info": "Outputs the product of two numeric inputs.",
+        "tips": null,
+        "ports": {
+            "1": "Numeric input (a)",
+            "2": "Numeric input (b)",
+            "-1": "a * b"
+        }
+    },
+    "Negate": {
+        "info": "Outputs the additive inverse of a numeric input.",
+        "tips": "This node will convert positive numbers to negative, and negative numbers to positive. It is the equivalent of multiplying by -1.",
+        "ports": {
+            "1": "Numeric input a",
+            "-1": "-a"
+        }
+    },
+    "Divide": {
+        "info": "Outputs the quotient of two numeric inputs.",
+        "tips": "This operation uses floor division meaning the output will always be rounded to the lowest integer.",
+        "ports": {
+            "1": "Numeric input (a)",
+            "2": "Numeric input (b)",
+            "-1": "a / b"
+        }
+    },
+    "Exists": {
+        "info": "Outputs True if the input is not a 'None' value, otherwise False.",
+        "tips": "This node is often used to validate a card or player output. For example, the 'Safe Index' node allows you to index a deck. If there is no value at the index, it will return a 'None' value. Use this node to check wheather or not a card was found.",
+        "ports": {
+            "1": "Takes either a player or card argument.",
+            "-1": "Boolean value indicating wheather the input value is a 'None' value."
+        }
+    },
+    "For": {
+        "info": "This node can be used to pull out each individual value from a list and run a process on them. Plug in a list of values to port 1. Port -1 will then open up with the type of values that the list contains. If an empty list is plugged in, the split path will be skipped.",
+        "tips": "Say you want all players to gain 5 points. Just plug in a list containing all players, then add in a 'Gain' node wired to port -2. Finally wire in the output player to the 'Gain' node.",
+        "ports": {
+            "1": "This input takes any type of list.",
+            "2": null,
+            "-1": "This port will output a value corresponding to the type of list at the input. This value represents each individual value in the input list. The output value can only be wired to nodes within the split path.",
+            "-2": "This split path will run for each value in the input list. If the list is empty, this split path will be skipped.",
+            "-3": null
+        }
+    },
+    "Zipped_For": {
+        "info": "This node can be used to pull out each individual value from two lists at the same time and run a process on them. Plug in two lists of values to ports 1 and 2. Ports -1 and -2 will then open up with the type of values that their corresponding list contains.",
+        "tips": "This node is most commonly used to check flip, roll and selection results. The 'Get _ Results' nodes will output a list of players and a list of results. You can plug in those lists to this node to get player and result pairs.",
+        "ports": {
+            "1": "This input takes any type of list.",
+            "2": "This input takes any type of list.",
+            "3": null,
+            "-1": "This port will output a value corresponding to the type of list at port 1. This value represents each individual value in the input list. The output value can only be wired to nodes within the split path.",
+            "-2": "This port will output a value corresponding to the type of list at port 2. This value represents each individual value in the input list. The output value can only be wired to nodes within the split path.",
+            "-3": "This split path will run for each value pair in the input lists. If both lists are empty, this split path will be skipped.",
+            "-4": null
+        }
+    },
+    "Break": {
+        "info": "This node can be used to exit a 'For' node split path prematurly. If you are only looking for a specific result, you can place this node after your result is found to return to the main path.",
+        "tips": "This node can only be used within the split path of a 'For' or 'Zipped For' node.",
+        "ports": {
+            "1": null
+        }
+    },
+    "Continue": {
+        "info": "This node can be used to skip to the next value in a 'For' node split path. If you don't want to evaluate a value, use this node to skip to the next.",
+        "tips": "This node can only be used within the split path of a 'For' or 'Zipped For' node.",
+        "ports": {
+            "1": null
+        }
+    },
+    "Range": {
+        "info": "This node outputs a list of numbers between the two input values. If the input values are the same, or the max value is smaller than the min value, the list will be empty.",
+        "tips": "This node is usually used when checking each index of a deck. Use the 'Length' node to generate a range of indicies based on the length of the deck. Then loop over those indecies with a 'For' node, using the 'Check Index' node.",
+        "ports": {
+            "1": "This numeric input is where the range will start. The default value is 0 so if you need numbers between 0 and an upper value you can leave this port blank.",
+            "2": "This numeric input is where the range ends. If you need to check each index of a deck, you will want to input the length of the deck at this port.",
+            "-1": "A list of numbers."
+        }
+    },
+    "User": {
+        "info": "This node returns the user of the card.",
+        "tips": "The actual player this node represents could change depending on where it is used. If you use a 'Deploy' node to deploy cards to opponents to request that they flip a coin, In the 'Flip' function, this node will represent your opponents and not the user.",
+        "ports": {
+            "-1": "The card user. Any time a node requires a player input, this will almost always be the default value."
+        }
+    },
+    "All_Players": {
+        "info": "This node returns a list of all players.",
+        "tips": null,
+        "ports": {
+            "-1": "A list of all players."
+        }
+    },
+    "Stored_Players": {
+        "info": "This node returns a list of stored players. Players can be added to or removed from this list to be referened later.",
+        "tips": "Any time you call a 'Deploy' node, this list will be emptied and populated with new player values from the players passed to the 'Deploy' node.",
+        "ports": {
+            "-1": "A list of stored players."
+        }
+    },
+    "Stored_Cards": {
+        "info": "This node returns a list of stored cards. Cards can be added to or removed from this list to be referenced later.",
+        "tips": "Any time you call a 'Deploy' node, this list will be emptied and populated with new card values.",
+        "ports": {
+            "-1": "A list of stored cards."
+        }
+    },
+    "Opponents": {
+        "info": "This node returns a list of all opponents not including the user.",
+        "tips": null,
+        "ports": {
+            "-1": "A list of opponents."
+        }
+    },
+    "Opponents_With_Points": {
+        "info": "This node returns a list of all opponents who have points.",
+        "tips": "You cannot steal points from a player with a score of 0 so use this node when you want to ensure you get a list of players who have points.",
+        "ports": {
+            "-1": "A list of all players with a score greater than 0."
+        }
+    },
+    "Card": {
+        "info": "This node returns a reference to this card.",
+        "tips": null,
+        "ports": {
+            "-1": "This card."
+        }
+    },
+    "Length": {
+        "info": "This node returns the number of values in a list.",
+        "tips": null,
+        "ports": {
+            "1": "Any type of list",
+            "-1": "Length of the given list"
+        }
+    },
+    "New_List": {
+        "info": "This node declares a new empty list. Double click the node to swap between a player list and a card list.",
+        "tips": "Often times you will want to use this node to create a new list of filtered values from a larger list based on some criteria. Use a 'For' node to check each value in the larger list. If the value meets some criteria, add it to your new list.",
+        "ports": {
+            "-1": "A brand new empty list."
+        }
+    },
+    "Merge_Lists": {
+        "info": "This node returns a new list with values from both input lists.",
+        "tips": "Double click to swap between merging player lists and card lists.",
+        "ports": {
+            "1": "List 1",
+            "2": "List 2",
+            "-1": "New list containing values from list 1 and list 2."
+        }
+    },
+    "Merge_Lists_In_Place": {
+        "info": "This node adds all values from list 2 to list 1.",
+        "tips": "Double click to swap between player lists and card lists.",
+        "ports": {
+            "1": "All values from this list will be added to the list at port 2",
+            "2": "All values from the list at port 1 will be added to this list.",
+            "3": null,
+            "-1": null
+        }
+    },
+    "Add_To": {
+        "info": "This node adds a value to a list.",
+        "tips": "Double click to swap between player lists and card lists.",
+        "ports": {
+            "1": "List to add value to.",
+            "2": "Value to add to list.",
+            "3": null,
+            "-1": null
+        }
+    },
+    "Remove_From": {
+        "info": "This node removes a value from a list. If the given value is not in the list, a 'ValueError' will be raised. Make sure to check if the value is in the list before attempting to remove it.",
+        "tips": "Double click to swap between player lists, and card lists.",
+        "ports": {
+            "1": "List to remove value from.",
+            "2": "Value to remove from list.",
+            "3": null,
+            "-1": null
+        }
+    },
+    "Clear_List": {
+        "info": "This node removes all values from the given list.",
+        "tips": null,
+        "ports": {
+            "1": "List to clear.",
+            "2": null,
+            "-1": null
+        }
+    },
+    "Contains": {
+        "info": "This node checks if a value is in a list. If the value is found, it returns True, otherwise False.",
+        "tips": "Use this node to check if a value is in a list before attempting to remove it.",
+        "ports": {
+            "1": "List to check for value in.",
+            "2": "Value to check for.",
+            "-1": "Returns True if value is in list, and False if not."
+        }
+    },
+    "Has_Tag": {
+        "info": "This node can be used to check if a card has a specific tag. It will return True if the card has the tag, and False if not.",
+        "tips": null,
+        "ports": {
+            "1": "Tag to check for.",
+            "2": "Card to evaluate. This will default to this card.",
+            "-1": "Returns True if the card has the tag, and False if not."
+        }
+    },
+    "Get_Name": {
+        "info": "This node returns the name of a card.",
+        "tips": null,
+        "ports": {
+            "1": "Card",
+            "-1": "Name of card"
+        }
+    },
+    "Has_Name": {
+        "info": "This node returns True if the given card has the given name, and False if it does not.",
+        "tips": null,
+        "ports": {
+            "1": "Name",
+            "2": "Card",
+            "-1": "Returns True if the given card has the given name, and False if it does not."
+        }
+    },
+    "Find_Owner": {
+        "info": "This node returns the owner of a given card. If no owner is found, a 'None' value will be returned.",
+        "tips": null,
+        "ports": {
+            "1": "Card",
+            "-1": "Player who has the card card. If no owner is found, this will return a 'None' value."
+        }
+    },
+    "Tag_Filter": {
+        "info": "This node returns a new list of cards that all have a given tag.",
+        "tips": "If you don't want this card to be included in the new filtered list, set the boolean input to True.",
+        "ports": {
+            "1": "String representing a tag which will be used as filtering criteria.",
+            "2": "This is an optional boolean argument. If True, this card will be filtered out regardless of wheather or not it has the given tag. This will default to False.",
+            "3": "A list of cards which will be filtered.",
+            "-1": "Returns a new list of cards, all of which have the given tag."
+        }
+    },
+    "Name_Filter": {
+        "info": "This node returns a new list of cards that all have a given name.",
+        "tips": "If you don't want this card to be included in the new filtered list, set the boolean input to True.",
+        "ports": {
+            "1": "String representing a name which will be used as filtering criteria.",
+            "2": "This is an optional boolean argument. If True, this card will be filtered out regardless of wheather or not it has the given name. This will default to False.",
+            "3": "A list of cards which will be filtered.",
+            "-1": "Returns a new list of cards, all of which have the given name."
+        }
+    },
+    "Gain": {
+        "info": "This node adds points to a players score.",
+        "tips": "This node only accepts positive numbers as input. Use the 'Lose' node to subtract from a players score.",
+        "ports": {
+            "1": "Number representing the amount of points that the player will gain.",
+            "2": "The player who will gain points. This will default to the user.",
+            "3": null,
+            "-1": null
+        }
+    },
+    "Lose": {
+        "info": "This node subtracts points from a players score.",
+        "tips": "This node only accepts positive numbers as input. Players cannot go into negative point values. If a player has a score of 0, they will not go any lower.",
+        "ports": {
+            "1": "The number of points that the player will lose.",
+            "2": "The player who will lose points. This will default to the user.",
+            "3": null,
+            "-1": null
+        }
+    },
+    "Steal": {
+        "info": "This node transfers points from one player to another.",
+        "tips": "This node only accepts positive numbers as input.",
+        "ports": {
+            "1": "Number representing the amount of points that will be transferred.",
+            "2": "The player who will gain points. This will default to the player who played your card.",
+            "3": "The player who will lose points.",
+            "4": null,
+            "-1": null
+        }
+    },
+    "Start_Flip": {
+        "info": "This node initiates a coin flip request. Coin flip requests must be processed in a separate function with a 'Flip' node.",
+        "tips": "Be careful when initiating a coin flip within a 'Flip' process. It's possible to create an endless loop of flips which will result in an 'InfiniteLoop' error being raised.",
+        "ports": {
+            "1": null
+        }
+    },
+    "Flip": {
+        "info": "This node is a function. It is used to process the results of a flip request. This process will only activate if a 'Start Flip' node is called somewhere in a separate process.",
+        "tips": null,
+        "ports": {
+            "-1": "This port will output the result of the coin flip as a boolean value. This value will be True if the result was heads, and False if it was tails.",
+            "-2": null
+        }
+    },
+    "Start_Roll": {
+        "info": "This node initiates a dice roll request. Dice roll requests must be processed in a separate function with a 'Roll' node.",
+        "tips": "Be careful when initiating a dice roll within a 'Roll' process. It's possible to create an endless loop of rolls which will result in an 'InfiniteLoop' error being raised.",
+        "ports": {
+            "1": null
+        }
+    },
+    "Roll": {
+        "info": "This node is a function. It is used to process the results of a roll request. This process will only activate if a 'Start Roll' node is called somewhere in a separate process.",
+        "tips": null,
+        "ports": {
+            "-1": "This port will output the result of the dice roll as a numeric value. The value will range from 1 to 6.",
+            "-2": null
+        }
+    },
+    "Start_Select": {
+        "info": "This node initiates a select request. Select requests must be dealt with in a separate function using a 'Select' node. There must also be a 'Get Selection' process which will return a list of players or cards that the player will select from.",
+        "tips": null,
+        "ports": {
+            "1": null
+        }
+    },
+    "Get_Selection": {
+        "info": "This node is used to put together a list of players or cards for the player to select from. This process will only activate if a 'Start Select' node is present somewhere in a separate process. After this process returns a list, the selection that the player makes can be assessed in a separate process using a 'Select' node.",
+        "tips": "Two lists are provided at ports -1 and -2. These lists can be used to add values to and will be automatically returned after the process. If you wish to return a different list, it must be done using the 'Return List' node. This will override the default lists.",
+        "ports": {
+            "-1": "This port will output a player list. If you wish for the player to select a player, add players to this list.",
+            "-2": "This port will output a card list. If you wish for the player to select a card, add cards to this list.",
+            "-3": null
+        }
+    },
+    "Return_List": {
+        "info": "This node can only be used in a 'Get Selecion' function. Use this node to return a list of cards or players for the user to select from.",
+        "tips": "If you want to return a filtered list, instead of merging the list with one of the pre-generated lists from the 'Get Selection' node, just use this node to return the list directly.",
+        "ports": {
+            "1": "List of players or cards from which the user will select.",
+            "2": null
+        }
+    },
+    "Select": {
+        "info": "This node is a function. It is used to process the results of a select request. This process will only activate if a 'Start Select' function has been called and a 'Get Selection' node is present.",
+        "tips": "If the user is prompted to select a player or card value, be sure to check which they have selected before processing the result. the 'Check Exists' node can be used to see wheather a card or a player has been returned.",
+        "ports": {
+            "-1": "Length of user's selected deck. For example, if the player has selected 2 items, 2 will be returned here.",
+            "-2": "If the selected item was a player, this will return that player. If it was a card, this port will return a 'None' value.",
+            "-3": "If the selected item was a card, this will return that card. If it was a player, this port will return a 'None' value.",
+            "-4": null
+        }
+    },
+    "Return_Bool": {
+        "info": "This node can only be used in a 'Can Cast' or 'Can Use' function. Use this node to return a boolean value representing wheather or not your item can be used or spell can be casted on any opponent at this time.",
+        "tips": null,
+        "ports": {
+            "1": "Boolenan value to return.",
+            "2": null
+        }
+    },
+    "Can_Cast": {
+        "info": "This node is a function. It is used only for Spell cards to check wheather or not the card can be cast on any opponent. Every spell card must have a 'Can Cast' node. This function is run for every spell card when the user clicks on it. If True is returned, the card will activate, otherwise, nothing will happen.",
+        "tips": "A boolean value of True is provided at node -1. If no additional nodes are added to this function, the default value of True will be returned. If you wish to return a different value, use the 'Return Bool' node.",
+        "ports": {
+            "-1": "Boolean value of True.",
+            "-2": null
+        }
+    },
+    "Can_Use": {
+        "info": "This node is a function. It is used only for Item cards to check wheather or not the card can be used at a given time. Every item card must have a 'Can Use' node. This function is run for every item card when the player clicks on it. If True is returned, the card will activate, otherwise, nothing will happen.",
+        "tips": "A boolean value of True is provided at node -1. If no additional nodes are added to this function, the default value of True will be returned. If you wish to return a different value, use the 'Return Bool' node.",
+        "ports": {
+            "-1": "Boolean value of True",
+            "-2": null
+        }
+    },
+    "Start_Ongoing": {
+        "info": "This node will initiate an ongoing process. To have a complete ongoing process, 'Init ongoing', 'Add to Ongoing', and 'Ongoing' nodes will all need to be added.",
+        "tips": null,
+        "ports": {
+            "1": null
+        }
+    },
+    "Init_Ongoing": {
+        "info": "This node is a function. It is used only for Play cards to set up and ongoing process. Use an 'Add to Ongoing' node within this function to finish setting up the ongoing process.",
+        "tips": "This function may seem unnecessary, however it is used when a card is transferred to a players deck through means other than playing. The game will check to see if any new cards in a player's sequence have an 'Init Ongoing' function. If they do, the game will run it, adding the card to the new player's ongoing cards.",
+        "ports": {
+            "-1": null
+        }
+    },
+    "Add_To_Ongoing": {
+        "info": "This node can only be used inside an 'Init Ongoing' function. It is used to tell the game which type of log the card will wait for in order to activate.",
+        "tips": "Port 1 takes a string representing the type of log to wait for. Passing 'cont' to the port will let your card continuously run its ongoing function every time the player is updated.",
+        "ports": {
+            "1": "A string representing the type of log to wait for. Pass 'cont' for continuous updating.",
+            "2": null,
+            "-1": null
+        }
+    },
+    "Ongoing": {
+        "info": "This node is a function. It represents an ongoing process. Ongoing processes wait for a specific log to initiate. When that log appears, this function will run.",
+        "tips": "Many cards depend on waiting for a card with a specific name or tag to be placed around it. To achieve this, simply activate an ongoing process with the 'cont' condition. In the ongoing process, check the index where you expect the special card to be played.",
+        "ports": {
+            "-1": "This port will return the log that triggered your card's ongoing process. Different information from the log can be extracted using the 'Extract Value' node.",
+            "-2": null
+        }
+    },
+    "Extract_Value": {
+        "info": "This is a special node which extracts data from a log inside an ongoing process.",
+        "tips": "The node will attempt to find the value in the log based on the string you pass. If no value is found, a 'None' value will be returned.",
+        "ports": {
+            "1": "A string representing the value to extract from the log.",
+            "2": null,
+            "-1": "The extracted value. If no such value is found, a 'None' value will be returned."
+        }
+    },
+    "Deploy": {
+        "info": "This node deploys copies of this card to a passed list of players. You can use deployed cards to request that an opponent flips a coin or rolls the dice or makes a selection. This will automatically add this card to the user's ongoing cards with a 'cont' condition. Once the other players have finished their requests, you can access their results from the original card inside an 'Ongoing' function.",
+        "tips": "Using ports 3 and 4, you can pass player and card values for the deployed cards to set as their extra player and extra card values. This is an easy way to allow trojan cards to access the original user and parent card.",
+        "ports": {
+            "1": "A string representing what the trojan card is to do once passed to an opponent. 'flip' will activate a flip request, 'roll' a roll request, 'select' a select request and 'og' will start an ongoing process.",
+            "2": "List of players who will recieve deployed cards. The user is automatically filtered out if they are included in the given list.",
+            "3": "A card which will be set as the extra card for all deployed cards. Often you will want to set this value to the original card (accessed by a 'self' node). This will allow you to access the parent card from any trojan card.",
+            "4": "A player which will be set as the extra player for all deployed cards. Often you will want to set this value to the original user. This will allow you to access the original user from any trojan card.",
+            "5": null,
+            "-1": null
+        }
+    },
+    "Get_Flip_Results": {
+        "info": "This node will return the results of a flip request made to other players using a 'Deploy' node'. The results are a list of players and a list of boolean values representing the flip results. The order of the lists indicates which result belongs to which player.",
+        "tips": "Generally, the best way to process these results is to use a 'Zipped For' node which will allow you to loop through the player list and result list at the same time. The best practice is to remove the processed players from this card's list of players after their results have been processed. This can be done with the 'Self Players' node",
+        "ports": {
+            "1": null,
+            "-1": "Returns a list of players whoes flip results are ready.",
+            "-2": "Returns a list of boolean values representing the flip results of each player.",
+            "-3": null
+        }
+    },
+    "Get_Roll_Results": {
+        "info": "This node will return the results of a roll request made to other players using a 'Deploy' node'. The results are a list of players and a list of numbers representing the roll results. The order of the lists indicates which result belongs to which player.",
+        "tips": "Generally, the best way to process these results is to use a 'Zipped For' node which will allow you to loop through the player list and result list at the same time. The best practice is to remove the processed players from this card's list of players after their results have been processed. This can be done with the 'Self Players' node",
+        "ports": {
+            "1": null,
+            "-1": "Returns a list of players whoes roll results are ready.",
+            "-2": "Returns a list of numbers representing the roll results of each player.",
+            "-3": null
+        }
+    },
+    "Get_Select_Results": {
+        "info": "This node will return the results of a select request made to other players using a 'Deploy' node'. The results are a list of players and a list of cards representing the select results. The order of the lists indicates which result belongs to which player.",
+        "tips": "Generally, the best way to process these results is to use a 'Zipped For' node which will allow you to loop through the player list and result list at the same time. The best practice is to remove the processed players from this card's list of players after their results have been processed. This can be done with the 'Self Players' node",
+        "ports": {
+            "1": null,
+            "-1": "Returns a list of players whoes select results are ready.",
+            "-2": "Returns a list of cards representing the select results of each player.",
+            "-3": null
+        }
+    },
+    "Self_Index": {
+        "info": "This node returns a number representing the index of this card if it exists in the user's played cards. Make sure to check if this card is actually in the user's played cards before calling this node. If the card does not exist, an 'IndexError' will be raised.",
+        "tips": null,
+        "ports": {
+            "-1": "Returns number representing the index of this card in the user's played cards."
+        }
+    },
+    "Index_Above": {
+        "info": "This node returns a number representing the index of the card above this card in the user's played cards. If this card is the first card in the user's played cards, 0 will be returned.",
+        "tips": null,
+        "ports": {
+            "-1": "Returns number representing the index of the card above this card in the user's played cards."
+        }
+    },
+    "Index_Below": {
+        "info": "This node returns a number representing the index of the card below this card in the user's played cards. If this card is the last card in the user's played cards, the length of the played cards - 1 will be returned.",
+        "tips": null,
+        "ports": {
+            "-1": "Returns number representing the index of the card above this card in the user's played cards."
+        }
+    },
+    "Check_Index": {
+        "info": "This node will check a card at a given index in a players 'played' deck. The card at the index and a boolean value are returned. This card will keep a memory of cards it has checked. If an unrecognized card is found at the given index, the boolean value will be True, otherwise it will be False.",
+        "tips": "This node is best used in an ongoing process with the 'cont' condition. It will continuously check an index to see if there is a new card.",
+        "ports": {
+            "1": "The player whoes 'played' deck will be checked. This will default to the original player.",
+            "2": "The index that is being checked. It is safe to index out of range if the length of the 'played' deck is unknown. The boolean value will return False. This will default to the index of the last value in the deck.",
+            "3": "An optional tag used as additional criteria to verrify a new card. The returned boolean value will only trigger if the card at the given index is new AND has the given tag.",
+            "4": null,
+            "-1": "Returns the card that is found at the given index. If the index is out of range, this will be a 'None' value.",
+            "-2": "Returns a boolean value representing if a new card was found at the given index. If the index is out of range or no new card is found that meets the criteria, this value will be False, otherwise it will be True.",
+            "-3": null
+        }
+    },
+    "Splitter": {
+        "info": "This node is purly for editing the node layout of your custom card. It allows for any wire to be split such that it is easier to see the flow of your card.",
+        "tips": null,
+        "ports": {
+            "1": null,
+            "-1": null,
+            "-2": null
+        }
+    },
+    "Check_First": {
+        "info": "This node can be used to check if a given player was the first player to play their card during a turn.",
+        "tips": null,
+        "ports": {
+            "1": "Player who will be checked. This will default to the user.",
+            "-1": "Returns a boolean value. True if the player played their card first this turn and False otherwise."
+        }
+    },
+    "Check_Last": {
+        "info": "This node can be used to check if a given player will be the last player to play their card during a turn.",
+        "tips": null,
+        "ports": {
+            "1": "Player who will be checked. This will default to the user.",
+            "-1": "Returns a boolean value. True if the player played will be the last to play their card this turn and False otherwise."
+        }
+    },
+    "Draw_Cards": {
+        "info": "This node allows a player to draw cards. The type of cards can be specified via an input string. The cards will be automatically added to the correct deck.",
+        "tips": "The drawn cards are returned in a card list. You can check to see if the player drew a specific card or type of card by referencing this list.",
+        "ports": {
+            "1": "A string representing the type of cards to be drawn. This will default to 'treasure'.",
+            "2": "A number representing the number of cards to be drawn. This will default to 1.",
+            "3": "Player who will recieve the cards. This will default to the user.",
+            "4": null,
+            "-1": "A list containing the drawn cards.",
+            "-2": null
+        }
+    },
+    "Is_Event": {
+        "info": "This node can be used to check if a specific event is in play.",
+        "tips": null,
+        "ports": {
+            "1": "A string representing the name of the event card to check for.",
+            "-1": "Returns boolean value. True if the event card in play matches the name provided, and False otherwise."
+        }
+    },
+    "Play_Card": {
+        "info": "This node can be used to play a card. This will only work for cards which have a 'start' function. Types such as items, spells and landscapes are not playable, and when sent to this function will cause an error.",
+        "tips": "If a card which already exists in the user's played cards is passed to this node, the card will be played a second time but will not be added again to the user's played cards. This is how landscapes work.",
+        "ports": {
+            "1": "Card which is to be played. This will default to this card.",
+            "2": "Player who is to play the card. This will default to the user.",
+            "3": null,
+            "-1": null
+        }
+    },
+    "Copy_Card": {
+        "info": "This node will produce a copy of a given card. The copy will not retain any stored cards or players.",
+        "tips": null,
+        "ports": {
+            "1": "Card to be copied. This will default to this card.",
+            "-1": null
+        }
+    },
+    "Set_Extra_Card": {
+        "info": "This node can be used to store an extra card for reference later. It can be referenced through the 'Get Extra Card' function.",
+        "tips": null,
+        "ports": {
+            "1": "Card which is to be stored. This will default to a 'None' value",
+            "2": null,
+            "-1": null
+        }
+    },
+    "Get_Extra_Card": {
+        "info": "This node returns a stored card. If no extra card has been set through the 'Set Extra Card' function, a 'None' value will be returned.",
+        "tips": null,
+        "ports": {
+            "-1": "Returns the extra card."
+        }
+    },
+    "Set_Extra_Player": {
+        "info": "This node can be used to store an extra player for reference later. It can be referenced through the 'Get Extra Player' function.",
+        "tips": null,
+        "ports": {
+            "1": "Player which is to be stored.",
+            "2": null,
+            "-1": null
+        }
+    },
+    "Get_Extra_Player": {
+        "info": "This node returns a stored player. If no extra player has been set through the 'Set Extra Player' function, a 'None' value will be returned.",
+        "tips": null,
+        "ports": {
+            "-1": "Returns the extra player."
+        }
+    },
+    "Index": {
+        "info": "This node returns a value from a list at a given index. The list must contain either players or cards. If the index given is out of range, an 'IndexError' will be raised.",
+        "tips": null,
+        "ports": {
+            "1": "A number representing the index of the list to be returned. This will default to the index at the end of the list.",
+            "2": "The list to pull the value from. This will defult to the user's played cards.",
+            "-1": "Returns the value pulled from the list."
+        }
+    },
+    "Safe_Index": {
+        "info": "This node is a safe way to retrieve a value from a list. If the index is out of range, a 'None' value will be returned.",
+        "tips": null,
+        "ports": {
+            "1": "Number representing the index of the list to be returned. This will default to the index at the end of the list.",
+            "2": "The list to pull the value from.",
+            "-1": "The value pulled from the list. This will default to the user's played cards."
+        }
+    },
+    "Discard": {
+        "info": "This node is used to discard any card. The discarded card will be removed from any associated decks including played cards.",
+        "tips": "Keep in mind that discarding a card will also end any ongoing process the card might be running.",
+        "ports": {
+            "1": "The player who will discard the card. This defaults to the user.",
+            "2": "The card to be discarded. This will default to a 'None' value",
+            "3": null,
+            "-1": null
+        }
+    },
+    "Safe_Discard": {
+        "info": "This node is used to discard any card. The discarded card will be removed from any associated decks including played cards. It is considered safe because the discarded card will not be added to the game's discard deck.",
+        "tips": "A safe discard is usually used when the card is to be removed from a player and given to another. Also, keep in mind that discarding a card will also end any ongoing process the card might be running.",
+        "ports": {
+            "1": "Player who will discard the card. This defaults to the user.",
+            "2": "The card to be discarded.",
+            "3": null,
+            "-1": null
+        }
+    },
+    "Use_Item": {
+        "info": "This node is a special form of discard for item cards. Unlike the 'Discard' node, 'Use Item' will trigger an item discard log which can be referenced by other cards.",
+        "tips": "The spell card that is cast will always be discarded from the user's hand. This means if you cast a spell from the user's 'Active Spells' deck, that card will be transferred to the target player.",
+        "ports": {
+            "1": "The card to be cast. This defaults to this card.",
+            "2": "The target player. This defaults to the user.",
+			"3": null,
+            "-1": null
+        }
+    },
+    "Use_Item": {
+        "info": "This node allows for a spell to manually cast on a target player. The 'Can Cast' function will be checked on the target player to ensure that conditions are met before casting.",
+        "tips": null,
+        "ports": {
+            "1": "The card to be discarded. This defaults to this card.",
+            "2": null,
+            "-1": null
+        }
+    },
+    "Give_Card": {
+        "info": "This node is used to give a card to an opponent. The card will be removed from the owner's decks.",
+        "tips": "Keep in mind that discarding a card will also end any ongoing process the card might be running.",
+        "ports": {
+            "1": "The card to be given. This will default to this card.",
+            "2": "The player who will recieve the card. This will default to the owner.",
+            "3": null,
+            "-1": null
+        }
+    },
+    "Get_New_Card": {
+        "info": "This node is used to generate a new card with the given name. If an invalid name is passed in, a 'None' value will be returned.",
+        "tips": null,
+        "ports": {
+            "1": "A string representing the name of the card to be generated. This will default to the name of this card."
+        }
+    },
+    "Transfom": {
+        "info": "This node is used to transform a card into a different card. If an invalid name is passed in, nothing will happen.",
+        "tips": null,
+        "ports": {
+            "1": "A string representing the name of the card for the target card to be changed to. This defaults to the name of this card.",
+            "2": "The card to be transformed. This defaults to this card.",
+            "3": null,
+            "-1": null
+        }
+    },
+    "Swap": {
+        "info": "This node is used to swap the location of one card with another.",
+        "tips": "Both input values will default to this card, so if no input is specified this card will be swapped with itsself.",
+        "ports": {
+            "1": "The first card to be swapped.",
+            "2": "The second card to be swapped.",
+            "3": null,
+            "-1": null
+        }
+    },
+    "Get_Discard": {
+        "info": "This node is used to get the discard deck from the game.",
+        "tips": "The discard deck can be used to revive cards that have previously been used or discarded.",
+        "ports": {
+            "-1": "Returns a list containing all discarded cards."
+        }
+    },
+    "Set_Mode": {
+        "info": "This node is used to set the mode of a card. The mode is simply a number which can be used to control the flow of your card. The mode can be retrieved using the 'Get Mode' node.",
+        "tips": "A card's mode can be used to store any number. If an amount of points or some other number needs to be preserved, the mode can be set to that value to be referenced later.",
+        "ports": {
+            "1": "A number representing what the mode should be set to. This defaults to 0.",
+            "2": null,
+            "-1": null
+        }
+    },
+    "Get_Mode": {
+        "info": "This node is used to retrieve the mode of a card. The mode is simply a number which can be used to control the flow of your card. The mode can be set using the 'Set Mode' node.",
+        "tips": null,
+        "ports": {
+            "-1": null
+        }
+    },
+    "Steal_Random": {
+        "info": "This node is used to steal a random card from a player. The deck from which the card is stolen is specified with a string.",
+        "tips": "If the specified deck is empty, no cards will be stolen. The treasure deck is an exception to this. If the treasure deck of the specified player is empty, a new treasure card will be drawn and given to the user.",
+        "ports": {
+            "1": "A string representing which deck the card should be stolen from. This defaults to 'treasure'.",
+            "2": "A player for the card to be stolen from. This defaults to the user.",
+            "3": null,
+            "-1": "Returns the card that was stolen. This can return a 'None' value if the deck was empty so be sure to check before doing anything with the card.",
+            "-2": null
+        }
+    },
+    "Add_Card": {
+        "info": "This node is used to give a card to a player. It will automatically add the card to the correct deck of the specified player based on the card's type.",
+        "tips": null,
+        "ports": {
+            "1": "The player who will receive the card. This will default to the user.",
+            "2": "The card to be given to the player. This will default to a 'None' value.",
+            "3": null,
+            "-1": null
+        }
+    },
+    "Get_Deck": {
+        "info": "This node is used to retrieve the deck of a specified player based on the deck's name.",
+        "tips": null,
+        "ports": {
+            "1": "String representing the name of the deck to be retrieved. This wil default to 'played'.",
+            "2": "The player to retrieve the deck from. This will default to the user.",
+            "-1": "Returns the deck as a list of cards."
+        }
+    },
+    "Get_Score": {
+        "info": "This node is used to retrieve a player's current score.",
+        "tips": null,
+        "ports": {
+            "1": "The player to retrieve the score from. This will default to the user.",
+            "-1": "Returns a number representing the specified player's score."
+        }
+    },
+    "Has_Card": {
+        "info": "This node will check if a player has a specific card.",
+        "tips": "If the type of card you are checking for is know, it is generally better to retrieve the deck which you expect the card to be in and use a 'Contains' Node.",
+        "ports": {
+            "1": "A string representing the name of the card to check for. This will default to the name of this card.",
+            "2": "A player to check for card ownership. This will default to the user.",
+            "-1": null
+        }
+    },
+    "Is_Player": {
+        "info": "Sometimes, a node will output a player or a card value and it can be hard to figure out which. This node will output True if the input value is a player, otherwise False.",
+        "tips": null,
+        "ports": {
+            "1": "Either a card or player value.",
+            "-1": "Returns boolean value representing wheather or not the input is a player. The value will be True if the input value is a player and False otherwise."
+        }
+    },
+    "Is_Card": {
+        "info": "Sometimes, a node will output a player or a card value and it can be hard to figure out which. This node will output True if the input value is a card, otherwise False.",
+        "tips": null,
+        "ports": {
+            "1": "Either a card or player value.",
+            "-1": "Returns boolean value representing wheather or not the input is a card. The value will be True if the input value is a card and False otherwise."
+        }
+    }
+}

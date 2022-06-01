@@ -1,0 +1,111 @@
+{
+    "Yo": {
+        "nodes": {
+            "0": {
+                "name": "Greater",
+                "pos": [
+                    216,
+                    222
+                ],
+                "val": null,
+                "contains": null,
+                "ports": {
+                    "1": {
+                        "connection": null,
+                        "connection_port": null,
+                        "parent_port": null,
+                        "suppressed": false,
+                        "visible": true,
+                        "types": [
+                            "num"
+                        ]
+                    },
+                    "2": {
+                        "connection": null,
+                        "connection_port": null,
+                        "parent_port": null,
+                        "suppressed": false,
+                        "visible": true,
+                        "types": [
+                            "num"
+                        ]
+                    },
+                    "-1": {
+                        "connection": null,
+                        "connection_port": null,
+                        "parent_port": null,
+                        "suppressed": false,
+                        "visible": true,
+                        "types": [
+                            "bool"
+                        ]
+                    }
+                }
+            },
+            "1": {
+                "name": "Greater",
+                "pos": [
+                    210,
+                    296
+                ],
+                "val": null,
+                "contains": null,
+                "ports": {
+                    "1": {
+                        "connection": null,
+                        "connection_port": null,
+                        "parent_port": null,
+                        "suppressed": false,
+                        "visible": true,
+                        "types": [
+                            "num"
+                        ]
+                    },
+                    "2": {
+                        "connection": null,
+                        "connection_port": null,
+                        "parent_port": null,
+                        "suppressed": false,
+                        "visible": true,
+                        "types": [
+                            "num"
+                        ]
+                    },
+                    "-1": {
+                        "connection": null,
+                        "connection_port": null,
+                        "parent_port": null,
+                        "suppressed": false,
+                        "visible": true,
+                        "types": [
+                            "bool"
+                        ]
+                    }
+                }
+            }
+        },
+        "groups": {
+            "2": {
+                "name": "Yo",
+                "pos": [
+                    213,
+                    259
+                ],
+                "nodes": [
+                    0,
+                    1
+                ],
+                "rel_node_pos": {
+                    "0": [
+                        3,
+                        -37
+                    ],
+                    "1": [
+                        -3,
+                        37
+                    ]
+                }
+            }
+        }
+    }
+}

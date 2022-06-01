@@ -19,7 +19,7 @@ from constants import *
 def start():
     pg.init()
 
-    pg.display.set_mode((width, height), flags=pg.SCALED|pg.RESIZABLE)
+    pg.display.set_mode((width, height), flags=pg.SCALED | pg.RESIZABLE)
     pg.display.set_caption('card game')
 
     save.init()

@@ -1,5 +1,25 @@
 import allnodes
 
+def init():
+    NODES = allnodes.get_nodes()
+    GROUPS = allnodes.get_groups()
+    ndb = Node_Data_Base()
+    nodes = {name: obj(ndb, 0) for name, obj in NODES.items()}
+    groups = {name: ndb.unpack(data)[-1] for name, data in GROUPS.items()}
+    allnodes.Node.set_raw(nodes | groups)
+    
+def write_node_data(nodes):
+    import json
+    with open('data/node_info.json', 'r') as f:
+        data = json.load(f)
+        
+    for i, old_name in enumerate(data.copy()):
+        new_name = list(nodes)[i]
+        data[new_name] = data.pop(old_name)
+
+    with open('data/node_info1.json', 'w') as f:
+        json.dump(data, f, indent=4)
+
 def pack(nodes):
     s = {'nodes': [], 'groups': []}
     for n in nodes:
@@ -32,6 +52,7 @@ def pack(nodes):
         
     for g in nodes['groups']:
         group_data = {}
+        group_data['name'] = g.get_string_val()
         group_data['pos'] = g.rect.center
         group_data['nodes'] = [n.id for n in g.nodes]
         group_data['rel_node_pos'] = g.get_rel_node_pos()
@@ -40,10 +61,13 @@ def pack(nodes):
     return save_data
     
 def unpack(data):
-    nd = Node_Data()
+    nd = Node_Data_Base()
     return nd.unpack(data)
-
-class Node_Data:
+    
+def get_cached_img(name):
+    return allnodes.Node.RAW_CACHE.get(name)
+    
+class Node_Data_Base:
     def __init__(self):
         self.id = 0
         
@@ -51,26 +75,43 @@ class Node_Data:
         id = self.id
         self.id += 1
         return id
-
-    def get_node(self, name, val=None, pos=None, nodes=None):
-        id = self.get_new_id()
         
-        if nodes is None:
-            nodes = []
-            
-        if name == 'GroupNode':
-            n = getattr(allnodes, name)(id, nodes)
-        elif val is not None:
-            n = getattr(allnodes, name)(id, val=str(val))
+    def get_node(self, name, val=None, pos=None):
+        id = self.get_new_id()
+
+        if val is not None:
+            n = getattr(allnodes, name)(self, id, val=str(val))
         else:
-            n = getattr(allnodes, name)(id)
+            n = getattr(allnodes, name)(self, id)
 
         if pos:
             n.rect.center = pos
             n.set_port_pos()
 
         return n
-
+        
+    def get_group_node(self, name, pos=None):
+        data = self.GROUPS[name]
+        nodes = self.unpack(data)
+        print(nodes)
+        n = nodes[-1]
+        
+        if pos:
+            n.rect.center = pos
+            n.set_port_pos()
+            
+        return n
+        
+    def make_group_node(self, nodes, name='group', pos=None):
+        id = self.get_new_id()
+        n = allnodes.GroupNode(self, id, nodes, name=name)
+        
+        if pos:
+            n.rect.center = pos
+            n.set_port_pos()
+            
+        return n
+        
     def unpack(self, data):
         if not data:
             return {}
@@ -108,7 +149,6 @@ class Node_Data:
                         n0.new_output_port(n0.get_port(parent_port))
                     port = int(port)
                     p0 = n0.get_port(port)
-                    print(n0.name)
                     p0.set_types(types)
                     p0.suppressed = suppressed
                     p0.visible = visible
@@ -129,9 +169,10 @@ class Node_Data:
 
         for id, d in data['groups'].items():
             id = int(id)
+            name = d['name']
             group_nodes = [nodes[id_map[nid]] for nid in d['nodes']]
             pos = d['pos']
-            n = self.get_node('GroupNode', nodes=group_nodes, pos=pos)
+            n = self.make_group_node(group_nodes, name=name, pos=pos)
             n.rel_node_pos = {nodes[id_map[int(nid)]]: pos for nid, pos in d['rel_node_pos'].items()}
             new_id = n.id
             id_map[id] = new_id
@@ -143,3 +184,49 @@ class Node_Data:
             n.set_stuck(False)
 
         return nodes
+
+class Node_Data(Node_Data_Base):
+    def __init__(self):
+        Node_Data_Base.__init__(self)
+        self.active_node = None
+        self.nodes = []
+        self.wires = []
+
+        self.NODES = allnodes.get_nodes()
+        self.GROUPS = allnodes.get_groups()
+
+    def exists(self, name):
+        return any({n.name == name for n in self.nodes})
+        
+    def add_log(self, log):
+        pass
+        
+#wire stuff--------------------------------------------------------------------
+
+    def new_wire(self, p0, p1):
+        w = allnodes.Wire(p0, p1)
+        self.wires.append(w)
+        
+    def del_wire(self, w):
+        if w in self.wires:
+            self.wires.remove(w)
+            
+    def disconnect(self, p0, p1, d=True):
+        allnodes.Port.disconnect(p0, p1, d=d)
+        
+    def new_connection(self, p0, p1, force=True, d=True):
+        allnodes.Port.new_connection(p0, p1, force=force, d=d)
+            
+#active node stuff--------------------------------------------------------------------
+        
+    def get_active_node(self):
+        return self.active_node
+        
+    def set_active_node(self, n):
+        self.active_node = n
+        
+    def close_active_node(self):
+        if self.active_node:
+            self.active_node.end_connect()
+            self.active_node = None
+            

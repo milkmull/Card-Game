@@ -5,18 +5,26 @@ import pygame as pg
 
 import save
 from custom_card_base import Card
-import allnodes
 import node_parser
 import node_data
+import mapping
 import tester
 import ui
 import screens
 from constants import *
 
 def init():
-    allnodes.init()
     tester.init()
+    node_data.init()
     globals()['SAVE'] = save.get_save()
+   
+def save_group_node(gn):
+    nodes = gn.nodes.copy() + [gn]
+    data = node_data.pack(nodes)
+    group_data = load_group_data()
+    group_data[gn.get_name()] = data
+    with open('data/group_nodes.json', 'w') as f:
+        json.dump(group_data, f, indent=4)
 
 #visual stuff-----------------------------------------------------------------------
 
@@ -55,61 +63,411 @@ class Search_Bar(ui.Compound_Object):
         self.search_bar.close()
         self.rect.topleft = self.start_pos
 
-class Sorter(ui.Compound_Object):
+class Node_Menu(ui.Compound_Object):
     def __init__(self, ne):
         super().__init__()
+        
+        self.ne = ne
 
-        p = ui.Live_Popup((450, 300), label='nodes')
-        p.set_inflation(x=175)
+        p = ui.Live_Popup((450, 350), vel=60, hide_label=True)
+        p.set_inflation(x=175, y =-100)
         p.rect.midtop = (width // 2, height)
         self.rect = p.rect
         self.add_child(p, current_offset=True)
         self.popup = p
+        
+        up_arrow = ui.Image_Manager.get_arrow('u', (16, 16))
+        
+        popup_button = ui.Button.image_button(up_arrow, padding=(5, 5), func=self.popup_control, tag='u')
+        popup_button.rect.bottomright = self.popup.rect.topright
+        popup_button.rect.y -= 20
+        self.add_child(popup_button, current_offset=True)
+        self.popup_button = popup_button
+ 
+        self.tabs = {}
 
-        self.groups = {}
-        self.buttons = {}
-        self.labels = {}
-        for name in allnodes.NAMES:
-            n = getattr(allnodes, name)
+        self.node_groups = {}
+        self.node_buttons = {}
+        self.node_labels = {}
+        
+        for name, n in ne.NODES.items():
             if hasattr(n, 'cat'):
                 cat = n.cat
                 subcat = getattr(n, 'subcat', 'base')
-                if cat not in self.groups:
-                    self.groups[cat] = {}
-                if subcat not in self.groups[cat]:
-                    self.groups[cat][subcat] = [name]
+                if cat not in self.node_groups:
+                    self.node_groups[cat] = {}
+                if subcat not in self.node_groups[cat]:
+                    self.node_groups[cat][subcat] = [name]
                 else:
-                    self.groups[cat][subcat].append(name)
-                img = allnodes.Node.RAW_CACHE[name]
-                b = ui.Button.image_button(img, border_radius=0, func=ne.get_node, args=[name])
-                self.buttons[name] = b
-                if subcat not in self.labels:
-                    tb = ui.Textbox(subcat, tsize=40, underline=True)
-                    space_width = tb.get_text_rect(' ').width
-                    spaces = ((self.popup.rect.width - tb.rect.width) // space_width) - 1
-                    tb.set_message(subcat + (' ' * spaces))
-                    tb = tb.to_static()
-                    self.labels[subcat] = tb
+                    self.node_groups[cat][subcat].append(name)
+                img = node_data.get_cached_img(name)
+                b = ui.Button.image_button(img, border_radius=0, func=self.get_node, args=[name], padding=(0, 5), color2=(50, 50, 50))
+                self.node_buttons[name] = b
+                if subcat not in self.node_labels:
+                    self.new_subcat(subcat)
+                    
+        cat = 'group'
+        self.node_groups[cat] = {}
+        for name, data in ne.GROUPS.items():
+            subcat = data.get('subcat', 'base')
+            if subcat not in self.node_groups[cat]:
+                self.node_groups[cat][subcat] = [name]
+            else:
+                self.node_groups[cat][subcat].append(name)
+            img = node_data.get_cached_img(name)
+            b = ui.Button.image_button(img, border_radius=0, func=self.get_group_node, args=[name])
+            self.node_buttons[name] = b
+            if subcat not in self.node_labels:
+                self.new_subcat(subcat)
                 
-        for cat in self.groups:
-            for subcat in self.groups[cat]:
-                self.groups[cat][subcat].sort(key=lambda name: self.buttons[name].rect.height)
-                       
+        for cat in self.node_groups:
+            for subcat in self.node_groups[cat]:
+                self.node_groups[cat][subcat].sort(key=lambda name: self.node_buttons[name].rect.height)
+                     
+        self.tabs['node'] = {'button': None, 'tabs': {}, 'subtab': list(self.node_groups)[0]}
         x = self.rect.x - 5
         y = self.rect.y + 5
-        for cat, _ in self.groups.items():
-            b = ui.Button.text_button(cat, func=self.set_selection, args=[cat])
+        for subtab, _ in self.node_groups.items():
+            b = ui.Button.text_button(subtab, func=self.set_node_subtab, args=[subtab], padding=(5, 2))
             b.rect.topright = (x, y)
+            self.tabs['node']['tabs'][subtab] = b
+            self.add_child(b, current_offset=True)
+            y += b.rect.height + 5
+            
+        b = ui.Button.text_button('nodes', func=self.set_tab, args=['node'], padding=(10, 5))
+        b.rect.midbottom = (self.rect.x + (self.rect.width // 3), self.rect.y - 10)
+        self.add_child(b, current_offset=True)
+        self.tabs['node']['button'] = b
+            
+        self.tabs['info'] = {'button': None, 'tabs': {}, 'subtab': 'cards'}
+        x = self.rect.x - 5
+        y = self.rect.y + 5
+        subtabs = ('cards', 'tags', 'decks', 'requests', 'logs')
+        for subtab in subtabs:
+            b = ui.Button.text_button(subtab, func=self.set_info_subtab, args=[subtab], padding=(5, 2))
+            b.rect.topright = (x, y)
+            self.tabs['info']['tabs'][subtab] = b
             self.add_child(b, current_offset=True)
             y += b.rect.height + 5
 
-    def set_selection(self, cat):
+        b = ui.Button.text_button('info', func=self.set_tab, args=['info'], padding=(10, 5))
+        b.rect.midbottom = (self.rect.x + ((2 * self.rect.width) // 3), self.rect.y - 10)
+        self.add_child(b, current_offset=True)
+        self.tabs['info']['button'] = b
+        
+        self.tab = None
+        self.set_tab('node')
+        self.start_force_down()
+            
+    def new_subcat(self, subcat):
+        tb = ui.Textbox(subcat, tsize=40, underline=True)
+        space_width = tb.get_text_rect(' ').width
+        spaces = ((self.popup.rect.width - tb.rect.width) // space_width) - 1
+        tb.set_message(subcat + (' ' * spaces))
+        tb = tb.to_static()
+        self.node_labels[subcat] = tb
+                
+    def set_tab(self, tab):
+        self.start_force_up()
+        for t in self.tabs:
+            ev = t == tab
+            for b in self.tabs[t]['tabs'].values():
+                b.set_enabled(ev)
+                b.set_visible(ev)
+            if ev:
+                self.tabs[t]['button'].color1 = (255, 0, 0)
+            else:
+                self.tabs[t]['button'].color1 = (0, 0, 0)
+        self.tab = tab
+        b = self.tabs[tab]['tabs'][self.tabs[tab]['subtab']]
+        b.run_func()
+        
+    def set_subtab(self, subtab):
+        for st, b in self.tabs[self.tab]['tabs'].items():
+            if st == subtab:
+                b.color1 = (0, 0, 255)
+            else:
+                b.color1 = (0, 0, 0)
+        self.tabs[self.tab]['subtab'] = subtab
+
+    def set_node_subtab(self, subtab):
         items = []
-        for subcat in self.groups[cat]:
-            items.append(self.labels[subcat])
-            for name in self.groups[cat][subcat]:
-                items.append(self.buttons[name])
+        for subcat in self.node_groups[subtab]:
+            items.append(self.node_labels[subcat])
+            for name in self.node_groups[subtab][subcat]:
+                items.append(self.node_buttons[name])
         self.popup.join_objects(items, xpad=10, ypad=10, dir='x', pack=True)
+        
+        self.set_subtab(subtab)
+        
+    def set_info_subtab(self, subtab):
+        if subtab == 'cards':
+            self.get_cards()
+        elif subtab == 'tags':
+            self.get_tags()
+        elif subtab == 'decks':
+            self.get_decks()
+        elif subtab == 'requests':
+            self.get_requests()
+        elif subtab == 'logs':
+            self.get_logs()
+            
+        self.set_subtab(subtab)
+        
+    def get_cards(self):
+        with open('save/cards.json', 'r') as f:
+            card_data = json.load(f)
+        
+        objects = []
+        offsets = []
+        y = 20
+        
+        for type in card_data:
+            tb = ui.Textbox.static_textbox(type, tsize=15)
+            objects.append(tb)
+            x = (self.popup.rect.width // 2) - tb.rect.width - 10
+            offsets.append((x, y))
+            for name in sorted(card_data[type]):
+                b = ui.Button.text_button(name, func=self.get_node, args=['String'], kwargs={'val': name}, tsize=15, padding=(5, 2))
+                objects.append(b)
+                x = (self.popup.rect.width // 2) + 10
+                offsets.append((x, y))
+                y += b.rect.height
+            y += b.rect.height
+               
+        self.popup.join_objects_custom(offsets, objects)
+        
+    def get_tags(self):
+        with open('data/sheet_info.json', 'r') as f:
+            data = json.load(f)
+            
+        objects = []
+        offsets = []
+        y = 20
+        
+        for cat in data['tags']:
+            tb = ui.Textbox.static_textbox(cat, tsize=15)
+            objects.append(tb)
+            x = (self.popup.rect.width // 2) - tb.rect.width - 10
+            offsets.append((x, y))
+            for tag in data['tags'][cat]:
+                b = ui.Button.text_button(tag, func=self.get_node, args=['String'], kwargs={'val': tag}, tsize=15, padding=(5, 2))
+                objects.append(b)
+                x = (self.popup.rect.width // 2) + 10
+                offsets.append((x, y))
+                y += b.rect.height
+            y += b.rect.height
+
+        self.popup.join_objects_custom(offsets, objects)
+    
+    def get_decks(self):
+        with open('data/sheet_info.json', 'r') as f:
+            data = json.load(f)
+            
+        objects = []
+        offsets = []
+        y = 20
+        
+        for deck in data['player decks']:
+            b = ui.Button.text_button(deck, func=self.get_node, args=['String'], kwargs={'val': deck}, tsize=15, padding=(5, 2))
+            objects.append(b)
+            x = (self.popup.rect.width - b.rect.width) // 2
+            offsets.append((x, y))
+            y += b.rect.height + 5
+        self.popup.join_objects_custom(offsets, objects)
+        
+    def get_requests(self):
+        with open('data/sheet_info.json', 'r') as f:
+            data = json.load(f)
+            
+        objects = []
+        offsets = []
+        y = 20
+        
+        for req in data['request strings']:
+            b = ui.Button.text_button(req, func=self.get_node, args=['String'], kwargs={'val': req}, tsize=20, padding=(5, 2))
+            objects.append(b)
+            x = (self.popup.rect.width - b.rect.width) // 2
+            offsets.append((x, y))
+            y += b.rect.height + 5   
+        self.popup.join_objects_custom(offsets, objects)
+        
+    def get_logs(self):
+        with open('data/sheet_info.json', 'r') as f:
+            data = json.load(f)
+            
+        objects = []
+        offsets = []
+        y = 20
+        
+        def run_log_menu(*args):
+            m = ui.Menu(get_objects=screens.log_menu, args=args)
+            m.run()
+        
+        for log, d in data['logs'].items():
+            b = ui.Button.text_button(log, func=run_log_menu, args=[log, d], tsize=12, padding=(5, 2))
+            objects.append(b)
+            x = (self.popup.rect.width - b.rect.width) // 2
+            offsets.append((x, y))
+            y += b.rect.height + 5 
+        self.popup.join_objects_custom(offsets, objects)
+        
+    def is_open(self):
+        return self.popup_button.tag == 'd'
+        
+    def flip_arrow(self):
+        img = self.popup_button.object
+        img.set_image(pg.transform.flip(img.image, False, True))
+        
+    def popup_control(self):
+        self.flip_arrow()
+        if self.popup_button.tag == 'd':
+            self.popup_button.set_tag('u')
+            self.popup.start_force_down()
+        elif self.popup_button.tag == 'u':
+            self.popup_button.set_tag('d')
+            self.popup.start_force_up()
+            
+    def start_force_down(self):
+        if self.popup_button.tag == 'd':
+            self.flip_arrow()
+            self.popup_button.set_tag('u')
+            self.popup.start_force_down()
+            
+    def start_force_up(self):
+        if self.popup_button.tag == 'u':
+            self.flip_arrow()
+            self.popup_button.set_tag('d')
+            self.popup.start_force_up()
+            
+    def get_node(self, *args, **kwargs):
+        self.ne.get_node(*args, **kwargs)
+        self.start_force_down()
+        
+    def get_group_node(self, *args, **kwargs):
+        self.ne.get_group_node(*args, **kwargs)
+        self.start_force_down()
+        
+    def draw(self, surf):
+        super().draw(surf)
+        if self.popup.is_visible():
+            points = (
+                (self.popup.get_total_rect().right - 2, self.rect.top),
+                (self.rect.left, self.rect.top),
+                (self.rect.left, self.rect.bottom - 2),
+                (self.popup.get_total_rect().right - 2, self.rect.bottom - 2)
+            )
+            pg.draw.lines(surf, (255, 255, 255), not self.popup.scroll_bar.visible, points, width=3)
+
+class Context_Manager(ui.Compound_Object):
+    def __init__(self, ne):
+        super().__init__()
+        self.rect = pg.Rect(0, 0, 1, 1)
+        
+        self.ne = ne
+        self.node = None
+        
+        self.objects_dict = {}
+        
+        b = ui.Button.text_button('copy', func=self.ne.copy_nodes, size=(100, 20), border_radius=0)
+        self.objects_dict['copy'] = b
+        
+        b = ui.Button.text_button('delete', func=self.ne.delete_nodes, size=(100, 20), border_radius=0)
+        self.objects_dict['delete'] = b
+        
+        b = ui.Button.text_button('transform', size=(100, 20), border_radius=0)
+        self.objects_dict['transform'] = b
+        
+        b = ui.Button.text_button('info', func=ui.Menu.build_and_run, size=(100, 20), border_radius=0)
+        self.objects_dict['info'] = b
+        
+        b = ui.Button.text_button('group', func=self.ne.create_new_group_node, size=(100, 20), border_radius=0)
+        self.objects_dict['group'] = b
+        
+        b = ui.Button.text_button('ungroup', func=self.ne.ungroup_node, size=(100, 20), border_radius=0)
+        self.objects_dict['ungroup'] = b
+        
+        b = ui.Button.text_button('paste', func=self.ne.paste_nodes, size=(100, 20), border_radius=0)
+        self.objects_dict['paste'] = b
+        
+        b = ui.Button.text_button('select all', func=self.ne.drag_manager.select_all, size=(100, 20), border_radius=0)
+        self.objects_dict['select_all'] = b
+        
+        b = ui.Button.text_button('clean up', func=self.ne.spread, size=(100, 20), border_radius=0)
+        self.objects_dict['clean_up'] = b
+        
+        self.close()
+        
+    @property
+    def objects(self):
+        return list(self.objects_dict.values())
+        
+    def open(self, pos, node):
+        self.clear_children()
+        self.rect.topleft = pos
+        
+        if node:
+            selected = self.ne.get_selected()
+
+        x, y = pos
+        for name, b in self.objects_dict.items():
+            add = False
+            
+            if node:
+                if name == 'copy':
+                    if not selected:
+                        b.set_args(kwargs={'nodes': [node]})
+                        add = True
+                    elif node in selected:
+                        b.set_args(kwargs={'nodes': selected})
+                        add = True
+                elif name == 'delete':
+                    if not selected:
+                        b.set_args(kwargs={'nodes': [node]})
+                        add = True
+                    elif node in selected:
+                        b.set_args(kwargs={'nodes': selected})
+                        add = True
+                elif name == 'transform':
+                    if node.can_transform():
+                        b.set_func(node.transform)
+                        add = True
+                elif name == 'info':
+                    b.set_args(args=[screens.info_menu, node])
+                    add = True
+                elif name == 'group':
+                    add = [n for n in selected if not n.is_group() and n is not node]
+                elif name == 'ungroup':
+                    add = node.is_group()
+                    if add:
+                        b.set_args(args=[node])
+
+            else:
+                if name == 'paste':
+                    add = self.ne.copy_data
+                elif name == 'select_all':
+                    add = True
+                elif name == 'clean_up':
+                    add = True
+                    
+            if name == 'select_all':
+                add = True
+                
+            if add:
+                b.rect.topleft = (x, y)
+                self.add_child(b, current_offset=True)
+                y += b.rect.height
+            
+    def close(self):
+        self.rect.topleft = (-100, -100)
+        for b in self.objects:
+            b.rect.topleft = self.rect.topleft
+
+#menu stuff--------------------------------------------------------------------
+
+def run_data_sheet(ne):
+    m = ui.Menu(get_objects=screens.data_sheet_menu, args=[ne])
+    m.run()
 
 #string sorting stuff-----------------------------------------------------------------------
 
@@ -117,22 +475,6 @@ def sort_strings(a, b):
     d = difflib.SequenceMatcher(None, a, b).ratio()
     d = -int(d * 100)
     return d
-
-#saving and loading stuff-----------------------------------------------------------------------
-
-def save_group_node(name, gn):
-    nodes = gn.nodes.copy() + [gn]
-    
-    group_data = load_group_data()
-    group_data[name] = node_data.pack(nodes)
-    
-    with open('save/group_nodes.json', 'w') as f:
-        json.dump(group_data, f, indent=4)
-
-def load_group_data():
-    with open('save/group_nodes.json', 'r') as f:
-        data = json.load(f)
-    return data
 
 #sorting stuff-------------------------------------------------------------------------
 
@@ -158,9 +500,8 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         self.card = card
 
         node_data.Node_Data.__init__(self)
-        self.active_node = None
-        self.nodes = []
-        self.wires = []
+        self.drag_manager = ui.DraggerManager(self.nodes)
+
         self.objects_dict = {}
         ui.Menu.__init__(self, get_objects=self.editor_objects)
         
@@ -169,7 +510,6 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         self.info_box = pg.Rect(0, 0, 100, 100)
         self.info_box.topright = (width, 0)
         self.info_node = None
-        self.drag_manager = ui.DraggerManager(self.nodes)
         
         self.log = []
         self.logs = []
@@ -189,8 +529,6 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         
         self.running = True
         
-        allnodes.Manager.set_manager(self)
-        
         if self.card.node_data:
             self.load_save_data(self.card.node_data)
         
@@ -198,27 +536,15 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         
     def editor_objects(self):
         objects = []
-        
-        #search_bar = ui.Input((100, 30))
-        #search_bar.rect.bottomleft = (width, 0)
-        #self.objects_dict['search_bar'] = search_bar
-        #objects.append(search_bar)
-        
+
         buttons = []
-        for name in allnodes.NAMES:
+        for name, obj in self.NODES.items():
             b = ui.Button.text_button(name, size=(100, 30), border_radius=0, func=self.get_node, args=[name], tsize=15)
             buttons.append(b)
-        for name, data in load_group_data().items():
-            b = ui.Button.text_button(name, border_radius=0, func=self.load_group_node, args=[name, data])
+        for name, data in self.GROUPS.items():
+            b = ui.Button.text_button(name, size=(100, 30), border_radius=0, func=self.load_group_node, args=[name, data], tsize=15)
             buttons.append(b)
-        #objects += buttons
-        
-        #p = ui.Live_Window((100, 200), color=(0, 0, 0), hide_label=True)
-        #p.rect.topleft = (width, height)
-        #p.join_objects(buttons, xpad=0, ypad=0)
-        #objects.append(p)
-        #self.objects_dict['search_window'] = p
-        
+
         sb = Search_Bar(buttons, (width, height))
         self.objects_dict['search_bar'] = sb
         objects.append(sb)
@@ -253,7 +579,7 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         b.rect.left = objects[-2].rect.right + 5
         objects.append(b)
     
-        b = ui.Button.text_button('group node', func=self.make_group_node, tsize=15)
+        b = ui.Button.text_button('group node', func=self.create_new_group_node, tsize=15)
         b.rect.top = 5
         b.rect.left = objects[-1].rect.right + 5
         objects.append(b)
@@ -263,16 +589,10 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         b.rect.left = objects[-1].rect.right + 5
         objects.append(b)
         
-        nc = ui.Input((50, 20))
-        nc.rect.bottomleft = (width, 0)
-        objects.append(nc)
-        self.objects_dict['numeric_control'] = nc
-        
-        group_name = ui.Input((100, 20), tsize=20)
-        group_name.rect.topleft = objects[-4].rect.bottomleft
-        group_name.rect.y += 5
-        objects.append(group_name)
-        self.objects_dict['group_name'] = group_name
+        b = ui.Button.text_button('data sheet', func=run_data_sheet, args=[self], tsize=15)
+        b.rect.top = 5
+        b.rect.left = objects[-1].rect.right + 5
+        objects.append(b)
         
         b = ui.Button.text_button('save group node', func=self.save_group_node, tsize=15)
         b.rect.midleft = objects[-1].rect.midright
@@ -293,32 +613,13 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         b.rect.y += 10
         objects.append(b)
         
-        s = Sorter(self)
-        objects.append(s)
+        nm = Node_Menu(self)
+        objects.append(nm)
+        self.objects_dict['menu'] = nm
         
-        #groups = {}
-        #for n in allnodes.NAMES:
-        #    n = getattr(allnodes, n)
-        #    if hasattr(n, 'categories'):
-        #        for g in n.categories:
-        #            if g not in groups:
-        #                groups[g] = [n]
-        #            else:
-        #                groups[g].append(n)
-        #x = 10
-        #for g, nodes in groups.items():
-        #    p = ui.Live_Popup((100, 300), label=g)
-        #    p.rect.topleft = (x, height)
-        #    objects.append(p)
-        #    x += p.rect.width + 20
-        #    
-        #    buttons = []
-        #    for n in nodes:
-        #        img = allnodes.Node.RAW_CACHE[n.__name__]
-        #        b = ui.Button.image_button(img, border_radius=0, func=self.get_node, args=[n.__name__])#, tsize=15)
-        #        buttons.append(b)
-        #        
-        #    p.join_objects(buttons)
+        cm = Context_Manager(self)
+        objects.append(cm)
+        self.objects_dict['context'] = cm
 
         return objects
         
@@ -387,11 +688,12 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
                 m = log['m']
                 self.add_node(n, d=True) 
                 if m == 'ug':
+                    n.recall_port_mem()
                     n.reset_ports()
                     
             elif type == 'conn':
                 p0, p1 = log['ports']
-                allnodes.Port.disconnect(p0, p1, d=True)
+                self.disconnect(p0, p1, d=True)
                 
             elif type == 'disconn':
                 n0, n1 = log['nodes']
@@ -408,7 +710,7 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
                     if p1.group_node:
                         if p1 not in p1.group_node.ports:
                             p1.group_node.ports.append(p1)
-                allnodes.Port.new_connection(p0, p1, force=True, d=True)
+                self.new_connection(p0, p1, force=True, d=True)
                 
             elif type == 'val':
                 i = log['i']
@@ -463,7 +765,7 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
                     
             elif type == 'disconn':
                 p0, p1 = log['ports']
-                allnodes.Port.disconnect(p0, p1, d=True)
+                self.disconnect(p0, p1, d=True)
                 
             elif type == 'conn':
                 n0, n1 = log['nodes']
@@ -480,7 +782,7 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
                     if p1.group_node:
                         if p1 not in p1.group_node.ports:
                             p1.group_node.ports.append(p1)
-                allnodes.Port.new_connection(p0, p1, d=True)
+                self.new_connection(p0, p1, d=True)
                 
             elif type == 'val':
                 i = log['i']
@@ -514,20 +816,14 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
 #wire stuff--------------------------------------------------------------------
         
     def check_wire_break(self):
+        breaks = 0
         a = self.anchor
         b = pg.mouse.get_pos()
-        
         for w in self.wires.copy():
-            w.check_break(a, b)
-        
-    def new_wire(self, p0, p1):
-        w = allnodes.Wire(p0, p1)
-        self.wires.append(w)
-        
-    def del_wire(self, w):
-        if w in self.wires:
-            self.wires.remove(w)
-        
+            if w.check_break(a, b):
+                breaks += 1
+        return breaks
+
 #node management stuff--------------------------------------------------------------------
 
     def add_nodes(self, nodes):
@@ -539,34 +835,58 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         if not d:
             self.add_log({'t': 'add', 'node': n})
              
-    def get_node(self, name, val=None, pos=None, nodes=None, held=True):
+    def get_node(self, name, val=None, pos=None, held=True):
         if len(self.nodes) == 50:
             return
-
+    
         if pos is None and held:
             pos = pg.mouse.get_pos()
         
-        n = super().get_node(name, val=val, pos=pos, nodes=nodes)
+        n = super().get_node(name, val=val, pos=pos)
         
         if held:
             n.start_held()
             
         self.add_node(n)
         return n
+        
+    def get_group_node(self, name, pos=None, held=True):
+        data = self.GROUPS[name]
+        
+        if len(self.nodes) + len(data['nodes']) + 1 > 50:
+            return
+            
+        if pos is None and held:
+            pos = pg.mouse.get_pos()
+        
+        nodes = self.unpack(data)
+        n = nodes[-1]
+        
+        if pos:
+            n.rect.center = pos
+            n.set_port_pos()
+        if held:
+            n.start_held()
+  
+        return n
+        
+    def make_group_node(self, nodes, name='group', pos=None):
+        n = super().make_group_node(nodes, name=name, pos=pos)
+        self.add_node(n)
+        self.add_log({'t': 'gn', 'gn': n, 'nodes': nodes})
+        return n
 
-    def make_group_node(self):
+    def create_new_group_node(self):
         nodes = [n for n in self.get_selected() if not n.is_group()]
-        if len(nodes) > 1:
-            gn = self.get_node('GroupNode', nodes=nodes, held=False)
-            if gn:
-                self.add_log({'t': 'gn', 'gn': gn, 'nodes': nodes})
-                return gn
+        if len(nodes) <= 1:
+            return
+        n = self.make_group_node(nodes)
+        return n
 
     def ungroup_nodes(self):
         nodes = [n for n in self.get_selected() if n.is_group()]
-        if nodes:
-            for n in nodes:
-                self.ungroup_node(n)
+        for n in nodes:
+            self.ungroup_node(n)
                 
     def ungroup_node(self, n, d=False):
         n.ungroup()
@@ -581,24 +901,9 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
     def del_node(self, n, method='del', d=False):
         n.delete()
         self.nodes.remove(n)
+        
         if not d:
             self.add_log({'t': 'del', 'node': n, 'm': method})
-
-    def exists(self, name):
-        return any({n.name == name for n in self.nodes})
-        
-#active node stuff--------------------------------------------------------------------
-        
-    def get_active_node(self):
-        return self.active_node
-        
-    def set_active_node(self, n):
-        self.active_node = n
-        
-    def close_active_node(self):
-        if self.active_node:
-            self.active_node.end_connect()
-            self.active_node = None
 
 #selection stuff--------------------------------------------------------------------
             
@@ -614,8 +919,9 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         
 #copy and paste stuff--------------------------------------------------------------------
         
-    def copy_nodes(self):
-        nodes = self.get_all_selected()
+    def copy_nodes(self, nodes=None):
+        if nodes is None:
+            nodes = self.get_all_selected()
         self.copy_data = node_data.pack(nodes)
 
     def paste_nodes(self):
@@ -675,9 +981,8 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
                 break
         else:
             return
-            
-        name = self.group_name.get_message()
-        save_group_node(name, gn)
+
+        save_group_node(gn)
 
 #other stuff--------------------------------------------------------------------
 
@@ -685,13 +990,13 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         funcs = []
         for n in self.nodes:
             if n.visible:
-                func = allnodes.Mapping.find_chunk(n, [])
+                func = mapping.find_chunk(n, [])
                 if not any({set(o) == set(func) for o in funcs}):
                     funcs.append(func)
 
         for nodes in funcs:
-            lead = allnodes.Mapping.find_lead(nodes)
-            columns = allnodes.Mapping.map_flow(lead, nodes.copy(), {})
+            lead = mapping.find_lead(nodes)
+            columns = mapping.map_flow(lead, nodes.copy(), {})
             columns = [columns[key][::-1] for key in sorted(columns)]
             
             x = width // 2
@@ -776,6 +1081,9 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         dub = False
         click_up = False
         click_down = False
+        open_context = False
+        
+        context_node = None
         
         events = self.get_events()
         
@@ -837,7 +1145,8 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
             if mbu.button == 1:
                 click_up = True
             elif mbu.button == 3:
-                self.check_wire_break()
+                breaks = self.check_wire_break()
+                open_context = not breaks and ui.Line.distance(p, self.anchor) < 2
                 self.anchor = None
                 
         if self.ctrl:     
@@ -860,8 +1169,14 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         for n in self.nodes[::-1]:
             if n.visible:
                 n.events(events)
-                if not hit and n.big_rect.collidepoint(p) and mbd:
-                    hit = True
+                if n.big_rect.collidepoint(p):
+                    if mbd and not hit:
+                        hit = True
+                    elif mbu and not context_node:
+                        context_node = n
+                    
+        if open_context:
+            self.objects_dict['context'].open(p, context_node)
                     
         if click_up:
             self.close_active_node()
@@ -871,8 +1186,12 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         if dub and not hit:
             self.objects_dict['search_bar'].open_search()
                 
-        elif click_down and not self.objects_dict['search_bar'].collide(p):
-            self.objects_dict['search_bar'].close_search()
+        elif click_down:
+            self.objects_dict['context'].close()
+            if not self.objects_dict['search_bar'].collide(p):
+                self.objects_dict['search_bar'].close_search()
+            if not self.objects_dict['menu'].collide(p):
+                self.objects_dict['menu'].start_force_down()
 
         rect = not (self.get_active_node() or hit)
         self.drag_manager.events(events, rect=rect)
@@ -918,26 +1237,13 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         if self.anchor:
             s = self.anchor
             e = pg.mouse.get_pos()
-            pg.draw.line(self.window, (0, 0, 255), s, e, width=4)
+            if ui.Line.distance(s, e) > 2:
+                pg.draw.line(self.window, (0, 0, 255), s, e, width=4)
             
         if self.info_node:
             self.info_node.draw(self.window)
                 
         pg.display.flip()
-        
-if __name__ == '__main__':
-
-    pg.init()
-    pg.display.set_mode((width, height))
-    
-    save.init()
-    init()
-    uinit()
-
-    ne = Node_Editor(Card(name='__test__'))
-    ne.run()
-            
-    pg.quit()
             
             
             

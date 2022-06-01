@@ -1,10 +1,11 @@
 from card_base import *
 
-class Play_Now(Card):
-    name = 'play now'
+class Player_0(Card):
+    name = 'player 0'
     tags = []
     
     def start(self, player):
         self.reset()
-        seq1 = player.draw_cards('unplayed', num=1)
-        player.play_card(seq1[0])
+        x = 5
+        for i in range(20):
+            player.gain(self, i * 5)

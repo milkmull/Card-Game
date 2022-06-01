@@ -19,13 +19,14 @@ def get_size():
     return pg.display.get_surface().get_size()
 
 class Line:
-    @staticmethod
     def ccw(a, b, c):
         return (c[1] - a[1]) * (b[0] - a[0]) > (b[1] - a[1]) * (c[0] - a[0])
 
-    @staticmethod
     def intersect(a, b, c, d):
         return Line.ccw(a, c, d) != Line.ccw(b, c, d) and Line.ccw(a, b, c) != Line.ccw(a, b, d)
+        
+    def distance(p1, p2):
+        return pow(pow(p2[0] - p1[0], 2) + pow(p2[1] - p1[1], 2), 0.5)
  
 class Mover:
     def __init__(self):
@@ -286,6 +287,12 @@ class Logging:
         if self.logs:
             return self.logs.pop(-1)
             
+    def undo_log(self):
+        pass
+        
+    def redo_log(self):
+        pass
+        
 class DraggerManager(Logging):
     def __init__(self, draggers):
         self.draggers = draggers
@@ -394,17 +401,19 @@ class DraggerManager(Logging):
             hit = d.rect.collidepoint(p)
             d._hover = hit
             if mbd:
-                if hit:
-                    self.update_held_list(d)
-                elif not self.ctrl:
-                    if d not in self.held_list:
-                        d._selected = False
-                        d.drop()
+                if mbd.button == 1:
+                    if hit:
+                        self.update_held_list(d)
+                    elif not self.ctrl:
+                        if d not in self.held_list:
+                            d._selected = False
+                            d.drop()
             elif mbu:
-                dist = d.get_carry_dist()
-                if dist:
-                    carried[d] = dist
-                d.drop()
+                if mbu.button == 1:
+                    dist = d.get_carry_dist()
+                    if dist:
+                        carried[d] = dist
+                    d.drop()
                 
             if hit:
                 hit_any = True
@@ -412,14 +421,16 @@ class DraggerManager(Logging):
         if carried:
             self.add_carry_log(carried)
                 
-        if mbd and hit_any:
-            self.rs.cancel()
+        if mbd:
+            if mbd.button == 1 and hit_any:
+                self.rs.cancel()
                 
         if mbd:
-            if not hit_any:
-                self.reset_held_list()
-            elif not self.ctrl:
-                self.start_held_list()
+            if mbd.button == 1:
+                if not hit_any:
+                    self.reset_held_list()
+                elif not self.ctrl:
+                    self.start_held_list()
                 
     def update(self):
         self.rs.update()
@@ -602,6 +613,12 @@ class Image_Manager:
             s = pg.transform.rotate(s, a)
             
         return s
+        
+    @staticmethod
+    def crop(img, x, y, w, h):
+        surf = pg.Surface((w, h))
+        surf.blit(img, (0, 0), (x, y, w, h))
+        return surf
      
 class Base_Loop:
     LAST_EVENT_BATCH = []
@@ -675,7 +692,6 @@ class Base_Loop:
         if not hit:
             pg.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
                             
- 
     def update(self):
         for o in self.objects:
             o.update()
@@ -1814,6 +1830,18 @@ class Textbox(Base_Object, Position):
         self.characters = characters
         self.allignment_cache = allignment
         self.new_image(image, rect=bounding_rect.copy(), set_pos=False)
+        
+    def crop_fitted(self):
+        l = min({c[1].left for c in self.characters})
+        r = max({c[1].right for c in self.characters})
+        t = min({c[1].top for c in self.characters})
+        b = max({c[1].bottom for c in self.characters})
+        
+        w = r - l
+        h = b - t
+        
+        img = Image_Manager.crop(self.image, 0, 0, w, h)
+        self.new_image(img)
 
     def new_image(self, image, rect=None, set_pos=True):
         if rect is None:
@@ -1969,10 +1997,7 @@ class Button(Base_Object, Position):
 
     def events(self, events):
         p = events['p']
-        if self.rect.collidepoint(p):
-            self.active = True  
-        else:  
-            self.active = False
+        self.active = self.rect.collidepoint(p)
 
         mbd = events.get('mbd')
         mbu = events.get('mbu')
@@ -2044,7 +2069,7 @@ class Input(Base_Object, Position, Logging):
         return input
 
     def __init__(self, size, message='type here', tsize=20, padding=(5, 5), color=(0, 0, 0, 0), length=99, check=lambda char: True,
-                 fitted=False, scroll=False, allignment='c', size_lock=False, highlight=False, **kwargs):      
+                 full_check=lambda text: True, fitted=False, scroll=False, allignment='c', size_lock=False, highlight=False, lines=0, **kwargs):      
         self.textbox = Textbox(message, tsize=tsize, fitted=fitted, **kwargs)
 
         w, h = size
@@ -2067,7 +2092,9 @@ class Input(Base_Object, Position, Logging):
         self.tsize = tsize
      
         self.length = length
+        self.max_lines = lines
         self.check = check
+        self.full_check = full_check
 
         self.last_click = 0
         self.clicks = 1
@@ -2106,6 +2133,10 @@ class Input(Base_Object, Position, Logging):
             offset = [0, 0]
         self.textbox.set_parent(self.rect, anchor_point=anchor, offset=offset)
         self.add_child(self.textbox)
+        
+    @property
+    def lines(self):
+        return len(f'{self.get_message()} '.splitlines())
      
     def get_chars(self):
         return self.textbox.characters
@@ -2120,7 +2151,7 @@ class Input(Base_Object, Position, Logging):
                 self.textbox.fit_text(self.text_rect, tsize=self.tsize, allignment=self.allignment)
 
     def check_message(self, text):
-        return all({ord(char) in Input.VALID_CHARS and self.check(char) for char in text})
+        return all({ord(char) in Input.VALID_CHARS and self.check(char) for char in text}) and self.full_check(text)
 
     def set_index(self, index):
         index = max({index, 0})
@@ -2230,6 +2261,7 @@ class Input(Base_Object, Position, Logging):
     def open(self):
         self.active = True
         self.set_index(len(self.get_message())) 
+        self.last_message = self.get_message()
         if self.hl:
             self.highlight_full()
 
@@ -2242,7 +2274,6 @@ class Input(Base_Object, Position, Logging):
                 m = self.get_message()
             if self.last_message != m:
                 self.add_log({'t': 'val', 'i': self, 'm': (self.last_message, m)})
-                self.last_message = m
             self.selection.clear()
             if self.scroll:
                 self.textbox.rect.midleft = self.rect.midleft
@@ -2375,7 +2406,7 @@ class Input(Base_Object, Position, Logging):
                         if not self.fitted:
                             self.run_func()
                             self.close()
-                        else:
+                        elif not self.scroll and self.lines < self.max_lines:
                             self.send_keys('\n')
                             
                     elif kd.key == pg.K_TAB:
@@ -2790,6 +2821,17 @@ class Static_Window(Base_Object, Position, Scroll_Pair):
     def set_label_style(self, **kwargs):
         self.label.update_style(**kwargs)
         
+    def set_label(self, label):
+        self.label.set_message(label)
+        
+    def get_label(self, label):
+        return label.get_message()
+        
+    def set_color(self, color):
+        self.color = color
+        self.image.fill(color)
+        self.refresh_image()
+        
     def resize(self, w=None, h=None, anchor_point='center'):
         if w is None:
             w = self.rect.width
@@ -2841,7 +2883,7 @@ class Static_Window(Base_Object, Position, Scroll_Pair):
     def add_object(self, object):
         self.join_objects(self.objects + [object])
     
-    def join_objects(self, objects, xpad=None, ypad=None, dir=None, pack=None, force=False, scroll=False, move=False):
+    def join_objects(self, objects, xpad=None, ypad=None, dir=None, pack=None, force=False, move=False):
         if xpad is None:
             xpad = self.orientation_cache['xpad']
         if ypad is None:
@@ -2856,32 +2898,40 @@ class Static_Window(Base_Object, Position, Scroll_Pair):
         if not same or force:
             x = 0
             y = 0
+            wmax = 0
+            hmax = 0
 
             if dir == 'y':   
                 for o in objects:
                     if pack:
                         if self.rect.y + y + ypad + o.rect.height > self.rect.bottom:
-                            x += o.rect.width + xpad
                             y = 0 
+                            x += wmax + xpad
+                            wmax = 0
                         offset = [x + xpad, y + ypad]
                         o.set_parent(self.bounding_rect.rect, offset=offset)   
                     else:
                         offset = [0, y + ypad]  
                         o.set_parent(self.bounding_rect.rect, anchor_point='midtop', offset=offset)
                     y += o.rect.height + ypad
+                    if o.rect.width > wmax:
+                        wmax = o.rect.width
                     
             elif dir == 'x':
                 for o in objects:
                     if pack:
                         if self.rect.x + x + xpad + o.rect.width > self.rect.right:
                             x = 0
-                            y += o.rect.height + ypad  
+                            y += hmax + ypad 
+                            hmax = 0
                         offset = [x + xpad, y + ypad]
                         o.set_parent(self.bounding_rect.rect, offset=offset)    
                     else:
                         offset = [x + xpad, 0]  
                         o.set_parent(self.bounding_rect.rect, anchor_point='midleft', offset=offset)  
                     x += o.rect.width + xpad
+                    if o.rect.height > hmax:
+                        hmax = o.rect.height
 
             self.objects = objects.copy()
             self.orientation_cache = {'xpad': xpad, 'ypad': ypad, 'dir': dir, 'pack': pack}
@@ -2891,6 +2941,25 @@ class Static_Window(Base_Object, Position, Scroll_Pair):
             for i in range(len(self.objects)):
                 o0 = self.objects[i]
                 o1 = objects[i]
+                o1.position_copy_from(o0)
+                self.objects[i] = o1
+                
+    def join_objects_custom(self, offsets, objects, force=False, move=False):
+        same = self.is_same(objects)
+
+        if not same or force:
+ 
+            for (x, y), o in zip(offsets, objects):
+                offset = [x, y] 
+                o.set_parent(self.bounding_rect.rect, anchor_point='topleft', offset=offset)
+
+            self.objects = objects.copy()
+            self.set_total_height()
+                
+        elif same and move and objects:
+            for i in range(len(self.objects)):
+                o0 = self.objects[i]
+                o1 = objects_list[i]
                 o1.position_copy_from(o0)
                 self.objects[i] = o1
 
@@ -2989,8 +3058,10 @@ class Live_Window(Static_Window):
             self.scroll_bar.draw(surf)
 
 class Popup_Base(Static_Window, Mover):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, dir='y', **kwargs):
         Static_Window.__init__(self, *args, **kwargs)
+        self.dir = dir
+        
         self.t = None
         self.o = None
         
@@ -2998,12 +3069,22 @@ class Popup_Base(Static_Window, Mover):
         
         self.timer = 0
         self.locked = False
+        self.force_up = False
+        self.force_down = False
         
         Mover.__init__(self) 
         
     @property
     def sense_rect(self):
         return self.get_total_rect().inflate(self.inflation[0], self.inflation[1])
+        
+    def start_force_up(self):
+        self.force_up = True
+        self.force_down = False
+    
+    def start_force_down(self):
+        self.force_up = False
+        self.force_down = True
         
     def set_inflation(self, x=None, y=None):
         if x:
@@ -3015,7 +3096,14 @@ class Popup_Base(Static_Window, Mover):
         return self.t != self.o
         
     def get_target(self):
-        return self.rect.move(0, -self.rect.height)
+        if self.dir == 'y':
+            return self.rect.move(0, -self.rect.height)
+        elif self.dir == '-y':
+            return self.rect.move(0, self.rect.height)
+        elif self.dir == 'x':
+            return self.rect.move(self.rect.width, 0)
+        elif self.dir == '-x':
+            return self.rect.move(-self.rect.width, 0)
 
     def events(self, events):
         super().events(events)
@@ -3030,7 +3118,7 @@ class Popup_Base(Static_Window, Mover):
                         self.locked = not self.locked
                     self.timer = 0
         
-        if self.sense_rect.collidepoint(p):
+        if self.sense_rect.collidepoint(p) or self.force_up:
             if not self.t:
                 t = self.get_target()
                 self.t = t
@@ -3052,6 +3140,8 @@ class Popup_Base(Static_Window, Mover):
             if self.target_rect == self.o:
                 self.t = None
                 self.o = None
+            self.force_up = False
+            self.force_down = False
             
     def draw(self, surf):
         if self.is_visible():
@@ -3063,8 +3153,11 @@ class Popup_Base(Static_Window, Mover):
                 self.label.draw(surf)
 
 class Live_Popup(Live_Window, Mover):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, dir='y', vel=15, **kwargs):
         Live_Window.__init__(self, *args, **kwargs)
+        self.dir = dir
+        self._vel = vel
+        
         self.t = None
         self.o = None
         
@@ -3072,12 +3165,22 @@ class Live_Popup(Live_Window, Mover):
         
         self.timer = 0
         self.locked = False
+        self.force_up = False
+        self.force_down = False
         
         Mover.__init__(self)
         
     @property
     def sense_rect(self):
         return self.get_total_rect().inflate(self.inflation[0], self.inflation[1])
+        
+    def start_force_up(self):
+        self.force_up = True
+        self.force_down = False
+    
+    def start_force_down(self):
+        self.force_up = False
+        self.force_down = True
         
     def set_inflation(self, x=None, y=None):
         if x:
@@ -3089,7 +3192,14 @@ class Live_Popup(Live_Window, Mover):
         return self.t != self.o
         
     def get_target(self):
-        return self.rect.move(0, -self.rect.height)
+        if self.dir == 'y':
+            return self.rect.move(0, -self.rect.height)
+        elif self.dir == '-y':
+            return self.rect.move(0, self.rect.height)
+        elif self.dir == 'x':
+            return self.rect.move(self.rect.width, 0)
+        elif self.dir == '-x':
+            return self.rect.move(-self.rect.width, 0)
 
     def events(self, events):
         p = events['p']
@@ -3098,9 +3208,8 @@ class Live_Popup(Live_Window, Mover):
         if self.is_visible():
             self.scroll_bar.events(events)
             for o in self.objects:
-                o.events(events)
-                if o.rect.collidepoint(p):
-                    break
+                if o.visible and o.enabled:
+                    o.events(events)
         
         total_rect = self.get_total_rect()
         
@@ -3111,15 +3220,15 @@ class Live_Popup(Live_Window, Mover):
                         self.locked = not self.locked
                     self.timer = 0
         
-        if self.sense_rect.collidepoint(p):
+        if (self.sense_rect.collidepoint(p) and not self.force_down) or self.force_up:
             if not self.t:
                 t = self.get_target()
                 self.t = t
                 self.o = self.rect.copy()
             if self.target_rect != self.t:
-                self.set_target_rect(self.t, v=15)
+                self.set_target_rect(self.t, v=self._vel)
         elif not self.locked and not self.scroll_bar.is_held() and self.t:
-            self.set_target_rect(self.o, v=15)
+            self.set_target_rect(self.o, v=self._vel)
         
     def update(self):
         self.move()
@@ -3127,7 +3236,7 @@ class Live_Popup(Live_Window, Mover):
         
         if self.timer < 15:
             self.timer += 1
-        
+
         if self.target_rect == self.o and self.finished_move():
             self.t = None
             self.o = None
