@@ -17,6 +17,13 @@ def init(*args, **kwargs):
     
 def get_size():
     return pg.display.get_surface().get_size()
+    
+class Color:
+    def tint(color, factor=4):
+        return tuple([round(((255 - rgb) / factor) + rgb) for rgb in color])
+        
+    def shade(color, factor=4):
+        return tuple([round(rgb / factor) for rgb in color])
 
 class Line:
     def ccw(a, b, c):
@@ -567,7 +574,6 @@ class Rect_Selector:
             pg.draw.lines(surf, self.color, True, points, self.rad)
 
 class Image_Manager:
-    @staticmethod
     def get_surface(size, color=(0, 0, 0), width=1, olcolor=None, key=None, **border_kwargs):
         s = pg.Surface(size).convert()
         r = s.get_rect()
@@ -583,7 +589,6 @@ class Image_Manager:
             s.set_colorkey(key)
         return s
 
-    @staticmethod
     def rect_outline(img, color=(0, 0, 0), width=2):
         ol = img.copy()
         ol.fill(color)
@@ -591,8 +596,7 @@ class Image_Manager:
         img = pg.transform.smoothscale(img, (w - (width * 2), h - (width * 2)))
         ol.blit(img, (width, width))
         return ol
-        
-    @staticmethod
+
     def get_arrow(dir, size, padding=(0, 0), color=(255, 255, 255), bgcolor=(0, 0, 0, 0)):
         s = pg.Surface(size).convert_alpha()
         s.fill(bgcolor)
@@ -613,8 +617,7 @@ class Image_Manager:
             s = pg.transform.rotate(s, a)
             
         return s
-        
-    @staticmethod
+
     def crop(img, x, y, w, h):
         surf = pg.Surface((w, h))
         surf.blit(img, (0, 0), (x, y, w, h))
@@ -837,7 +840,7 @@ class Menu(Base_Loop):
         menu = cls(objects=objects, args=args, kwargs=kwargs, overlay=overlay)
         menu.run()
 
-    def __init__(self, get_objects=None, objects=[], args=[], kwargs={}, overlay=False, quit=True):
+    def __init__(self, get_objects=None, objects=[], args=[], kwargs={}, overlay=False, quit=True, fill_color=(0, 0, 0)):
         if get_objects:
             objects = get_objects(*args, **kwargs)
         super().__init__(objects)
@@ -847,6 +850,7 @@ class Menu(Base_Loop):
         self.kwargs = kwargs
         self.return_val = None
 
+        self.fill_color = fill_color
         self.background = None
         if overlay:
             s = self.window.copy()
@@ -862,7 +866,7 @@ class Menu(Base_Loop):
     def add_object(self, object):
         self.objects.append(object)
         
-    def romove_object(self, object):
+    def remove_object(self, object):
         while object in self.objects:
             self.objects.remove(object)
         
@@ -945,7 +949,7 @@ class Menu(Base_Loop):
         return events
   
     def draw(self):
-        self.window.fill((0, 0, 0))
+        self.window.fill(self.fill_color)
         if self.background:
             self.window.blit(self.background, (0, 0))
         for o in self.objects:
@@ -1020,6 +1024,14 @@ class Base_Object:
         
     def set_enabled(self, enabled):
         self.enabled = enabled
+        
+    def turn_off(self):
+        self.visible = False
+        self.enabled = False
+        
+    def turn_on(self):
+        self.visible = True
+        self.enabled = True
         
     def set_window_draw(self, window_draw):
         self.window_draw = window_draw
@@ -1156,9 +1168,13 @@ class Position:
             child.set_parent(self.rect, **kwargs)
         
     def remove_child(self, child):
-        if child in self.children:
-            self.children.remove(child)
-            
+        i = 0
+        for c in self.children:
+            if c is child:
+                self.children.pop(i)
+            else:
+                i += 1
+ 
     def clear_children(self):
         self.set_children([])
 
@@ -1228,7 +1244,7 @@ class Position:
     def get_current_offset(self):
         sx, sy = getattr(self.rect, self.anchor_point)
         px, py = getattr(self.parent_rect, self.anchor_point)
-        return (sx - px, sy - py)
+        return [sx - px, sy - py]
 
     def set_offset(self, dx, dy):
         self.offset = [dx, dy]
@@ -1561,7 +1577,7 @@ class Textbox(Base_Object, Position):
         return self.message
         
     def __eq__(self, other):
-        return self.message == other.message and self.fgcolor == other.fgcolor 
+        return self.object == getattr(other, 'object')
         
     def __bool__(self):
         return bool(self.message)
@@ -2059,6 +2075,10 @@ class Input(Base_Object, Position, Logging):
     def positive_int_check(char):
         return char.isnumeric()
         
+    @staticmethod
+    def alnum_check(char):
+        return char.isalnum() or char.isspace()
+        
     @classmethod
     def from_image(cls, image, **kwargs):
         size = image.get_size()
@@ -2068,8 +2088,11 @@ class Input(Base_Object, Position, Logging):
         input.image = image
         return input
 
-    def __init__(self, size, message='type here', tsize=20, padding=(5, 5), color=(0, 0, 0, 0), length=99, check=lambda char: True,
-                 full_check=lambda text: True, fitted=False, scroll=False, allignment='c', size_lock=False, highlight=False, lines=0, **kwargs):      
+    def __init__(
+        self, size, message='type here', tsize=20, padding=(5, 5), color=(0, 0, 0, 0), length=99, check=lambda char: True,
+        full_check=lambda text: True, fitted=False, scroll=False, allignment='c', size_lock=False, highlight=False, lines=0,
+        double_click=False, **kwargs
+    ):      
         self.textbox = Textbox(message, tsize=tsize, fitted=fitted, **kwargs)
 
         w, h = size
@@ -2099,6 +2122,7 @@ class Input(Base_Object, Position, Logging):
         self.last_click = 0
         self.clicks = 1
         self.active = False
+        self.double_click = double_click
         
         self.index = 0
         self.selecting = False
@@ -2162,7 +2186,7 @@ class Input(Base_Object, Position, Logging):
         i = j = self.index
         m = self.get_message()
         
-        if i not in range(len(m)):
+        if m and i not in range(len(m)):
             i -= 1
 
         istop = False
@@ -2259,9 +2283,12 @@ class Input(Base_Object, Position, Logging):
         return i
         
     def open(self):
+        m = self.get_message()
+        self.last_message = m
+        if m == self.textbox.original_message:
+            self.clear()
         self.active = True
-        self.set_index(len(self.get_message())) 
-        self.last_message = self.get_message()
+        self.set_index(len(self.get_message()))
         if self.hl:
             self.highlight_full()
 
@@ -2279,6 +2306,9 @@ class Input(Base_Object, Position, Logging):
                 self.textbox.rect.midleft = self.rect.midleft
                 self.textbox.rect.x += self.padding[0]
                 self.textbox.set_current_offset()
+                
+    def clear(self):
+        self.update_message('')
   
     def send_keys(self, text):
         if self.selection:
@@ -2330,7 +2360,8 @@ class Input(Base_Object, Position, Logging):
 
             if clicks == 1:
                 if not self.active:
-                    self.open()                       
+                    if not self.double_click:
+                        self.open()                       
                 else:
                     self.selecting = True
                     i = self.get_closest_index(p=p)
@@ -2339,7 +2370,10 @@ class Input(Base_Object, Position, Logging):
                     self.selection.clear()
                 
             elif clicks == 2:
-                self.highlight_word()
+                if not self.active and self.double_click:
+                    self.open()
+                else:
+                    self.highlight_word()
                 
             elif clicks == 3:
                 self.highlight_full()
@@ -3282,6 +3316,8 @@ class Slider(Base_Object, Position):
         self.handel.set_parent(self.rect, anchor_point=anchor)
         self.add_child(self.handel)
         
+        self.set_state_as_ratio(0)
+        
     def flip(self):
         self.flipped = not self.flipped
 
@@ -3309,6 +3345,18 @@ class Slider(Base_Object, Position):
         shift = self.range[0]
         ratio = (state - shift) / full
         
+        if self.flipped:
+            ratio = 1 - ratio
+            
+        if self.dir == 'x':   
+            dx = ratio * self.rect.width
+            self.handel.rect.centerx = dx + self.rect.x
+        elif self.dir == 'y':
+            dy = ratio * self.rect.height
+            self.handel.rect.centery = dy + self.rect.y
+        self.adjust_handel()
+        
+    def set_state_as_ratio(self, ratio):
         if self.flipped:
             ratio = 1 - ratio
             
@@ -3350,6 +3398,7 @@ class Slider(Base_Object, Position):
                 self.held = False
                 
     def update(self):
+        self.update_position()
         if self.held:
             p = pg.mouse.get_pos()
             self.handel.rect.center = p
@@ -3425,16 +3474,17 @@ class LoadingIcon(Base_Object, Position):
         pg.draw.arc(surf, self.color, self.rect, self.angle, self.angle + LoadingIcon.DA, width=4)
         
 class Progress_Bar(Base_Object, Position):
-    def __init__(self, size=(20, 50), olcolor=(255, 255, 255), color=(0, 0, 0), rad=2, auto=True):
+    def __init__(self, size=(50, 20), olcolor=(255, 255, 255), color=(0, 0, 0), rad=2, auto=True, rate=0.01):
         w, h = size
         self.rect = pg.Rect(0, 0, w, h)
-        self.inner_rect = self.rect.inflate(rad * 2, rad * 2)
+        self.inner_rect = self.rect.inflate(-rad * 2, -rad * 2)
         
         self.olcolor = olcolor
         self.color = color
         
         self.rad = rad
         self.auto = auto
+        self.rate = rate
         self.state = 0
         
         Base_Object.__init__(self)
@@ -3444,7 +3494,12 @@ class Progress_Bar(Base_Object, Position):
     def total_width(self):
         return self.rect.width - (self.rad * 2)
         
+    def is_full(self):
+        return self.state >= 1
+        
     def set_state(self, state):
+        if state > 1:
+            state = 1
         self.state = state
         self.inner_rect.width = self.total_width * state
     
@@ -3455,18 +3510,163 @@ class Progress_Bar(Base_Object, Position):
         self.set_state(1)
         
     def update(self):
+        self.update_position()
         if self.auto:
-            self.set_state(self.state + 1)
-        self.inner_rect.center = self.rect.center
+            self.set_state(self.state + self.rate)
+        self.inner_rect.x = self.rect.x + self.rad
+        self.inner_rect.y = self.rect.y + self.rad
     
     def draw(self, surf):
         pg.draw.rect(surf, self.olcolor, self.rect)
         pg.draw.rect(surf, self.color, self.inner_rect)
         
+class Dropdown_Select(Compound_Object):
+    def __init__(self, selection, selected=None):
+        super().__init__()
+        self.rect = pg.Rect(0, 0, 100, 20)
+            
+        self.selection = selection
+        if selected is None:
+            selected = selection[0]
+        self.current = Textbox(selected)
+        self.current.rect.topleft = self.rect.topleft
+        self.add_child(self.current, current_offset=True)
+        
+        down_arrow = Image_Manager.get_arrow('d', (16, 16))
+        self.drop_down = Button.image_button(down_arrow, func=self.open)
+        self.drop_down.rect.midleft = self.rect.midright
+        self.add_child(self.drop_down, current_offset=True)
+        
+        self.buttons = {v: Button.text_button(v, func=self.set_value, args=[v], border_radius=0) for v in self.selection}
+        for b in self.buttons.values():
+            self.add_child(b, current_offset=True)
+            b.turn_off()
+        
+    @property
+    def current_value(self):
+        return self.current.get_message()
+        
+    def set_value(self, val):
+        self.current.set_message(val)
+        self.close()
+        
+    def flip_arrow(self):
+        img = self.drop_down.object
+        img.set_image(pg.transform.flip(img.image, False, True))
+            
+    def open(self):
+        self.flip_arrow()
+        y = self.current.rect.bottom + 5
+        for v, b in self.buttons.items():
+            if v != self.current_value:
+                b.turn_on()
+                b.rect.topleft = (self.rect.x, y)
+                b.set_current_offset()
+                y += b.rect.height
+        self.drop_down.set_func(self.close)
+                
+    def close(self):
+        self.flip_arrow()
+        for b in self.buttons.values():
+            b.turn_off()
+        self.drop_down.set_func(self.open)
     
+class Dropdown_Multi_Select(Compound_Object):
+    def __init__(self, selection, max_select, selected=[]):
+        super().__init__()
+        self.rect = pg.Rect(0, 0, 100, 20)
+            
+        self.selection = selection
+        self.slots = []
+        y = self.rect.y
+        for _ in range(max_select):
+            tb = Textbox('')
+            tb.rect.topleft = (self.rect.x, y)
+            self.add_child(tb, current_offset=True)
+            
+            b = Button.text_button('X', func=self.remove_value, tsize=15)
+            b.set_args(args=[tb, b])
+            b.turn_off()
+            b.rect.midleft = tb.rect.midright
+            b.rect.x += 5
+            self.add_child(b, current_offset=True)
+            
+            self.slots.append((tb, b))
+            
+            y += tb.rect.height
+        
+        down_arrow = Image_Manager.get_arrow('d', (16, 16))
+        self.drop_down = Button.image_button(down_arrow, func=self.open)
+        self.drop_down.rect.midleft = self.rect.midright
+        self.add_child(self.drop_down, current_offset=True)
+        
+        self.buttons = {v: Button.text_button(v, func=self.add_value, args=[v], border_radius=0) for v in self.selection}
+
+        self.window = Live_Window((self.rect.width, self.rect.width + 50), hide_label=True)
+        self.window.join_objects(list(self.buttons.values()))
+        self.window.rect.topleft = self.slots[-1][0].rect.bottomleft
+        self.add_child(self.window, current_offset=True)
+        self.window.turn_off()
     
-    
-    
-    
+    @property
+    def current_values(self):
+        values = []
+        for tb, b in self.slots:
+            m = tb.get_message()
+            if m:
+                values.append(m)
+        return values
+        
+    def is_open(self):
+        return self.window.visible
+        
+    def add_value(self, val):
+        added = False
+        for tb, b in self.slots:
+            if not tb.get_message():
+                tb.set_message(val)
+                tb.update_position()
+                b.turn_on()
+                b.rect.midleft = tb.rect.midright
+                b.rect.x += 5
+                b.set_current_offset()
+                added = True
+                break
+        self.close()
+        
+        return added
+        
+    def shift_down(self):
+        y = self.rect.y
+        for tb, b in sorted(self.slots, key=lambda s: 0 if s[0].get_message() else 1):
+            tb.rect.topleft = (self.rect.x, y)
+            tb.set_current_offset()
+            b.rect.midleft = tb.rect.midright
+            b.rect.x += 5
+            b.set_current_offset()
+            y += tb.rect.height
+        
+    def remove_value(self, tb, b):
+        tb.clear()
+        b.turn_off()
+        self.shift_down()
+        
+    def flip_arrow(self):
+        img = self.drop_down.object
+        img.set_image(pg.transform.flip(img.image, False, True))
+            
+    def open(self):
+        self.flip_arrow()
+        cvs = self.current_values
+        buttons = [b for v, b in self.buttons.items() if v not in cvs]
+        self.window.join_objects(buttons)
+        self.window.turn_on()
+        self.drop_down.set_func(self.close)
+                
+    def close(self):
+        if self.is_open():
+            self.flip_arrow()
+            self.window.turn_off()
+            self.drop_down.set_func(self.open)
     
     

@@ -1,5 +1,5 @@
 
-def find_chunk(n, nodes):
+def find_visible_chunk(n, nodes):
     nodes.append(n)
     
     for ip in n.get_input_ports():
@@ -11,6 +11,23 @@ def find_chunk(n, nodes):
     for op in n.get_output_ports():
         if op.connection:
             connected_node = op.connection_port.get_visible_node()
+            if connected_node not in nodes:
+                find_chunk(connected_node, nodes)
+                
+    return nodes
+    
+def find_chunk(n, nodes):
+    nodes.append(n)
+    
+    for ip in n.get_input_ports():
+        if ip.connection:
+            connected_node = ip.connection_port.node
+            if connected_node not in nodes:
+                find_chunk(connected_node, nodes)
+    
+    for op in n.get_output_ports():
+        if op.connection:
+            connected_node = op.connection_port.node
             if connected_node not in nodes:
                 find_chunk(connected_node, nodes)
                 

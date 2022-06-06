@@ -4,7 +4,12 @@ def init():
     globals()['SAVE'] = Save()
 
 def get_save():
-    return globals().get('SAVE')
+    return globals().get('SAVE')    
+    
+def load_json(file):
+    with open(file, 'r') as f:
+        data = json.load(f)
+    return data
 
 class Save:
     BASE_SETTINGS = {
@@ -21,6 +26,8 @@ class Save:
     def create_folders():
         if not os.path.exists('img/temp'):
             os.mkdir('img/temp')
+        if not os.path.exists('snd/temp'):
+            os.mkdir('snd/temp')
         if not os.path.exists('img/custom'):
             os.mkdir('img/custom')
         if not os.path.exists('save'):
@@ -43,6 +50,7 @@ class Save:
     def get_blank_card_data():
         data = {
             'name': 'Player 0', 
+            'type': 'user',
             'description': 'description', 
             'tags': ['player'], 
             'color': [161, 195, 161],
@@ -66,8 +74,7 @@ class Save:
             'ips': [],
             'settings': Save.get_base_settings(),
             'cards': [Save.get_blank_card_data()]
-        }
-                      
+        }             
         return save_data
                 
     @staticmethod
@@ -75,6 +82,10 @@ class Save:
         with open('save/cards.json', 'r') as f:
             data = json.load(f)
         return data
+        
+    @staticmethod
+    def get_sheet_info(info):
+        return load_json('data/sheet_info.json').get(info)
 
     def __init__(self):
         self.save_data = None

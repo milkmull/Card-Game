@@ -4,7 +4,8 @@ class Node_Parser:
     def __init__(self, card, nodes):
         self.card = card
         self.nodes = nodes
-        self.start_node = next(iter(n for n in self.nodes if n.name == 'start'), None)
+        self.start_node = next(iter(n for n in self.nodes if n.name == 'Start'), None)
+        self.errors = self.check_errors()
 
         self.header = f"\nclass {self.card.classname}(Card):\n\tname = '{self.card.name}'\n\ttags = []\n"
         self.dec_line = ''
@@ -26,17 +27,17 @@ class Node_Parser:
         return [n for n in self.nodes if n.type == 'func']
         
     def check_errors(self):
-        return [n.check_errors() for n in self.nodes]
+        errors = []
+        for n in self.nodes:
+            e = n.check_errors()
+            if e:
+                errors.append(e)
+        print(errors)
+        return errors
         
     def run(self):
-        if not self.start_node:
+        if not self.start_node or self.errors:
             return ''
-            
-        errors = self.check_errors()
-        for e in errors[::-1]:
-            if e:
-                menu(notice, args=[e])
-                return ''
                 
         for n in self.find_funcs():
             self.parse_nodes(n, func=None)
@@ -61,9 +62,10 @@ class Node_Parser:
         ports = set(mapping.map_ports(node, []))
         for p in ports:
             n = p.node
-            if n.type == 'dec':
-                line = n.get_dec()
-                if line not in dec_line:
+            line = n.get_dec()
+            if line:
+                v = line.split()[0]
+                if line and v not in dec_line:
                     dec_line += '\t\t' + n.get_dec()
                 
         return dec_line

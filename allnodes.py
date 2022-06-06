@@ -108,6 +108,8 @@ class Wire:
         di = self.ip.port
         if self.op.parent_port:
             do = di = 1
+            
+        do = di = 0
 
         if onode.rect.right < inode.rect.left:
             cx = (onode.rect.right + inode.rect.left) // 2
@@ -305,7 +307,6 @@ class Port:
         self.types = types
      
         self.parent_port = None
-        self.group_node = None
         self.node = None
         self.offset = None
                 
@@ -335,6 +336,10 @@ class Port:
     @property
     def manager(self):
         return self.node.manager
+        
+    @property
+    def group_node(self):
+        return self.node.group_node
 
     def get_parent(self):
         if self.group_node:
@@ -348,13 +353,13 @@ class Port:
         p = Port(port, types)
         p.parent_port = self.port
         p.node = self.node
-        p.group_node = self.group_node
         p.rect = self.rect.copy()
         p.desc = self.desc
         p.open_wire()
         n.ports.append(p)
         if self.group_node:
-            self.group_node.ports.append(p)
+            if self in self.group_node.ports:
+                self.group_node.ports.append(p)
         p.offset = (self.offset[0], self.offset[1])
         return p
         
@@ -554,6 +559,7 @@ class Node(ui.Dragger, ui.Base_Object, ui.Position):
         self.id = id
         self.type = type
         self.val = val
+        self.group_node = None
 
         self.ports = ports
         if not self.is_group():
@@ -634,8 +640,9 @@ class Node(ui.Dragger, ui.Base_Object, ui.Position):
         return [label]
 
     def get_string_val(self):
-        if self.val:
-            return self.objects_dict['input'].get_message()
+        input = self.objects_dict.get('input')
+        if input:
+            return input.get_message()
             
     def set_port_pos(self):
         ip = self.get_input_ports()
@@ -702,6 +709,15 @@ class Node(ui.Dragger, ui.Base_Object, ui.Position):
 
     def check_errors(self):
         return ''
+        
+    def get_input_from(self, p):
+        ip = self.get_port(p)
+        if ip.connection:
+            if ip.connection_port.parent_port:
+                return ip.connection.get_output(ip.connection_port.parent_port)
+            else:
+                return ip.connection.get_output(ip.connection_port.port)
+        return self.get_default(ip.port)
      
 #port stuff-------------------------------------------------------------------
 
@@ -785,7 +801,7 @@ class Node(ui.Dragger, ui.Base_Object, ui.Position):
         elif 'string' in port.types:
             name = 'String'
         elif 'player' in port.types:
-            name = 'Player'
+            name = 'User'
         else:
             return 
 
@@ -972,7 +988,7 @@ class GroupNode(Node):
         
     def get_objects(self):
         size = (self.rect.width - 25, self.rect.height - 50)
-        i = ui.Input(size, message=self.val, fgcolor=(0, 0, 0), color=(255, 100, 100), length=25, fitted=True)
+        i = ui.Input(size, message=self.val, fgcolor=(0, 0, 0), color=(255, 100, 100), length=25, fitted=True, double_click=True)
         i.rect.center = self.rect.center
         offset = (i.rect.x - self.rect.x, i.rect.y - self.rect.y)
         self.add_child(i, set_parent=True, offset=offset)
@@ -1004,23 +1020,23 @@ class GroupNode(Node):
         
         for n in nodes:
             n.prune_extra_ports()
+            n.group_node = self
             n.set_visibility(False)
             
             for ip in n.get_input_ports():
                 if (not ip.suppressed or (ip.suppressed and self.port_mem.get(ip, False))) and ip.connection not in nodes:
-                    ip.group_node = self
                     ipp.append(ip)
                 else:
                     ip.set_visibility(False)
                     
             for op in n.get_output_ports():
                 if (not op.suppressed or (op.suppressed and self.port_mem.get(op, False))) and op.connection not in nodes:
-                    op.group_node = self
                     opp.append(op)
                 else:
                     op.set_visibility(False)
 
-        ipp.sort(key=lambda p: p.port)
+        ipp.sort(key=lambda p: p.port if 'flow' not in p.types else 10)
+        opp.sort(key=lambda p: abs(p.port) if 'flow' not in p.types else 10)
         ports = opp + ipp
         
         return ports
@@ -1041,10 +1057,10 @@ class GroupNode(Node):
         sx, sy = self.rect.center
         for n in self.nodes:
             n.set_visibility(True)
+            n.group_node = None
             for p in n.ports:
                 if p.types:
                     p.set_visibility(True)
-                p.group_node = None
             rx, ry = self.rel_node_pos[n]
             n.rect.center = (sx + rx, sy + ry)
             n.set_port_pos()
@@ -1122,7 +1138,61 @@ class Else(Node):
     def get_text(self):
         text = 'else:\n'  
         return text
+ 
+class If_Else(Node):
+    cat = 'flow'
+    subcat = 'conditional'
+    def __init__(self, manager, id):
+        super().__init__(manager, id, [Port(1, ['num'], desc='if true'), Port(2, ['num'], desc='if false'), Port(3, Port.get_comparison_types()), Port(-1, [])])
         
+    def tf(self):
+        ip1 = self.get_port(1)
+        ip2 = self.get_port(2)
+        
+        if 'num' in ip1.types:
+            ip1.set_types(['string'])
+            ip2.set_types(['string'])
+        elif 'string' in ip1.types:
+            ip1.set_types(['player'])
+            ip2.set_types(['player'])
+        elif 'player' in ip1.types:
+            ip1.set_types(['card'])
+            ip2.set_types(['card'])
+        elif 'card' in ip1.types:
+            ip1.set_types(['num'])
+            ip2.set_types(['num'])
+            
+    def update(self):
+        super().update()
+        
+        ip1 = self.get_port(1)
+        ip2 = self.get_port(2)
+        op = self.get_port(-1)
+        
+        t = None
+
+        if ip1.connection:
+            t = ip1.types[0]
+        elif ip2.connection:
+            t = ip2.types[0]
+        if t:
+            if not op.types:
+                op.add_type(t)
+        elif op.types:
+            if op.connection:
+                op.clear()
+            op.set_types([])
+        
+    def get_default(self, p):
+        if p == 1 or p == 2:
+            return '1'
+        elif p == 3:
+            return 'True'
+        
+    def get_output(self, p):
+        text = '{0} if {2} else {1}'.format(*self.get_input())   
+        return text
+ 
 class Bool(Node):
     size = (50, 40)
     cat = 'boolean'
@@ -1132,7 +1202,7 @@ class Bool(Node):
     def get_objects(self):
         size = (self.rect.width - 25, self.rect.height - 25)
         full_check = lambda t: t.lower() in ('', 't', 'f')
-        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=1, fitted=True)
+        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=1, fitted=True, double_click=True)
         i.rect.center = self.rect.center
         offset = (i.rect.x - self.rect.x, i.rect.y - self.rect.y)
         self.add_child(i, set_parent=True, offset=offset)
@@ -1158,7 +1228,7 @@ class Num(Node):
     def get_objects(self):
         full_check = lambda t: (t + '0').strip('-').isnumeric()
         size = (self.rect.width - 25, self.rect.height - 25)
-        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=3, fitted=True)
+        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=3, fitted=True, double_click=True)
         i.rect.center = self.rect.center
         offset = (i.rect.x - self.rect.x, i.rect.y - self.rect.y)
         self.add_child(i, set_parent=True, offset=offset)
@@ -1183,7 +1253,7 @@ class String(Node):
     def get_objects(self):
         full_check = lambda t: t.count("'") < 3
         size = (self.rect.width - 25, self.rect.height - 25)
-        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=50, fitted=True)
+        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=50, fitted=True, double_click=True)
         i.rect.center = self.rect.center
         offset = (i.rect.x - self.rect.x, i.rect.y - self.rect.y)
         self.add_child(i, set_parent=True, offset=offset)
@@ -1204,7 +1274,7 @@ class Line(Node):
     def get_objects(self):
         full_check = lambda t: t.count("'") < 3
         size = (self.rect.width - 25, self.rect.height - 25)
-        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=300, fitted=True, allignment='l', lines=1, scroll=False)
+        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=300, fitted=True, allignment='l', lines=1, scroll=False, double_click=True)
         i.rect.center = self.rect.center
         offset = (i.rect.x - self.rect.x, i.rect.y - self.rect.y)
         self.add_child(i, set_parent=True, offset=offset)
@@ -1227,7 +1297,7 @@ class Block(Node):
     def get_objects(self):
         full_check = lambda t: t.count("'") < 3
         size = (self.rect.width - 25, self.rect.height - 25)
-        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=300, fitted=True, allignment='l', lines=20, scroll=False)
+        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=300, fitted=True, allignment='l', lines=20, scroll=False, double_click=True)
         i.rect.center = self.rect.center
         offset = (i.rect.x - self.rect.x, i.rect.y - self.rect.y)
         self.add_child(i, set_parent=True, offset=offset)
@@ -1689,7 +1759,7 @@ class Length(Node):
 class New_List(Node):
     cat = 'iterator'
     def __init__(self, manager, id):
-        super().__init__(manager, id, [Port(-1, ['ps'], desc='list')], type='dec') 
+        super().__init__(manager, id, [Port(-1, ['ps'], desc='list')]) 
 
     def tf(self):
         op = self.get_port(-1)
@@ -1812,7 +1882,7 @@ class Contains(Node):
     cat = 'iterator'
     subcat = 'boolean'
     def __init__(self, manager, id):
-        super().__init__(manager, id, [Port(1, ['ps', 'cs'], desc='list'), Port(2, ['player', 'card'], desc='value'), Port(-1, ['bool'], desc='value in list')])  
+        super().__init__(manager, id, [Port(1, ['player', 'card'], desc='value'), Port(2, ['ps', 'cs'], desc='list'), Port(-1, ['bool'], desc='value in list')])  
 
     def tf(self):
         p = self.get_port(2)
@@ -1820,12 +1890,12 @@ class Contains(Node):
         
     def get_default(self, p):
         if p == 1:
-            return '[]'
-        elif p == 2:
             return '0'
+        elif p == 2:
+            return '[]'
         
     def get_output(self, p):
-        text = '({1} in {0})'.format(*self.get_input())
+        text = '({0} in {1})'.format(*self.get_input())
         return text
   
 class Has_Tag(Node):
@@ -2068,9 +2138,9 @@ class Start_Select(Node):
         
     def on_connect(self, p):
         if p.port == 1:
-            if not self.manager.exists('get selection'):
-                self.manager.get_node('GetSelection', pos=(self.rect.centerx + self.rect.width + 5, self.rect.centery), held=False)
-            if not self.manager.exists('select'):
+            if not self.manager.exists('Get_Selection'):
+                self.manager.get_node('Get_Selection', pos=(self.rect.centerx + self.rect.width + 5, self.rect.centery), held=False)
+            if not self.manager.exists('Select'):
                 self.manager.get_node('Select', pos=(self.rect.centerx, self.rect.centery + self.rect.height + 25), held=False)
 
     def get_text(self):
@@ -2082,9 +2152,9 @@ class Start_Select(Node):
         
     def check_errors(self):
         text = ''
-        if not self.manager.exists('get selection'):
+        if not self.manager.exists('Get_Selection'):
             text = 'a get selection node must be added to initiate selection process'
-        elif not self.manager.exists('select'):
+        elif not self.manager.exists('Select'):
             text = 'a select node must be added to process player selection'
         return text
             
@@ -2178,7 +2248,7 @@ class Return_Bool(Node):
     cat = 'func'
     subcat = 'item and spell'
     def __init__(self, manager, id):
-        super().__init__(manager, id, [Port(1, ['bool'], desc='return bool'), Port(2, ['flow'])]) 
+        super().__init__(manager, id, [Port(1, Port.get_comparison_types(), desc='return bool'), Port(2, ['flow'])]) 
         
     def update(self):
         super().update()
@@ -2256,11 +2326,11 @@ class Start_Ongoing(Node):
 
     def on_connect(self, p):
         if p.port == 1:
-            if not self.manager.exists('init ongoing'):
-                self.manager.get_node('InitOngoing', pos=(self.rect.centerx + self.rect.width + 5, self.rect.centery), held=False)
-            if not self.manager.exists('add to ongoing'):
-                self.manager.get_node('AddToOg', pos=(self.rect.centerx + (self.rect.width * 2) + 15, self.rect.centery), held=False)
-            if not self.manager.exists('ongoing'):
+            if not self.manager.exists('Init_Ongoing'):
+                self.manager.get_node('Init_Ongoing', pos=(self.rect.centerx + self.rect.width + 5, self.rect.centery), held=False)
+            if not self.manager.exists('Add_To_Ongoing'):
+                self.manager.get_node('Add_To_Ongoing', pos=(self.rect.centerx + (self.rect.width * 2) + 15, self.rect.centery), held=False)
+            if not self.manager.exists('Ongoing'):
                 self.manager.get_node('Ongoing', pos=(self.rect.centerx, self.rect.centery + self.rect.height + 5), held=False)
                 
     def get_text(self):
@@ -2861,6 +2931,25 @@ class Steal_Random(Node):
         return f'c{self.id}'
         
 class Add_Card(Node):
+    cat = 'player'
+    subcat = 'card operator'
+    def __init__(self, manager, id):
+        super().__init__(manager, id, [Port(1, ['player']), Port(2, ['card']), Port(3, ['string'], desc='deck'), Port(4, ['num'], desc='index'), Port(5, ['flow']), Port(-1, ['flow'])])   
+        
+    def get_default(self, p):
+        if p == 1:
+            return 'player'
+        elif p == 2:
+            return 'None'
+        elif p == 3:
+            return 'unplayed'
+        elif p == 4:
+            return 'None'
+
+    def get_text(self):
+        return "{0}.add_card({1}, {2}, i={3})\n".format(*self.get_input())
+        
+class Safe_Add_Card(Node):
     cat = 'player'
     subcat = 'card operator'
     def __init__(self, manager, id):

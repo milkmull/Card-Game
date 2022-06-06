@@ -184,6 +184,15 @@ class Node_Data_Base:
             n.set_stuck(False)
 
         return nodes
+        
+    def new_wire(self, p0, p1):
+        allnodes.Wire(p0, p1)
+        
+    def add_log(self, log):
+        pass
+        
+    def set_active_node(self, n):
+        pass
 
 class Node_Data(Node_Data_Base):
     def __init__(self):

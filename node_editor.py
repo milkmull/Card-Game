@@ -21,7 +21,8 @@ def init():
 def save_group_node(gn):
     nodes = gn.nodes.copy() + [gn]
     data = node_data.pack(nodes)
-    group_data = load_group_data()
+    with open('data/group_nodes.json', 'r') as f:
+        group_data = json.load(f)
     group_data[gn.get_name()] = data
     with open('data/group_nodes.json', 'w') as f:
         json.dump(group_data, f, indent=4)
@@ -369,31 +370,33 @@ class Context_Manager(ui.Compound_Object):
         
         self.objects_dict = {}
         
-        b = ui.Button.text_button('copy', func=self.ne.copy_nodes, size=(100, 20), border_radius=0)
+        kwargs = {'size': (100, 25), 'border_radius': 0, 'color1': (255, 255, 255), 'fgcolor': (0, 0, 0), 'tsize': 12}
+        
+        b = ui.Button.text_button('copy', func=self.ne.copy_nodes, **kwargs)
         self.objects_dict['copy'] = b
         
-        b = ui.Button.text_button('delete', func=self.ne.delete_nodes, size=(100, 20), border_radius=0)
+        b = ui.Button.text_button('delete', func=self.ne.delete_nodes, **kwargs)
         self.objects_dict['delete'] = b
         
-        b = ui.Button.text_button('transform', size=(100, 20), border_radius=0)
+        b = ui.Button.text_button('transform', **kwargs)
         self.objects_dict['transform'] = b
         
-        b = ui.Button.text_button('info', func=ui.Menu.build_and_run, size=(100, 20), border_radius=0)
+        b = ui.Button.text_button('info', func=ui.Menu.build_and_run, **kwargs)
         self.objects_dict['info'] = b
         
-        b = ui.Button.text_button('group', func=self.ne.create_new_group_node, size=(100, 20), border_radius=0)
+        b = ui.Button.text_button('group', func=self.ne.create_new_group_node, **kwargs)
         self.objects_dict['group'] = b
         
-        b = ui.Button.text_button('ungroup', func=self.ne.ungroup_node, size=(100, 20), border_radius=0)
+        b = ui.Button.text_button('ungroup', func=self.ne.ungroup_node, **kwargs)
         self.objects_dict['ungroup'] = b
         
-        b = ui.Button.text_button('paste', func=self.ne.paste_nodes, size=(100, 20), border_radius=0)
+        b = ui.Button.text_button('paste', func=self.ne.paste_nodes, **kwargs)
         self.objects_dict['paste'] = b
         
-        b = ui.Button.text_button('select all', func=self.ne.drag_manager.select_all, size=(100, 20), border_radius=0)
+        b = ui.Button.text_button('select all', func=self.ne.drag_manager.select_all, **kwargs)
         self.objects_dict['select_all'] = b
         
-        b = ui.Button.text_button('clean up', func=self.ne.spread, size=(100, 20), border_radius=0)
+        b = ui.Button.text_button('clean up', func=self.ne.spread, **kwargs)
         self.objects_dict['clean_up'] = b
         
         self.close()
@@ -401,6 +404,9 @@ class Context_Manager(ui.Compound_Object):
     @property
     def objects(self):
         return list(self.objects_dict.values())
+        
+    def is_open(self):
+        return self.rect.topleft != (-100, -100)
         
     def open(self, pos, node):
         self.clear_children()
@@ -460,8 +466,14 @@ class Context_Manager(ui.Compound_Object):
             
     def close(self):
         self.rect.topleft = (-100, -100)
-        for b in self.objects:
+        for b in self.objects_dict.values():
             b.rect.topleft = self.rect.topleft
+
+    def draw(self, surf):
+        super().draw(surf)
+        if self.is_open():
+            for b in self.children[1:]:
+                pg.draw.line(surf, (0, 0, 0), (b.rect.x + 5, b.rect.y - 1), (b.rect.right - 5, b.rect.y - 1), width=2)
 
 #menu stuff--------------------------------------------------------------------
 
@@ -990,7 +1002,7 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         funcs = []
         for n in self.nodes:
             if n.visible:
-                func = mapping.find_chunk(n, [])
+                func = mapping.find_visible_chunk(n, [])
                 if not any({set(o) == set(func) for o in funcs}):
                     funcs.append(func)
 
@@ -1006,6 +1018,7 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
             for col in columns:
                 r = pg.Rect(0, 0, 0, 0)
                 for n in col:
+                    print(n, n.visible)
                     n.start_held()
                     n.rect.topleft = (x, y)
                     y += n.rect.height + 10
@@ -1038,7 +1051,6 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
             
             for n in nodes:
                 n.rect.move_ip(dx, dy)
-                n.set_port_pos()
                 dist = n.get_carry_dist()
                 if dist:
                     draggers[n] = dist
@@ -1059,7 +1071,7 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
                 info_node = n
                 break
         if info_node:
-            m = ui.Menu(get_objects=screens.info_menu, args=[n])
+            m = ui.Menu(get_objects=screens.info_menu, args=[n], fill_color=(100, 0, 0))
             m.run()
 
 #run stuff--------------------------------------------------------------------

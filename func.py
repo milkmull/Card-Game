@@ -273,20 +273,16 @@ class Fox(Card):
         
     def start(self, player):
         player.add_request(self, 'select')
-        
         if self.game.check_first(player):
-            
             c = self.copy()
             player.add_request(c, 'flip')
     
     def select(self, player, num):
         if num:
-
             player.steal(self, 5, player.selected.pop(0))
             
     def coin(self, player, coin):
         if coin:
-            
             player.draw_cards('treasure')
             
 class Cow(Card):
@@ -580,7 +576,6 @@ class LastTurnPass(Card):
                 
     def start(self, player):
         if self.game.players[-1] != player:
-        
             self.game.shift_down(player)
             player.use_item(self)
                 
@@ -592,7 +587,6 @@ class SpeedBoostPotion(Card):
 
     def start(self, player):
         if self.game.players[0].pid != player.pid:
-
             self.game.shift_up(player)
             player.use_item(self)
         
@@ -975,7 +969,6 @@ class FutureOrb(Card):
     def get_target(self, player):
         i = self.game.players.index(player) - 1
         p = self.game.players[i]
-        
         return p
         
     def can_use(self, player):  
@@ -1014,10 +1007,8 @@ class Knife(Card):
             
     def select(self, player, num):
         if num:
-            
             c = player.selected.pop(0)
             c = self.game.transform(c, 'ghost')
-
             player.use_item(self)
             
 class MagicWand(Card):
@@ -1094,7 +1085,7 @@ class Jumble(Card):
     name = 'jumble'
     tags = ['monster']
     def start(self, player):
-        if player.has_card('item hex', deck='ongoing'): 
+        if player.has_card('item hex', deck='active_spells'): 
             player.draw_cards('treasure', 2)    
         self.deploy(player, self.sort_players(player), 'flip')
             
@@ -1179,9 +1170,7 @@ class LemonLord(Card):
         
     def ongoing(self, player, log):
         i = player.played.index(self)
-        
         for i in range(i + 1, len(player.played)):
-            
             added, c = self.check_index(player, i, tags=['plant'])
             if added:
                 player.gain(self, 5)
@@ -1193,8 +1182,6 @@ class Wizard(Card):
         if len(player.selected) == 0:
             return player.active_spells.copy() 
         elif len(player.selected) == 1: 
-            if player.pid == 0 and not player.is_auto():
-                print('yeet')
             return [p for p in self.sort_players(player) if player.selected[0].can_cast(p)]
 
     def start(self, player):
@@ -1515,17 +1502,12 @@ class MetalDetector(Card):
             
     def start(self, player):
         items = self.game.get_discarded_items()[::-1]
-        
         while items:
-            
             i = items.pop(0)
-            
             if not self.game.check_exists(i.uid):
-
                 self.game.restore(i)
                 player.add_card(i, 'items')
                 player.use_item(self)
-                
                 break
             
 class SandStorm(Card):
@@ -1541,7 +1523,6 @@ class SandStorm(Card):
     def ongoing(self, player, log):
         played = [p.played for p in self.game.players]
         random.shuffle(played)
-        
         for p, played in zip(self.game.players, played):
             p.new_deck('played', played)
 
@@ -1671,7 +1652,7 @@ class Bear(Card):
     def start(self, player):
         sp = 4 if self.game.is_event('parade') else 2
         for p in self.sort_players(player, 'steal'):   
-            player.steal(self, sum(sp for c in p.played if 'human' in c.tags), p)
+            player.steal(self, sum([sp for c in p.played if 'human' in c.tags]), p)
             
 class BigRock(Card):
     name = 'big rock'
@@ -1687,15 +1668,11 @@ class BigRock(Card):
             
     def select(self, player, num):
         if num:
-
             c1 = player.selected.pop(0)
             c2 = self.game.get_card(c1.name)
-
             if c1 in player.played:
-            
                 i = player.played.index(c1) + 1
                 player.add_card(c2, 'played', i=i)
-
                 player.use_item(self)
             
 class UnluckyCoin(Card):

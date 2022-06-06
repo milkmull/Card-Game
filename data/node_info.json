@@ -35,6 +35,16 @@
             "-2": null
         }
     },
+	"If_Else": {
+		"info": "This node can be used to easily decide on a value based on some criteria. If the input boolean value is True, the first input value will be returned, otherwise, the secon value will be returned.",
+        "tips": "You can trandform this node to decide between numeric values, strings, cards and players.",
+        "ports": {
+            "1": "This value will be output if the boolean input is True.",
+            "2": "This value will be output if the boolean input is False.",
+            "3": "This is the boolean input that will decide which value to output.",
+            "-1": "This vaule will be either the value at port 1 if the boolean value is True, or the value at port 2 if the boolean value is False."
+        }
+	},
     "Bool": {
         "info": "Produces a boolean value of either True or False. Type 'T' or 't' for True, and 'F' for 'f' for False.",
         "tips": "If a node requires a boolean input, double click on the boolean input port to spawn a 'Bool' node that will automatically be wired into the port.",
@@ -364,8 +374,8 @@
         "info": "This node checks if a value is in a list. If the value is found, it returns True, otherwise False.",
         "tips": "Use this node to check if a value is in a list before attempting to remove it.",
         "ports": {
-            "1": "List to check for value in.",
-            "2": "Value to check for.",
+            "1": "Value to check for.",
+            "2": "List to check for value in.",
             "-1": "Returns True if value is in list, and False if not."
         }
     },
@@ -882,6 +892,18 @@
         }
     },
     "Add_Card": {
+        "info": "This node is used to give a card to a player. The deck that the card will be placed in can be specified by a string and will default to 'unplayed'. The index where the card will be placed can also be specified, the default will be the end of the deck.",
+        "tips": "If you add a card to the 'played' deck, if the card has an ongoing function, it will automatically trigger.",
+        "ports": {
+            "1": "The player who will receive the card. This will default to the user.",
+            "2": "The card to be given to the player. This will default to a 'None' value.",
+            "3": "The deck which the card will be added. This will default to 'played'. It should be noted that cards should only be added to the 'played', 'unplayed', 'items', 'spells', 'treasure', and 'landscapes' decks.",
+            "4": "The index where the card will be inserted into the deck. This will default to -1 (the end of the deck). An 'IndexError' will be thrown if the index is out of range.",
+			"5": null,
+			"-1": null
+        }
+    },
+    "Safe_Add_Card": {
         "info": "This node is used to give a card to a player. It will automatically add the card to the correct deck of the specified player based on the card's type.",
         "tips": null,
         "ports": {

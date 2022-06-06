@@ -21,7 +21,7 @@ def is_valid_code(code):
         return False
     return True
 
-class Card(ui.Advanced_Object):
+class Card(ui.Compound_Object):
     IMAGE_SIZE = (card_width - 75, 210)
     @staticmethod
     def build_card(info):
@@ -37,8 +37,10 @@ class Card(ui.Advanced_Object):
             pic = pg.Surface(cls.IMAGE_SIZE).convert_alpha()
         return pic
         
-    def __init__(self, name='Title', description='description', tags='tags', color=[161, 195, 161], id=None, 
-                 image='', node_data={}, weight=1, code='', lines=(0, 0), published=False, **kwargs):
+    def __init__(
+        self, name='Title', type='play', description='description', tags=None, color=[161, 195, 161], id=None, 
+        image='', node_data={}, weight=1, code='', lines=(0, 0), published=False, **kwargs
+    ):
         super().__init__()
         
         self.id = id
@@ -47,6 +49,9 @@ class Card(ui.Advanced_Object):
         self.code = code
         self.lines = lines
         self.published = published
+        
+        if tags is None:
+            tags = []
 
         self.image = pg.Surface(card_size).convert_alpha()
         self.image.fill((50, 50, 50))
@@ -75,6 +80,7 @@ class Card(ui.Advanced_Object):
         pic_outline.rect.centerx = bg.rect.centerx
         pic_outline.rect.y = name.rect.bottom + 6
         self.objects_dict['pic_outline'] = pic_outline
+        self.add_child(pic_outline, current_offset=True)
 
         pic = ui.Image(Card.load_pic(image))
         pic.rect.center = pic_outline.rect.center
@@ -87,19 +93,42 @@ class Card(ui.Advanced_Object):
         desc.rect.y += 300
         self.add_child(desc, current_offset=True)
         self.objects_dict['desc'] = desc
+        
+        type_box_image = ui.Image_Manager.get_surface(((pic.rect.width // 3) - 4, 20), color=(255, 255, 255), olcolor=(0, 0, 0))
+        type_box = ui.Image(type_box_image)
+        type_box.rect.x = pic.rect.x
+        type_box.rect.y += 475
+        self.add_child(type_box, current_offset=True)
+        self.objects_dict['type_box'] = type_box
+        type_rect = type_box_image.get_rect()
+        
+        type = ui.Textbox(type, tsize=45, fgcolor=(0, 0, 0))
+        type.fit_text(type_rect)
+        type.rect.center = type_box.rect.center
+        self.add_child(type, current_offset=True)
+        self.objects_dict['type'] = type
+        
+        tags_box_image = ui.Image_Manager.get_surface((pic.rect.width - type.rect.width - 4, 20), color=(255, 255, 255), olcolor=(0, 0, 0))
+        tags_box = ui.Image(tags_box_image)
+        tags_box.rect.right = pic.rect.right
+        tags_box.rect.y += 475
+        self.add_child(tags_box, current_offset=True)
+        self.objects_dict['tags_box'] = tags_box
+        tags_rect = tags_box_image.get_rect()
 
-        tags_box = ui.Image_Manager.get_surface((230, 20), color=(255, 255, 255), olcolor=(0, 0, 0))
-        tags = ui.Input.from_image(tags_box, message=str(tags), fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=50)
-        tags.rect.centerx = bg.rect.centerx
-        tags.rect.y += 475
+        tags = ui.Textbox(str(tags).replace("'", ''), tsize=45, fgcolor=(0, 0, 0))
+        tags.fit_text(tags_rect)
+        tags.rect.center = tags_box.rect.center
         self.add_child(tags, current_offset=True)
         self.objects_dict['tags'] = tags
-        
-        self.objects = list(self.objects_dict.values())
       
     @property
     def name(self):
         return self.objects_dict['name'].get_message().lower()
+        
+    @property
+    def type(self):
+        return self.objects_dict['type'].get_message()
         
     @property
     def description(self):
@@ -107,7 +136,10 @@ class Card(ui.Advanced_Object):
         
     @property
     def tags(self):
-        return self.objects_dict['tags'].get_message()
+        tags = self.objects_dict['tags'].get_message().strip('[]').split(', ')
+        if '' in tags:
+            tags.remove('')
+        return tags
         
     @property
     def classname(self):
@@ -138,6 +170,7 @@ class Card(ui.Advanced_Object):
     def get_info(self):
         info = {
             'name': self.name,
+            'type': self.type,
             'description': self.description,
             'tags': self.tags, 
             'color': self.color, 
@@ -157,7 +190,7 @@ class Card(ui.Advanced_Object):
         return self.id == 0
         
     def set_color(self, color):
-        self.objects_dict['bg'].fill(color)
+        self.objects_dict['bg'].fill(color)  
             
     def update_image(self, img):
         self.objects_dict['pic'].set_image(img)
@@ -167,9 +200,39 @@ class Card(ui.Advanced_Object):
         
     def get_card_image(self):
         image = self.image.copy()
-        for o in self.objects:
-            o.draw_on(image, self.rect)
+        self.draw(image)
         return image
+        
+    def set_type(self, type):
+        tb = self.objects_dict['type']
+        tb.set_message(type)
+        r = self.objects_dict['type_box'].image.get_rect()
+        tb.fit_text(r)
+        tb.rect.center = self.objects_dict['type_box'].rect.center
+        tb.set_current_offset()
+        
+    def add_tag(self, tag):
+        tags = self.tags
+        print(tags)
+        if tag not in tags:
+            tags.append(tag)
+            tb = self.objects_dict['tags']
+            tb.set_message(str(tags).replace("'", ''))
+            r = self.objects_dict['tags_box'].image.get_rect()
+            tb.fit_text(r)
+            tb.rect.center = self.objects_dict['tags_box'].rect.center
+            tb.set_current_offset()
+        
+    def remove_tag(self, tag):
+        tags = self.tags
+        if tag in tags:
+            tags.remove(tag)
+            tb = self.objects_dict['tags']
+            tb.set_message(str(tags).replace("'", ''))
+            r = self.objects_dict['tags_box'].image.get_rect()
+            tb.fit_text(r)
+            tb.rect.center = self.objects_dict['tags_box'].rect.center
+            tb.set_current_offset()
 
     def set_node_data(self, nodes):
         data = node_data.pack(nodes)
@@ -225,8 +288,7 @@ class Card(ui.Advanced_Object):
         m.run()
         
     def draw(self, surf):
-        for o in self.objects:
-            o.draw_on(self.image, self.rect)
+        super().draw(surf)
         surf.blit(self.image, self.rect)
             
     def save(self, nodes=None, suppress=False):
