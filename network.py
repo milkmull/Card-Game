@@ -9,6 +9,13 @@ from net_base import Network_Base
 
 import exceptions
 
+def get_exception(e):
+    if e is OSError:
+        errno = e.args[0]
+        if errno == 98:
+            return exceptions.PortInUse
+    return e
+
 def find_connections():
     out = subprocess.check_output(['arp', '-a']).decode()
     ips = re.findall(r'[0-9]+(?:\.[0-9]+){3}', out)
@@ -18,6 +25,7 @@ class Network(Network_Base):
     def __init__(self, server, port):
         super().__init__(server, port)
         self.send_player_info()
+        self.connected = True
         
     def get_sock(self, timeout=3):
         connections = {}
@@ -66,31 +74,60 @@ class Network(Network_Base):
         info['name'] = SAVE.get_data('username')
         with open(info['image'], 'rb') as f:
             image = f.read()
-        info['raw_image'] = self.encode_bytes(image)
+        info['raw_image'] = self.b64encode(image)
 
         data = bytes(self.dump_json(info), encoding='utf-8')
-        self.send_large_raw(data)
+        try:
+            self.send_large_raw(data)
+        except socket.error:
+            self.close()
+        except Exception as e:
+            self.raise_exception(e)
 
     def recieve_player_info(self, pid):
-        self.send(f'getinfo{pid}')
-        
-        info = self.recv_large_raw()
-        info = self.load_json(info)
-        image = self.decode_bytes(info['raw_image'])
+        try:
+            self.send(f'getinfo{pid}')
+            info = self.load_json(self.recv_large_raw())
+        except socket.error:
+            self.close()
+            return
+        except Exception as e:
+            self.raise_exception(e)
+
+        image = self.b64decode(info['raw_image'])
 
         try:
             with open(info['image'], 'wb') as f:
                 f.write(image)
-        except OSError as e:
-            errno = e.args[0]
-            if errno != 13:
-                raise e
+        except Exception as e:
+            self.raise_exception(e)
 
         return info
         
     def send_and_recv(self, data):
-        return self.load_json(super().send_and_recv(data))
+        reply = None
+        if self.connected:
+            try:
+                self.send(data)
+                reply = self.load_json(self.recv())
+            except socket.error:
+                self.close()
+        return reply
 
     def close(self):
-        self.send('disconnect')
         super().close()
+        
+        info = self.pop_exception()
+        if info:
+            e, tb = info
+            print(f'client closed with error: {e}')
+            print(tb)
+        else:
+            print('client closed')
+            
+    def get_exception(self, e):
+        if e is OSError:
+            errno = e.args[0]
+            if errno == 13:
+                return
+        return e

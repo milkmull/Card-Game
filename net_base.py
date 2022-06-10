@@ -7,9 +7,9 @@ import base64
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(('8.8.8.8', 80))
-    local_ip = s.getsockname()[0]
+    ip = s.getsockname()[0]
     s.close()
-    return local_ip
+    return ip
     
 def get_public_ip():
     ip = None
@@ -29,12 +29,20 @@ class Network_Base:
         return json.dumps(data)
         
     @staticmethod
-    def encode_bytes(data):
+    def b64encode(data):
         return base64.b64encode(data).decode('utf-8')
         
     @staticmethod
-    def decode_bytes(data):
+    def b64decode(data):
         return base64.b64decode(data)
+        
+    @staticmethod
+    def encode(data):
+        return bytes(data, encoding='utf-8')
+        
+    @staticmethod
+    def decode(data):
+        return data.decode()
         
     @staticmethod
     def get_sock(timeout=3):
@@ -53,27 +61,43 @@ class Network_Base:
         
         self.sock = self.get_sock(timeout=timeout)
         
-        self.errors = []
+        self.exceptions = []
         
     @property
     def address(self):
         return (self.server, self.port)
         
-    def add_error(self, err):
+    def add_exception(self, err):
         info = (err, traceback.format_exc())
-        self.errors.append(info)
+        self.exceptions.append(info)
         
-    def get_error(self):
-        if self.errors:
-            return self.errors.pop(-1)
+    def pop_exception(self):
+        if self.exceptions:
+            return self.exceptions.pop(-1)
+            
+    def get_exception(self, e):
+        return e
+            
+    def raise_exception(self, e):
+        self.close()
+        e = self.get_exception(e)
+        if e is not None:
+            raise e
+        
+    def raise_last(self):
+        info = self.pop_exception()
+        if info:
+            self.raise_exception(info[0])
         
     def close(self):
-        for address, conn in self.connections.items():
+        for address, conn in self.connections.copy().items():
             self.close_connection(conn, address)
         self.sock.close()
+        self.connected = False
+        self.listening = False
         
     def check_close(self):
-        return self.errors
+        return self.exceptions
 
     def start_server(self):
         self.connected = False
@@ -81,7 +105,7 @@ class Network_Base:
             self.sock.bind(self.address)
             self.connected = True
         except Exception as e:
-            self.add_error(e)
+            self.add_exception(e)
         return self.connected
         
     def connect(self):
@@ -90,7 +114,7 @@ class Network_Base:
             self.sock.connect(self.address)
             self.connected = True
         except Exception as e:
-            self.add_error(e)
+            self.add_exception(e)
         return self.connected
             
     def add_connection(self, conn, address):
@@ -110,8 +134,7 @@ class Network_Base:
             except socket.timeout:
                 pass
             except Exception as e:
-                self.add_error(e)
-                self.listening = False
+                self.raise_exception(e)
             if self.check_close():
                 self.close()
                 break
@@ -121,29 +144,19 @@ class Network_Base:
         conn.sendall(data)
         
     def _recv(self, conn, chunk_size):
-        return conn.recv(chunk_size)
+        return conn.recv(chunk_size).decode()
     
     def send(self, data, conn=None, raw=False):
         if conn is None:
             conn = self.sock
-        sent = False
         if not raw:
             data = bytes(data, encoding='utf-8')
-        try:
-            conn.sendall(data)
-            sent = True
-        except Exception as e:
-            self.add_error(e)
-        return sent
+        conn.sendall(data)
         
     def recv(self, conn=None, raw=False, chunk_size=4096):
         if conn is None:
             conn = self.sock
-        data = None
-        try:
-            data = conn.recv(chunk_size)
-        except Exception as e:
-            self.add_error(e)
+        data = conn.recv(chunk_size)
         if not raw and data is not None:
             data = data.decode()
         return data
