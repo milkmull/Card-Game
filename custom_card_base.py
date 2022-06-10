@@ -1,4 +1,5 @@
 import os
+import shutil
 import ast
 
 import pygame as pg
@@ -23,10 +24,11 @@ def is_valid_code(code):
 
 class Card(ui.Compound_Object):
     IMAGE_SIZE = (card_width - 75, 210)
-    @staticmethod
-    def build_card(info):
-        c = Card(**info)
-        return c.get_card_image()
+    
+    @classmethod
+    def build_card(cls, info):
+        self = cls(**info)
+        return self.get_card_image()
         
     @classmethod
     def load_pic(cls, path):
@@ -39,10 +41,11 @@ class Card(ui.Compound_Object):
         
     def __init__(
         self, name='Title', type='play', description='description', tags=None, color=[161, 195, 161], id=None, 
-        image='', node_data={}, weight=1, code='', lines=(0, 0), published=False, **kwargs
+        image='', sound=None, node_data={}, weight=1, code='', lines=(0, 0), published=False, **kwargs
     ):
         super().__init__()
         
+        self.sound = sound
         self.id = id
         self.node_data = node_data
         self.weight = weight
@@ -121,6 +124,8 @@ class Card(ui.Compound_Object):
         tags.rect.center = tags_box.rect.center
         self.add_child(tags, current_offset=True)
         self.objects_dict['tags'] = tags
+        
+        self.update()
       
     @property
     def name(self):
@@ -167,6 +172,10 @@ class Card(ui.Compound_Object):
     def image_path(self):
         return f'img/custom/{self.id}.png'
         
+    @property
+    def sound_path(self):
+        return f'snd/custom/{self.id}.wav'
+        
     def get_info(self):
         info = {
             'name': self.name,
@@ -175,6 +184,7 @@ class Card(ui.Compound_Object):
             'tags': self.tags, 
             'color': self.color, 
             'image': self.image_path,
+            'sound': self.sound,
             'id': self.id,
             'weight': self.weight, 
             'classname': self.classname, 
@@ -199,9 +209,9 @@ class Card(ui.Compound_Object):
         self.objects_dict['pic'].fill(self.color)
         
     def get_card_image(self):
-        image = self.image.copy()
-        self.draw(image)
-        return image
+        img = self.image.copy()
+        self.draw(img)
+        return img
         
     def set_type(self, type):
         tb = self.objects_dict['type']
@@ -233,6 +243,16 @@ class Card(ui.Compound_Object):
             tb.fit_text(r)
             tb.rect.center = self.objects_dict['tags_box'].rect.center
             tb.set_current_offset()
+            
+    def set_sound(self):
+        path = 'snd/temp/custom.wav'
+        if os.path.exists(path):
+            shutil.copyfile(path, self.sound_path)
+            self.sound = self.sound_path
+        else:
+            if os.path.exists(self.sound_path):
+                os.remove(self.sound_path)
+            self.sound = None
 
     def set_node_data(self, nodes):
         data = node_data.pack(nodes)
@@ -292,14 +312,13 @@ class Card(ui.Compound_Object):
         surf.blit(self.image, self.rect)
             
     def save(self, nodes=None, suppress=False):
+        self.set_sound()
+        
         if nodes is not None:
             self.set_node_data(nodes)
             
         import customsheet
-        CUSTOMSHEET = customsheet.get_sheet()
-        if not CUSTOMSHEET:
-            return
-        saved = CUSTOMSHEET.save_card(self)
+        saved = customsheet.CUSTOMSHEET.save_card(self)
         if not suppress:
             if not saved:
                 menu = ui.Menu.notice('A card with that name already exists.', overlay=True)

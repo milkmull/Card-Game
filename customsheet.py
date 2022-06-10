@@ -1,25 +1,21 @@
-import os
 import pygame as pg
-import save
+
+from save import SAVE, CONSTANTS, BASE_NAMES
+
 from spritesheet_base import Base_Sheet
 from custom_card_base import Card
-from constants import *
 
-def init():
-    globals()['SAVE'] = save.get_save()
-    globals()['CUSTOMSHEET'] = Customsheet()
-
-def get_sheet():
-    return globals().get('CUSTOMSHEET')
+CARD_WIDTH, CARD_HEIGHT = CONSTANTS['card_size']
     
 class Customsheet(Base_Sheet):
     @staticmethod
     def get_blank_custom():
+        import os
         if os.path.exists('img/user.png'):
             img = pg.image.load('img/user.png').convert()
         else:
             img = pg.Surface((1, 1)).convert() 
-        img = pg.transform.smoothscale(img, (card_width - 75, 210))
+        img = pg.transform.smoothscale(img, (CARD_WIDTH - 75, 210))
         return img
     
     def __init__(self):
@@ -32,6 +28,10 @@ class Customsheet(Base_Sheet):
             path = d['image']
             self.get_card_image(path)
             
+    @property
+    def cards(self):
+        return SAVE.get_data('cards')
+            
     def reset(self):
         self.create_blank_sheet()
         c = Card(**self.cards[0])
@@ -40,20 +40,15 @@ class Customsheet(Base_Sheet):
     def refresh(self):
         self.names = tuple([c['name'] for c in self.cards])
         self.refresh_sheet()
-        
-    @property
-    def cards(self):
-        return SAVE.get_data('cards')
-        
+    
     def create_blank_sheet(self):
         cards = self.cards
         if len(cards) < 9:
-            w = 375 * len(cards)
-            h = 525
+            w = CARD_WIDTH * len(cards)
+            h = CARD_HEIGHT
         else:
-            w = 375 * 9
-            h = 575 * ((len(cards) // 9) + 1)
-        print(w, h)
+            w = CARD_WIDTH * 9
+            h = CARD_HEIGHT * ((len(cards) // 9) + 1)
         surf = pg.Surface((w, h)).convert()
         self.resave_sheet(surf)
         
@@ -80,7 +75,7 @@ class Customsheet(Base_Sheet):
             return self.names.index(name)
             
     def check_exists(self, card):
-        if card.name in NAMES:
+        if card.name in BASE_NAMES:
             return True
         if card.name in self.names and card.id != self.get_id(card.name):
             return True
@@ -100,19 +95,19 @@ class Customsheet(Base_Sheet):
 
         if id <= num - 1:
             surf = sheet
-            pos = ((id % 9) * 375, (id // 9) * 525)
+            pos = ((id % 9) * CARD_WIDTH, (id // 9) * CARD_HEIGHT)
         elif not cards:
-            surf = pg.Surface((375, 525)).convert()
+            surf = pg.Surface((CARD_WIDTH, CARD_HEIGHT)).convert()
             pos = (0, 0)
         elif not num % 9:
-            surf = pg.Surface((sheet.get_width(), sheet.get_height() + 525)).convert()
+            surf = pg.Surface((sheet.get_width(), sheet.get_height() + CARD_HEIGHT)).convert()
             pos = (0, sheet.get_height())
         elif num < 9:
-            surf = pg.Surface((sheet.get_width() + 375, 525)).convert()
-            pos = (num * 375, 0)
+            surf = pg.Surface((sheet.get_width() + CARD_WIDTH, CARD_HEIGHT)).convert()
+            pos = (num * CARD_WIDTH, 0)
         else:
             surf = pg.Surface(sheet.get_size()).convert()
-            pos = ((num % 9) * 375, (num // 9) * 525)
+            pos = ((num % 9) * CARD_WIDTH, (num // 9) * CARD_HEIGHT)
 
         surf.blit(sheet, (0, 0))
         surf.blit(card.get_card_image(), pos)
@@ -132,35 +127,37 @@ class Customsheet(Base_Sheet):
             return
             
         if len(cards) < 10:
-            surf = pg.Surface((sheet.get_width() - 375, 525)).convert()
-            x = id * 375
-            surf.blit(sheet, (0, 0), (0, 0, x, 525))
-            surf.blit(sheet, (x, 0), (x + 375, 0, sheet.get_width() - (x + 375), 525))
+            surf = pg.Surface((sheet.get_width() - CARD_WIDTH, CARD_HEIGHT)).convert()
+            x = id * CARD_WIDTH
+            surf.blit(sheet, (0, 0), (0, 0, x, CARD_HEIGHT))
+            surf.blit(sheet, (x, 0), (x + CARD_WIDTH, 0, sheet.get_width() - (x + CARD_WIDTH), CARD_HEIGHT))
 
         else:
             if (len(cards) - 1) % 9 == 0:
-                size = (375 * 9, sheet.get_height() - 525)
+                size = (CARD_WIDTH * 9, sheet.get_height() - CARD_HEIGHT)
             else:
-                size = (375 * 9, sheet.get_height())
+                size = (CARD_WIDTH * 9, sheet.get_height())
                 
             surf = pg.Surface(size).convert()
             found = False
             
-            for row in range(sheet.get_height() // 525):
+            for row in range(sheet.get_height() // CARD_HEIGHT):
                 
                 if not found:
                     if id // 9 == row:           
-                        x = (id % 9) * 375
-                        y = row * 525
-                        surf.blit(sheet, (0, y), (0, y, x, 525))
-                        surf.blit(sheet, (x, y), (x + 375, y, sheet.get_width() - (x + 375), 525))
+                        x = (id % 9) * CARD_WIDTH
+                        y = row * CARD_HEIGHT
+                        surf.blit(sheet, (0, y), (0, y, x, CARD_HEIGHT))
+                        surf.blit(sheet, (x, y), (x + CARD_WIDTH, y, sheet.get_width() - (x + CARD_WIDTH), CARD_HEIGHT))
                         found = True
                     else:
-                        surf.blit(sheet, (0, row * 525), (0, row * 525, sheet.get_width(), 525))
+                        surf.blit(sheet, (0, row * CARD_HEIGHT), (0, row * CARD_HEIGHT, sheet.get_width(), CARD_HEIGHT))
                 else:
-                    surf.blit(sheet, (8 * 375, (row - 1) * 525), (0, row * 525, 375, 525))
-                    surf.blit(sheet, (0, row * 525), (375, row * 525, 8 * 375, 525))
+                    surf.blit(sheet, (8 * CARD_WIDTH, (row - 1) * CARD_HEIGHT), (0, row * CARD_HEIGHT, CARD_WIDTH, CARD_HEIGHT))
+                    surf.blit(sheet, (0, row * CARD_HEIGHT), (CARD_WIDTH, row * CARD_HEIGHT, 8 * CARD_WIDTH, CARD_HEIGHT))
         
         self.resave_sheet(surf)
         SAVE.del_card(entry)
         self.refresh()
+        
+CUSTOMSHEET = Customsheet()

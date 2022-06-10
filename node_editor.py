@@ -3,20 +3,16 @@ import difflib
 
 import pygame as pg
 
-import save
-from custom_card_base import Card
-import node_parser
+from save import CONSTANTS
+
 import node_data
 import mapping
 import tester
 import ui
 import screens
-from constants import *
 
-def init():
-    tester.init()
-    node_data.init()
-    globals()['SAVE'] = save.get_save()
+WIDTH, HEIGHT = CONSTANTS['screen_size']
+CENTER = CONSTANTS['center']
    
 def save_group_node(gn):
     nodes = gn.nodes.copy() + [gn]
@@ -72,7 +68,7 @@ class Node_Menu(ui.Compound_Object):
 
         p = ui.Live_Popup((450, 350), vel=60, hide_label=True)
         p.set_inflation(x=175, y =-100)
-        p.rect.midtop = (width // 2, height)
+        p.rect.midtop = (WIDTH // 2, HEIGHT)
         self.rect = p.rect
         self.add_child(p, current_offset=True)
         self.popup = p
@@ -520,7 +516,7 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         self.anchor = None
 
         self.info_box = pg.Rect(0, 0, 100, 100)
-        self.info_box.topright = (width, 0)
+        self.info_box.topright = (WIDTH, 0)
         self.info_node = None
         
         self.log = []
@@ -557,7 +553,7 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
             b = ui.Button.text_button(name, size=(100, 30), border_radius=0, func=self.load_group_node, args=[name, data], tsize=15)
             buttons.append(b)
 
-        sb = Search_Bar(buttons, (width, height))
+        sb = Search_Bar(buttons, (WIDTH, HEIGHT))
         self.objects_dict['search_bar'] = sb
         objects.append(sb)
 
@@ -618,7 +614,7 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
         objects.append(b)
         
         self.info_box = pg.Rect(0, 0, 50, 50)
-        self.info_box.topright = (width - 20, 20)
+        self.info_box.topright = (WIDTH - 20, 20)
         
         b = ui.Button.text_button('See node info', func=self.check_info, tsize=15)
         b.rect.midtop = self.info_box.midbottom
@@ -1011,8 +1007,8 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
             columns = mapping.map_flow(lead, nodes.copy(), {})
             columns = [columns[key][::-1] for key in sorted(columns)]
             
-            x = width // 2
-            y = height // 2
+            x = WIDTH // 2
+            y = HEIGHT // 2
             cy = y
             
             for col in columns:
@@ -1031,7 +1027,7 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
                     n.set_port_pos()
       
                 x += max({n.rect.width for n in col}) + 20
-                y = height // 2
+                y = HEIGHT // 2
 
         draggers = {}
 
@@ -1057,7 +1053,7 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
                 n.drop()
                 
             y += r.height + 20
-            if y > height - 100:
+            if y > HEIGHT - 100:
                 y = 50
                 x += r.width + 20
                 
@@ -1082,7 +1078,7 @@ class Node_Editor(ui.Menu, node_data.Node_Data):
     def run(self):
         self.running = True
         while self.running:
-            self.clock.tick(fps)
+            self.clock.tick(self.fps)
             self.events()
             self.update()
             self.draw()

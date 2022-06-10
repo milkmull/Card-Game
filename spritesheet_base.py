@@ -1,4 +1,8 @@
 import pygame as pg
+
+from save import CONSTANTS
+
+CARD_WIDTH, CARD_HEIGHT = CONSTANTS['card_size']
     
 class Sheet_Manager:
     CACHE = {}
@@ -44,10 +48,10 @@ class Base_Sheet:
             return
             
         i = self.names.index(name)
-        x, y = ((i % 9) * 375, (i // 9) * 525)
+        x, y = ((i % 9) * CARD_WIDTH, (i // 9) * CARD_HEIGHT)
         
-        img = pg.Surface((375, 525)).convert()
-        img.blit(self.sheet, (0, 0), (x, y, 375, 525))
+        img = pg.Surface((CARD_WIDTH, CARD_HEIGHT)).convert()
+        img.blit(self.sheet, (0, 0), (x, y, CARD_WIDTH, CARD_HEIGHT))
         if size:
             img = pg.transform.smoothscale(img, size)
         

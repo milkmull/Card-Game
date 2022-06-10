@@ -1,16 +1,45 @@
-import os, json, copy
+import os
+import json
+import copy
 
-def init():
-    globals()['SAVE'] = Save()
-
-def get_save():
-    return globals().get('SAVE')    
-    
 def load_json(file):
     with open(file, 'r') as f:
         data = json.load(f)
     return data
+    
+BASE_NAMES = (
+    'michael', 'dom', 'jack', 'mary', 'daniel', 'emily', 'gambling boi', 'mom', 'dad',
+    'aunt peg', 'uncle john', 'kristen', 'joe', 'robber', 'ninja', 'item frenzy', 'mustard stain', 'gold coins',
+    'gold', 'max the dog', 'basil the dog', 'copy cat', 'racoon', 'fox', 'cow', 'shark', 'fish',
+    'pelican', 'lucky duck', 'lady bug', 'mosquito', 'snail', 'dragon', 'clam', 'pearl', 'uphalump',
+    'flu', 'cactus', 'poison ivy', 'rose', 'mr. squash', 'mrs. squash', 'ghost', 'fishing pole', 'invisibility cloak',
+    'last turn pass', 'detergent', 'treasure chest', 'speed boost potion', 'fertilizer', 'mirror', 'sword', 'spell trap', 'item leech',
+    'curse', 'treasure curse', 'bronze', 'negative zone', 'item hex', 'luck', 'fishing trip', 'bath tub', 'boomerang',
+    'future orb', 'knife', 'magic wand', 'lucky coin', 'sapling', 'vines', 'zombie', 'jumble', 'demon water glass',
+    'succosecc', 'sunflower', 'lemon lord', 'wizard', 'haunted oak', 'spell reverse', 'sunny day', 'garden', 'desert',
+    'fools gold', 'graveyard', 'city', 'wind gust', 'sunglasses', 'metal detector', 'sand storm', 'mummy', 'mummys curse',
+    'pig', 'corn', 'harvest', 'golden egg', 'bear', 'big rock', 'unlucky coin', 'trap', 'hunting season',
+    'stardust', 'water lily', 'torpedo', 'bat', 'sky flower', 'kite', 'balloon', 'north wind', 'garden snake',
+    'flower pot', 'farm', 'forest', 'water', 'sky', 'office fern', 'parade', 'camel', 'rattle snake',
+    'tumble weed', 'watering can', 'magic bean', 'the void', 'bug net', 'big sand worm', 'lost palm tree', 'seaweed', 'scuba baby'
+)
 
+CONSTANTS = {
+    'width': 1024,
+    'height': 576,
+    'screen_size': (1024, 576),
+    'center': (1024 // 2, 576 // 2),
+    'cw': 375 // 10,
+    'ch': 525 // 10,
+    'mini_card_size': (375 // 10, 525 // 10),
+    'card_width': 375,
+    'card_height': 525,
+    'card_size': (375, 525),
+    'fps': 30
+}
+
+CONFIRMATION_CODE = 'thisisthecardgameserver'
+    
 class Save:
     BASE_SETTINGS = {
         'rounds': range(1, 6), 
@@ -21,7 +50,7 @@ class Save:
         'cpus': range(1, 15), 
         'diff': range(0, 5)
     }
-    
+
     @staticmethod
     def create_folders():
         if not os.path.exists('img/temp'):
@@ -30,6 +59,8 @@ class Save:
             os.mkdir('snd/temp')
         if not os.path.exists('img/custom'):
             os.mkdir('img/custom')
+        if not os.path.exists('snd/custom'):
+            os.mkdir('snd/custom')
         if not os.path.exists('save'):
             os.mkdir('save')
             
@@ -55,6 +86,7 @@ class Save:
             'tags': ['player'], 
             'color': [161, 195, 161],
             'image': 'img/user.png', 
+            'sound': None,
             'id': 0, 
             'weight': 1,
             'classname': 'Player_0',
@@ -116,14 +148,16 @@ class Save:
 
         for f in os.listdir('img/custom'):
             os.remove(f'img/custom/{f}')
+        for f in os.listdir('snd/custom'):
+            os.remove(f'snd/custom/{f}')
                 
         import customsheet
-        sheet = customsheet.get_sheet()
+        sheet = customsheet.CUSTOMSHEET
         if sheet:
             sheet.reset()
             
         with open('custom_cards.py', 'w') as f:
-            f.write('from card_base import *\n')
+            f.write('import card_base\n')
         
     def update_save(self):
         try:
@@ -204,14 +238,17 @@ class Save:
             self.set_data('cards', cards)
       
     def del_card(self, entry):
-        file = 'img/custom/{}.png'
+        image_file = 'img/custom/{}.png'
+        sound_file = 'snd/custom/{}.wav'
         cards = self.get_data('cards')
         text_shift_start = 0
         text_shift = 0
 
         image_shift_start = cards.index(entry)
         cards.remove(entry)
-        os.remove(file.format(entry['id']))
+        os.remove(entry['image'])
+        if entry['sound']:
+            os.remove(entry['sound'])
         
         s, e = entry['lines']
         if s or e:
@@ -227,10 +264,15 @@ class Save:
             if i >= image_shift_start:
                 card['id'] -= 1
                 id = card['id']
-                old_image_path = file.format(id + 1)
-                new_image_path = file.format(id)
+                old_image_path = image_file.format(id + 1)
+                new_image_path = image_file.format(id)
                 os.rename(old_image_path, new_image_path)
                 card['image'] = new_image_path
+                if card['sound']:
+                    old_sound_path = sound_file.format(id + 1)
+                    new_sound_path = sound_file.format(id)
+                    os.rename(old_sound_path, new_sound_path)
+                    card['sound'] = new_sound_path
             if text_shift:
                 s, e = card['lines']
                 if (s or e) and s >= text_shift_start:
@@ -278,6 +320,11 @@ class Save:
     def get_custom_names(self):
         return tuple([c['name'] for c in self.get_data('cards')])
         
+    def id_to_name(self, id):
+        for c in self.get_data('cards'):
+            if c['id'] == id:
+                return c['name']
+        
     def publish_card(self, card):
         shift_start = 0
         shift = 0
@@ -302,8 +349,8 @@ class Save:
         if shift_start:
             self.shift_cards(shift_start, shift)
             
-        import game
-        game.load_custom_cards()
+        import cards
+        cards.load_custom_cards()
             
         return (s, e)
             
@@ -316,9 +363,7 @@ class Save:
         
         self.set_data('cards', cards)
         
-        
-        
-        
+SAVE = Save()
         
         
         

@@ -1,11 +1,14 @@
-def safe_remove(ls, val):
-    if val in ls:
-        ls.remove(val)
-        
-def safe_index(ls, i):
-    return ls[i] if i in range(len(ls)) else None
 
 class Card:
+    name = 'card'
+    type = 'base'
+    weight = 0
+    tags = []
+    
+    @classmethod
+    def get_subclasses(cls):
+        return cls.__subclasses__()
+    
     def __init__(self, game, uid):
         self.game = game
         self.uid = uid
@@ -21,9 +24,7 @@ class Card:
         
         self.extra_card = None
         self.extra_player = None
-        
-        self.mult = True
-        
+
         self.wait = None
         self.log_types = []
 
@@ -44,7 +45,7 @@ class Card:
         
     def copy(self): 
         T = type(self)
-        if T != Blank:
+        if T.__name__ != 'Blank':
             c = T(self.game, self.uid)
         else:
             c = T(self.game, self.uid, self.name)
@@ -52,7 +53,7 @@ class Card:
         
     def light_sim_copy(self, game):
         T = type(self)
-        if T != Blank:
+        if T.__name__ != 'Blank':
             c = T(game, self.uid)
         else:
             c = T(game, self.uid, self.name)
@@ -60,7 +61,7 @@ class Card:
         
     def sim_copy(self, game, parent=None, pcopy=None):
         T = type(self)
-        if T != Blank:
+        if T.__name__ != 'Blank':
             c = T(game, self.uid)
         else:
             c = T(game, self.uid, self.name)
@@ -68,7 +69,7 @@ class Card:
         c.mode = self.mode
 
         c.wait = self.wait
-        c.log_types = self.log_types
+        c.log_types = self.log_types.copy()
         
         c.t_coin = self.t_coin
         c.t_roll = self.t_roll
@@ -108,30 +109,31 @@ class Card:
             c.extra_player = self.extra_player
 
         return c
-         
-    def can_use(self, player):
-        return True
         
-    def sort_players(self, player, cond=None):
-        if cond is None:
-            return [p for p in self.game.players if p.pid != player.pid]  
-        elif cond == 'steal': 
-            return [p for p in self.game.players if p.pid != player.pid and p.score]
-        else:
-            return [p for p in self.game.players if p.pid != player.pid and cond(p)]
-   
-    def get_players(self):
-        return self.game.players
-   
-    def get_opponents(self, player):
-        return [p for p in self.game.players if p != player]
-
     def get_id(self):
         return self.uid
         
     def get_name(self):
         return self.name
+         
+    def can_use(self, player):
+        return True
         
+    def can_cast(self, player):
+        return True
+
+    def get_players(self):
+        return self.game.players.copy()
+   
+    def get_opponents(self, player):
+        return [p for p in self.game.players if p != player]
+        
+    def get_opponents_with_points(self, player):
+        return [p for p in self.game.players if p.pid != player.pid and p.score]
+        
+    def get_players_custom(self, player, key):
+        return [p for p in self.game.players if p.pid != player.pid and key(p)]
+    
     def check_index(self, player, i, tags=[], inclusive=False): 
         added = False
         c = player.get_played_card(i)
@@ -228,22 +230,31 @@ class Card:
                 results.append(c.t_select)
                 players.append(p)
 
-        return (players, results)
+        return (players, results) 
+
+    def get_selection(self, player):
+        return []
         
-class Blank(Card):
-    tags = []
-    def __init__(self, game, uid, name):
-        self.name = name
-        super().__init__(game, uid)
+    def select(self, player, num):
+        pass
         
-    def __eq__(self, other):
-        return self.name == getattr(other, 'name', None)
+    def flip(self, player, coin):
+        pass
         
-    def __hash__(self):
-        return self.uid
+    def roll(self, player, dice):
+        pass
         
+    def start_ongoing(self, player):
+        pass
         
+    def ongoing(self, player, log):
+        pass
         
+    def start(self, player):
+        pass
+        
+    def end(self, player):
+        pass
         
         
         

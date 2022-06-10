@@ -2,31 +2,32 @@ import socket
 import subprocess
 import sys
 import traceback
-
 import urllib.request
+import multiprocessing as mp
 
 import pygame as pg
 
-import save
-import network
+from save import SAVE, CONSTANTS
+from network import Network
 import builder
 import client
 import game
 
 import image_handler
-import spritesheet
-import customsheet
+from customsheet import CUSTOMSHEET
 
 import ui
 
 import exceptions
-from constants import *
+
+WIDTH, HEIGHT = CONSTANTS['screen_size']
+CENTER = CONSTANTS['center']
+CENTERX = WIDTH // 2
+CENTERY = HEIGHT // 2
+CARD_WIDTH, CARD_HEIGHT = CONSTANTS['card_size']
 
 def init():
-    globals()['SAVE'] = save.get_save()
     globals()['IMAGE_HANDLER'] = image_handler.get_image_handler()
-    globals()['SPRITESHEET'] = spritesheet.get_sheet()
-    globals()['CUSTOMSHEET'] = customsheet.get_sheet()
 
 #objects---------------------------------------------------------------
 
@@ -55,7 +56,7 @@ def main_menu():
     objects = []
     
     b = ui.Button.text_button('single player', size=(200, 25), func=single_player)
-    b.rect.center = (width // 2, height // 2)
+    b.rect.center = CENTER
     b.rect.midbottom = b.rect.midtop
     objects.append(b)
     
@@ -100,8 +101,8 @@ def settings_menu():
     objects = []
     
     t = ui.Textbox.static_textbox('display name:  ')
-    t.rect.right = width // 2
-    t.rect.bottom = height // 2
+    t.rect.right = CENTERX
+    t.rect.bottom = CENTERY
     t.rect.midbottom = t.rect.midtop
     objects.append(t)
     
@@ -110,7 +111,7 @@ def settings_menu():
     objects.append(t)
 
     t = ui.Textbox.static_textbox('default port:  ')
-    t.rect.right = width // 2
+    t.rect.right = CENTERX
     t.rect.y = objects[-1].rect.bottom + 5
     objects.append(t)
     
@@ -120,14 +121,14 @@ def settings_menu():
     objects.append(i)
 
     b = ui.Button.text_button('reset save data', size=(200, 25), func=reset_save, tag='refresh')
-    b.rect.centerx = width // 2
+    b.rect.centerx = CENTERX
     b.rect.y = objects[-1].rect.bottom
     b.rect.y += b.rect.height
     objects.append(b)
     
     b = ui.Button.text_button('save', size=(200, 25), func=save_user_settings)
     b.set_args(args=[b, objects[1], objects[3]])
-    b.rect.centerx = width // 2
+    b.rect.centerx = CENTERX
     b.rect.y = objects[-1].rect.bottom + b.rect.height
     objects.append(b)
     
@@ -141,7 +142,7 @@ def select_host_menu():
     objects = []
     
     w = ui.Live_Window((300, 300), label='saved ips:', label_height=30)
-    w.rect.centerx = width // 2
+    w.rect.centerx = CENTERX
     w.rect.y = 70
     objects.append(w)
     
@@ -157,7 +158,7 @@ def select_host_menu():
     if objects:
         b.rect.midtop = objects[0].rect.midbottom   
     else:
-        b.rect.midbottom = (width // 2, height // 2) 
+        b.rect.midbottom = CENTER 
     b.rect.y += 20
     objects.append(b)
     
@@ -177,7 +178,7 @@ def new_entry_menu():
     
     window = ui.Image_Manager.get_surface((350, 150), color=(100, 100, 100), border_radius=10, olcolor=(0, 0, 128), width=5)
     window = ui.Image(window)
-    window.rect.center = (width // 2, height // 2)
+    window.rect.center = CENTER
     objects.append(window)
     body = window.rect
     
@@ -226,12 +227,12 @@ def view_ip_menu():
     
     window = ui.Image_Manager.get_surface((350, 150), color=(100, 100, 100), border_radius=10, olcolor=(0, 0, 128), width=5)
     window = ui.Image(window)
-    window.rect.center = (width // 2, height // 2)
+    window.rect.center = CENTER
     objects.append(window)
     body = window.rect
 
     t = ui.Textbox.static_textbox(f'your online IP:  {public_ip}')
-    t.rect.midbottom = (width // 2, height // 2)
+    t.rect.midbottom = CENTER
     objects.append(t)
 
     b = ui.Button.text_button('copy online IP to clipboard', padding=(10, 0), color1=(0, 0, 0, 0), color2=(128, 128, 0), fgcolor=(255, 255, 0), func=ui.Input.copy_to_clipboard, args=[public_ip])
@@ -270,7 +271,7 @@ def join_game_menu(name, ip):
     
     window = ui.Image_Manager.get_surface((350, 150), color=(100, 100, 100), border_radius=10, olcolor=(0, 0, 128), width=5)
     window = ui.Image(window)
-    window.rect.center = (width // 2, height // 2)
+    window.rect.center = CENTER
     objects.append(window)
     body = window.rect
     
@@ -330,7 +331,7 @@ def builder_menu():
     objects = []
     
     w = ui.Live_Window((300, 300), label='custom cards:', label_height=30)
-    w.rect.centerx = width // 2
+    w.rect.centerx = CENTERX
     w.rect.y = 70
     objects.append(w)
 
@@ -345,7 +346,7 @@ def builder_menu():
     objects += buttons
 
     b = ui.Button.text_button('new', padding=(10, 2), func=run_builder, args=[SAVE.get_new_card_data()], tag='refresh')
-    b.rect.midbottom = (width // 2, height)
+    b.rect.midbottom = (CENTERX, HEIGHT)
     b.rect.y -= b.rect.height * 2
     objects.append(b)
     
@@ -360,27 +361,27 @@ def card_edit_menu(card):
     objects = []
 
     t = ui.Textbox.static_textbox(card['name'] + ':', tsize=30)
-    t.rect.centerx = width // 2
+    t.rect.centerx = CENTERX
     objects.append(t)
     
-    i = ui.Image(CUSTOMSHEET.get_image(card['name'], size=(card_width // 3, card_height // 3)))
+    i = ui.Image(CUSTOMSHEET.get_image(card['name'], size=(CARD_WIDTH // 3, CARD_HEIGHT // 3)))
     i.rect.midtop = objects[-1].rect.midbottom
     i.rect.y += 5
     objects.append(i)
     
     b = ui.Button.text_button('edit card', func=run_builder, kwargs={'card_info': card}, tag='break')
-    b.rect.centerx = width // 2
+    b.rect.centerx = CENTERX
     b.rect.y = objects[-1].rect.bottom + b.rect.height
     objects.append(b)
     
     if card['id'] != 0:
         b = ui.Button.text_button('delete card', func=del_card, args=[card], tag='break')
-        b.rect.centerx = width // 2
+        b.rect.centerx = CENTERX
         b.rect.y = objects[-1].rect.bottom + 5
         objects.append(b)
     
     b = ui.Button.text_button('back', tag='break')
-    b.rect.centerx = width // 2
+    b.rect.centerx = CENTERX
     b.rect.y = objects[-1].rect.bottom + b.rect.height
     objects.append(b)
     
@@ -426,7 +427,7 @@ def connect(ip, port):
     menu.run()
 
     try:       
-        net = network.Network(ip, port)
+        net = Network(ip, port)
         c = client.Client(net, mode='online')
         c.run()
         
@@ -458,7 +459,6 @@ def start_game():
     menu.run()
 
     try:
-    
         pipe = subprocess.Popen([sys.executable, 'server.py'], stderr=sys.stderr, stdout=sys.stdout)
         
         try:
@@ -468,7 +468,7 @@ def start_game():
         except subprocess.TimeoutExpired:
             pass
 
-        net = network.Network(get_local_ip(), SAVE.get_data('port'))
+        net = Network(get_local_ip(), SAVE.get_data('port'))
         c = client.Client(net, mode='online')
         c.run()
         
@@ -487,7 +487,7 @@ def start_game():
         menu.run()
        
     except Exception as e:
-        print(e)
+        print(e, traceback.format_exc())
         menu = ui.Menu.notice('an error occurred', 10)
         menu.run()
         

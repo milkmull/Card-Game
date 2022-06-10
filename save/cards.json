@@ -275,7 +275,7 @@
             "classname": "Mirror"
         },
         "sword": {
-            "weight": 20,
+            "weight": 2,
             "classname": "Sword"
         },
         "fertilizer": {

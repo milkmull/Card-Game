@@ -2,8 +2,12 @@ import json
 
 import pygame as pg
 
+from save import CONSTANTS
+
 import ui
-from constants import *
+
+WIDTH, HEIGHT = CONSTANTS['screen_size']
+CENTER = CONSTANTS['center']
 
 class Draw_Lines(ui.Base_Object):
     def __init__(self, points, color=(0, 0, 0), width=3):
@@ -37,10 +41,10 @@ def error_screen(errors):
     lower.bottomleft = body.bottomleft
     pg.draw.rect(s, (50, 50, 50), lower, border_bottom_right_radius=10, border_bottom_left_radius=10)
     i = ui.Image(s)
-    i.rect.center = (width // 2, height // 2)
+    i.rect.center = CENTER
     objects.append(i)
     
-    body.center = (width // 2, height // 2)
+    body.center = CENTER
     upper.topleft = body.topleft
     lower.bottomleft = body.bottomleft
     
@@ -242,8 +246,8 @@ def info_menu(n):
         objects.pop(-2)
 
     b = ui.Button.text_button('back', color2=(0, 200, 0), tag='break')
-    b.rect.centerx = width // 2
-    b.rect.bottom = height - 10
+    b.rect.centerx = WIDTH // 2
+    b.rect.bottom = HEIGHT - 10
     objects.append(b)
     
     return objects
@@ -275,7 +279,7 @@ def log_menu(name, data):
     objects.append(node_info)
     
     key_tb = ui.Textbox.static_textbox('key')
-    key_tb.rect.topleft = (width // 2, 40)
+    key_tb.rect.topleft = (WIDTH // 2, 40)
     objects.append(key_tb)
     
     value_tb = ui.Textbox.static_textbox('return value')
@@ -303,10 +307,130 @@ def log_menu(name, data):
         y = v.rect.bottom + 5
         
     b = ui.Button.text_button('back', color2=(0, 200, 0), tag='break')
-    b.rect.centerx = width // 2
-    b.rect.bottom = height - 10
+    b.rect.centerx = WIDTH // 2
+    b.rect.bottom = HEIGHT - 10
     objects.append(b)
         
     return objects
-    
 
+def game_options_menu(client):
+    objects = []
+
+    b = ui.Button.text_button('disconnect', tag='break', func=client.disconnect)
+    b.rect.midtop = CENTER
+    objects.append(b)
+    
+    b = ui.Button.text_button('game settings', func=ui.Menu.build_and_run, args=[game_settings_menu, client])
+    b.rect.midtop = objects[-1].rect.midbottom
+    objects.append(b)
+    
+    if client.is_host():
+        b = ui.Button.text_button('new game', tag='break', func=client.send, args=['reset'])
+        b.rect.midtop = objects[-1].rect.midbottom
+        objects.append(b)
+        
+    b = ui.Button.text_button('back', tag='break')
+    b.rect.midtop = objects[-1].rect.midbottom
+    objects.append(b)
+    
+    ui.Position.center_objects_y(objects)
+
+    return objects
+
+def game_settings_menu(client):
+    objects = []
+
+    settings = client.get_settings()
+
+    space = 70
+    x0 = (WIDTH // 2) - space
+    x1 = x0 + (2 * space)
+    
+    t = ui.Textbox.static_textbox('rounds: ')
+    t.rect.centerx = x0
+    objects.append(t)
+    
+    t = ui.Textbox.static_textbox('starting score: ')
+    t.rect.centerx = x0
+    objects.append(t)
+    
+    t = ui.Textbox.static_textbox('starting cards: ')
+    t.rect.centerx = x0
+    objects.append(t)
+    
+    t = ui.Textbox.static_textbox('starting items: ')
+    t.rect.centerx = x0
+    objects.append(t)
+    
+    t = ui.Textbox.static_textbox('starting spells: ')
+    t.rect.centerx = x0
+    objects.append(t)
+    
+    t = ui.Textbox.static_textbox('number of cpus: ')
+    t.rect.centerx = x0
+    objects.append(t)
+    
+    t = ui.Textbox.static_textbox('cpu difficulty: ')
+    t.rect.centerx = x0
+    objects.append(t)
+    
+    ui.Position.center_objects_y(objects)
+    row_sep = len(objects)
+    
+    c = ui.Flipper.counter(range(1, 6), index=settings['rounds'] - 1, size=(50, 25))
+    c.set_tag('rounds')
+    c.rect.centerx = x1
+    objects.append(c)
+
+    c = ui.Flipper.counter(range(5, 51), index=settings['ss'] - 5, size=(50, 25))
+    c.set_tag('ss')
+    c.rect.centerx = x1
+    objects.append(c)
+
+    c = ui.Flipper.counter(range(1, 11), index=settings['cards'] - 1, size=(50, 25))
+    c.set_tag('cards')
+    c.rect.centerx = x1
+    objects.append(c)
+
+    c = ui.Flipper.counter(range(0, 6), index=settings['items'], size=(50, 25))
+    c.set_tag('items')
+    c.rect.centerx = x1
+    objects.append(c)
+
+    c = ui.Flipper.counter(range(0, 4), index=settings['spells'], size=(50, 25))
+    c.set_tag('spells')
+    c.rect.centerx = x1
+    objects.append(c)
+
+    c = ui.Flipper.counter(range(1, 15), index=settings['cpus'] - 1, size=(50, 25))
+    c.set_tag('cpus')
+    c.rect.centerx = x1
+    objects.append(c)
+
+    c = ui.Flipper.counter(range(0, 5), index=settings['diff'], size=(50, 25))
+    c.set_tag('diff')
+    c.rect.centerx = x1
+    objects.append(c)
+    
+    ui.Position.center_objects_y(objects[row_sep:])
+
+    counters = [c for c in objects if isinstance(c, ui.Flipper)]
+    
+    if not client.is_host():
+        for c in counters:
+            c.set_enabled(False)
+    else:
+        b = ui.Button.text_button('save', size=(100, 25), func=save_game_settings, args=[client, counters])
+        b.set_tag('break')
+        b.rect.midtop = objects[-1].rect.midbottom
+        b.rect.y += b.rect.height
+        b.rect.centerx = WIDTH // 2
+        objects.append(b)
+        
+    b = ui.Button.text_button('back', size=(100, 25))
+    b.set_tag('break')
+    b.rect.midtop = objects[-1].rect.midbottom
+    b.rect.centerx = WIDTH // 2
+    objects.append(b)
+
+    return objects

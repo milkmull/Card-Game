@@ -1,31 +1,30 @@
 import os
 
-import save
-
-from spritesheet_base import Base_Sheet
-
-
-from constants import *
-from ui import Image_Manager
-from custom_card_base import Card
 import pygame as pg
 
-def init():
-    globals()['SAVE'] = save.get_save()
-    globals()['SPRITESHEET'] = Spritesheet()
+import save
 
-def get_sheet():
-    return globals().get('SPRITESHEET')
-    
+import spritesheet_base
+
+from ui import Image_Manager
+from custom_card_base import Card
+
 def load_sounds():
     sounds = {}
-    files = os.listdir('snd/cards')
     
+    files = os.listdir('snd/cards')
     for f in files:
         name = f[:-4]
-        
         try:
             sounds[name] = pg.mixer.Sound(f'snd/cards/{f}')
+        except pg.error:
+            continue
+            
+    files = os.listdir('snd/custom')
+    for f in files:
+        name = save.SAVE.id_to_name(int(f[:-4]))
+        try:
+            sounds[name] = pg.mixer.Sound(f'snd/custom/{f}')
         except pg.error:
             continue
         
@@ -33,8 +32,8 @@ def load_sounds():
     
 class Spritesheet:
     def __init__(self):
-        self.spritesheet = Base_Sheet(NAMES, 'img/spritesheet.png')
-        self.customsheet = Base_Sheet(SAVE.get_custom_names(), 'img/customsheet.png')
+        self.spritesheet = spritesheet_base.Base_Sheet(save.BASE_NAMES, 'img/spritesheet.png')
+        self.customsheet = spritesheet_base.Base_Sheet(save.SAVE.get_custom_names(), 'img/customsheet.png')
         self.extras = {'back': pg.image.load('img/back.png').convert()}
         self.sounds = load_sounds()
         
@@ -48,10 +47,10 @@ class Spritesheet:
         
     def remove_extra(self, name):
         if name in self.extras:
-            del self.extras[name]
+            self.extras.pop(name)
             
     def get_image(self, name, scale=(0, 0), olcolor=None):
-        scale = tuple(int(s) for s in scale)
+        scale = tuple([int(s) for s in scale])
         
         img = self.spritesheet.get_image(name)
         if not img:
@@ -71,5 +70,7 @@ class Spritesheet:
         
     def get_sound(self, name):
         return self.sounds.get(name)
+        
+SPRITESHEET = Spritesheet()
 
         

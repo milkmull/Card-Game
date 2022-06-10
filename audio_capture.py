@@ -1,3 +1,4 @@
+import os
 import wave
 import threading
 
@@ -16,6 +17,11 @@ class Audio_Capture:
     @staticmethod
     def get_path():
         return Audio_Capture.PATH
+        
+    @staticmethod
+    def clear_path():
+        if os.path.exists(Audio_Capture.PATH):
+            os.remove(Audio_Capture.PATH)
     
     @staticmethod
     def get_devices(p):
@@ -55,8 +61,13 @@ class Audio_Capture:
         
     @property
     def recording(self):
+        recording = False
         if self.stream:
-            return self.stream.is_active()
+            try:
+                recording = self.stream.is_active()
+            except OSError:
+                pass
+        return recording
             
     def set_recording_length(self, seconds):
         self.length = seconds
@@ -88,6 +99,7 @@ class Audio_Capture:
         self.stop()
         self.end_stream()
         self.p.terminate()
+        self.clear_path()
         
     def start_stream(self):
         self.stream = self.p.open(

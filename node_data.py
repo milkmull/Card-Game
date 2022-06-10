@@ -1,12 +1,31 @@
-import allnodes
+import node_base
 
-def init():
-    NODES = allnodes.get_nodes()
-    GROUPS = allnodes.get_groups()
+def init_nodes():
+    import nodes
+init_nodes()
+
+def get_node_data():
     ndb = Node_Data_Base()
-    nodes = {name: obj(ndb, 0) for name, obj in NODES.items()}
-    groups = {name: ndb.unpack(data)[-1] for name, data in GROUPS.items()}
-    allnodes.Node.set_raw(nodes | groups)
+    subclasses = node_base.Node.get_subclasses()
+    node_data = {}
+    raw_nodes = {}
+    for cls in subclasses:
+        name = cls.__name__
+        node_data[name] = cls
+        raw_nodes[name] = cls(ndb, 0)
+    node_base.Node.set_raw(raw_nodes)
+    return node_data
+    
+def get_group_data():
+    ndb = Node_Data_Base()
+    import save
+    group_data = save.load_json('data/group_nodes.json')
+    raw_groups = {name: ndb.unpack(data)[-1] for name, data in group_data.items()}
+    node_base.Node.set_raw(raw_groups)
+    return group_data
+    
+def get_cached_img(name):
+    return node_base.Node.RAW_CACHE.get(name)
     
 def write_node_data(nodes):
     import json
@@ -64,10 +83,14 @@ def unpack(data):
     nd = Node_Data_Base()
     return nd.unpack(data)
     
-def get_cached_img(name):
-    return allnodes.Node.RAW_CACHE.get(name)
-    
 class Node_Data_Base:
+    NODES = None
+    GROUPS = None
+    @classmethod
+    def init_node_data(cls):
+        cls.NODES = get_node_data()
+        cls.GROUPS = get_group_data()
+
     def __init__(self):
         self.id = 0
         
@@ -78,38 +101,31 @@ class Node_Data_Base:
         
     def get_node(self, name, val=None, pos=None):
         id = self.get_new_id()
-
         if val is not None:
-            n = getattr(allnodes, name)(self, id, val=str(val))
+            n = Node_Data_Base.NODES[name](self, id, val=val)
         else:
-            n = getattr(allnodes, name)(self, id)
-
+            n = Node_Data_Base.NODES[name](self, id)
+        
         if pos:
             n.rect.center = pos
             n.set_port_pos()
-
         return n
         
     def get_group_node(self, name, pos=None):
-        data = self.GROUPS[name]
+        data = Node_Data_Base.GROUPS[name]
         nodes = self.unpack(data)
-        print(nodes)
         n = nodes[-1]
-        
         if pos:
             n.rect.center = pos
             n.set_port_pos()
-            
         return n
         
     def make_group_node(self, nodes, name='group', pos=None):
         id = self.get_new_id()
-        n = allnodes.GroupNode(self, id, nodes, name=name)
-        
+        n = node_base.GroupNode(self, id, nodes, name=name)
         if pos:
             n.rect.center = pos
             n.set_port_pos()
-            
         return n
         
     def unpack(self, data):
@@ -160,7 +176,7 @@ class Node_Data_Base:
                             p1 = n1.get_port(connection_port)
                             if p0 and p1:
                                 p0.open_wire()
-                                allnodes.Port.new_connection(p0, p1, force=True)
+                                node_base.Port.new_connection(p0, p1, force=True)
                             else:
                                 missed = True
                         
@@ -186,7 +202,7 @@ class Node_Data_Base:
         return nodes
         
     def new_wire(self, p0, p1):
-        allnodes.Wire(p0, p1)
+        node_base.Wire(p0, p1)
         
     def add_log(self, log):
         pass
@@ -194,15 +210,14 @@ class Node_Data_Base:
     def set_active_node(self, n):
         pass
 
+Node_Data_Base.init_node_data()
+
 class Node_Data(Node_Data_Base):
     def __init__(self):
-        Node_Data_Base.__init__(self)
+        super().__init__()
         self.active_node = None
         self.nodes = []
         self.wires = []
-
-        self.NODES = allnodes.get_nodes()
-        self.GROUPS = allnodes.get_groups()
 
     def exists(self, name):
         return any({n.name == name for n in self.nodes})
@@ -213,7 +228,7 @@ class Node_Data(Node_Data_Base):
 #wire stuff--------------------------------------------------------------------
 
     def new_wire(self, p0, p1):
-        w = allnodes.Wire(p0, p1)
+        w = node_base.Wire(p0, p1)
         self.wires.append(w)
         
     def del_wire(self, w):
@@ -221,10 +236,10 @@ class Node_Data(Node_Data_Base):
             self.wires.remove(w)
             
     def disconnect(self, p0, p1, d=True):
-        allnodes.Port.disconnect(p0, p1, d=d)
+        node_base.Port.disconnect(p0, p1, d=d)
         
     def new_connection(self, p0, p1, force=True, d=True):
-        allnodes.Port.new_connection(p0, p1, force=force, d=d)
+        node_base.Port.new_connection(p0, p1, force=force, d=d)
             
 #active node stuff--------------------------------------------------------------------
         

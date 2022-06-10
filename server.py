@@ -1,106 +1,64 @@
-import socket
-import json
 import os
-import time
+import threading
 from _thread import start_new_thread
+import traceback
 
-import game
-import save
+from save import SAVE, CONFIRMATION_CODE
+from net_base import Network_Base, get_local_ip
+from game import Game
 import exceptions
-
-save.init()
-game.init()
-SAVE = save.get_save()
-
-confirmation_code = 'thisisthecardgameserver'
 
 def get_port():
     try:
         port = SAVE.get_data('port')       
     except:
         port = 5555
-        
     return port
-    
-def get_local_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(('8.8.8.8', 80))
-    local_ip = s.getsockname()[0]
-    s.close()
-    return local_ip
 
-class Server:
+class Server(Network_Base):
     def __init__(self):
+        server = get_local_ip()
+        port = get_port()
+        super().__init__(server, port)
+        
         self.pid = 0
-        
-        self.connections = {}
-        
-        self.server = get_local_ip()
-        self.port = get_port()
-        self.addr = (self.server, self.port)
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.settimeout(3)
-        
-        self.game = None
+
+        self.game = Game('online')
         self.player_info = {}
-        
-    def set_game(self):
-        self.game = game.Game()
             
     def close(self):
-        for pid, conn in self.connections.items():
-            conn.close()
-        self.sock.close()
+        super().close()
         
         for f in os.listdir('img/temp'):
             os.remove(f'img/temp/{f}')
         
         print('server closed')
-            
+      
     def send_player_info(self, conn, pid):
         p = self.game.get_player(pid)
         info = p.get_info()
         with open(info['image'], 'rb') as f:
             image = f.read()
-        info['len'] = len(image)
+        info['raw_image'] = self.encode_bytes(image)
         
-        conn.sendall(bytes(json.dumps(info), encoding='utf-8'))
-        conn.recv(4096)
-            
-        while image:
-
-            reply = image[:4096]
-            conn.sendall(reply)
-            
-            image = image[4096:]
-
+        data = bytes(self.dump_json(info), encoding='utf-8')
+        self.send_large_raw(data, conn=conn)
+   
     def recieve_player_info(self, id, conn):
-        info = json.loads(conn.recv(4096))
-        self.player_info[id] = info
-        
-        length = info['len']
-        image = b''
-        
-        conn.sendall(b'next')
-        
-        while len(image) < length:
+        info = self.recv_large_raw(conn=conn)
 
-            reply = conn.recv(4096)
-            image += reply
-            
-            conn.sendall(b'next')
-                
+        info = self.load_json(info)
+        image = self.decode_bytes(info['raw_image'])
+
         filename = f'img/temp/{id}.png'
         with open(filename, 'wb') as f:
             f.write(image)
             
-        self.player_info[id]['image'] = filename
-        self.player_info[id]['id'] = id
-        
-        conn.sendall(b'done')
+        info['image'] = filename
+        info['id'] = id 
+        self.player_info[id] = info
 
-    def threaded_client(self, conn, id):
+    def threaded_client(self, address, conn, id):
         try:
             
             self.recieve_player_info(id, conn)
@@ -112,7 +70,7 @@ class Server:
 
                 while connected:
 
-                    data = conn.recv(4096).decode()
+                    data = self.recv(conn=conn)
 
                     if data is None:
                         break
@@ -178,7 +136,7 @@ class Server:
                             reply = self.game.get_settings()
                             
                         elif data == 'us':
-                            SAVE.load_save()
+                            save.SAVE.load_save()
                             self.game.update_settings()
                             reply = 1
 
@@ -187,83 +145,48 @@ class Server:
                             reply = ''
                             continue
 
-                        conn.sendall(bytes(json.dumps(reply), encoding='utf-8'))
+                        self.send(self.dump_json(reply), conn=conn)
 
         except Exception as e:
-            print(e, 's1')
+            print(e, 's1', traceback.format_exc())
                 
         print('lost connection')
             
         self.pid -= 1
-
         self.game.remove_player(id)
-                
-        conn.close()
-        self.connections.pop(id)
+        self.close_connection(conn, address)
         
     def verify_connection(self, conn):
-        code = conn.recv(4096).decode()
-        conn.sendall(str.encode(confirmation_code))
+        code = self.recv(conn=conn)
+        self.send(CONFIRMATION_CODE, conn=conn)
+        return code == CONFIRMATION_CODE
         
-        return code == confirmation_code
-        
-    def start(self):
-        bind = False
-        try: 
-            self.sock.bind(self.addr)
-            bind = True
-
-        except OSError as e:
+    def add_connection(self, conn, address):
+        if self.verify_connection(conn):
+            print('connected to', address)
+            start_new_thread(self.threaded_client, (address, conn, self.pid))
+            self.pid += 1
+            super().add_connection(conn, address)
+        else:
+            conn.close()
+            
+    def check_close(self):
+        return not self.pid or self.errors
+            
+    def run(self):
+        self.start_server()
+        e = self.get_error()
+        if e is OSError:
             print(e, 's3')
             errno = e.args[0]
             if errno == 98:
                 raise exceptions.PortInUse
-            
-        finally:
-            if bind:
-                self.set_game()
-                self.run()
-
-        self.close()
-            
-    def run(self):
-        self.sock.listen()
+            self.close()
+        else:
+            self.listen()
         
-        while True:
-    
-            try:
-                conn, addr = self.sock.accept()
-                
-                print('connected to', addr)
-                
-                if self.verify_connection(conn):
-                    start_new_thread(self.threaded_client, (conn, self.pid))
-                    self.connections[self.pid] = conn
-                    self.pid += 1
-                else:
-                    conn.close()
-
-            except socket.timeout:
-                if self.pid == 0:
-                    break
-                    
-            except Exception as e:
-                print(e, 's4')
-                break
-                
-            finally:
-                if len(self.connections) == 0: 
-                    break
-
 s = Server()
-s.start()
-        
-        
-        
-        
-        
-        
-        
+s.run()
         
         
     

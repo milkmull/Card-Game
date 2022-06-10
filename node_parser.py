@@ -7,7 +7,12 @@ class Node_Parser:
         self.start_node = next(iter(n for n in self.nodes if n.name == 'Start'), None)
         self.errors = self.check_errors()
 
-        self.header = f"\nclass {self.card.classname}(Card):\n\tname = '{self.card.name}'\n\ttags = []\n"
+        self.header = (
+            f"\nclass {self.card.classname}(card_base.Card):\n"
+            f"\tname = '{self.card.name}'\n"
+            f"\ttype = '{'play'}'\n\tweight = {1}\n"
+            f"\ttags = {self.card.tags}\n"
+        )
         self.dec_line = ''
 
         self.funcs = {}

@@ -1431,7 +1431,7 @@ class Image(Base_Object, Position):
 
 class Textbox(Base_Object, Position):
     pg.freetype.init()
-    _FONT = 'arial.ttf'
+    _FONT = 'fonts/arial.ttf'
     try:
         FONT = pg.freetype.Font(_FONT)
     except OSError:
@@ -1577,7 +1577,7 @@ class Textbox(Base_Object, Position):
         return self.message
         
     def __eq__(self, other):
-        return self.object == getattr(other, 'object')
+        return self.message == getattr(other, 'message', None) and self.fgcolor == getattr(other, 'fgcolor', None)
         
     def __bool__(self):
         return bool(self.message)

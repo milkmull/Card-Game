@@ -1,31 +1,15 @@
 import traceback
 import random
 import json
+import inspect
 
-import save
-import game
+import game_base
 
-import client
 import spritesheet
 
 import ui
 import screens
-
-class TestClient(client.Client):
-    def __init__(self, game):
-        super().__init__(game, 'single')
-        
-    def quit(self):
-        self.n.close()
-        self.playing = False
-
-def init():
-    globals()['SAVE'] = save.get_save()
-    game.init()
-    spritesheet.init()
-    client.init()
-    #save.init()
-    
+  
 def step_test(t):
     t.step_sim()
     if t.get_sims() == 100:
@@ -44,23 +28,38 @@ def run_tester(card):
     return True
 
 class Tester:
-    import_line = 'from card_base import *\n'
+    import_line = 'import card_base\n'
     
     @staticmethod
-    def get_cards(c):
-        cards = SAVE.get_playable_card_data()
-        cards['play'][c.name] = {'weight': 5, 'classname': c.classname, 'custom': True, 'test': True}
+    def get_cards():
+        import testing_card
+        import cards as card_manager
+        cards = card_manager.get_playable_card_data()
+        test_card = inspect.getmembers(testing_card, inspect.isclass)[0][1]
+        cards[test_card.type][test_card.name] = test_card
         return cards
+        
+    @staticmethod
+    def get_settings():
+        settings = {
+            'rounds': 1, 
+            'ss': 20, 
+            'cards': 5,
+            'items': 3,
+            'spells': 1,
+            'cpus': 3,
+            'diff': 1
+        }
+        return settings
         
     def __init__(self, card):
         self.card = card
         self.write_card()
-        self.cards = Tester.get_cards(card)
+        self.settings = Tester.get_settings()
+        self.cards = Tester.get_cards()
         
         self.sims = 0
         self.errors = []
-        
-        game.load_testing_card()
         
     def write_card(self):         
         with open('testing_card.py', 'w') as f:
@@ -108,9 +107,7 @@ class Tester:
         
     def sim(self, num):
         for _ in range(num):
-            g = game.Game(mode='single', cards=self.cards)
-            g.start(0)
-            g = g.copy()
+            g = game_base.Game_Base.simulator(self.settings, self.cards)
             err = None
 
             try:
@@ -121,7 +118,7 @@ class Tester:
 
             if err and err not in self.errors:
                 self.errors.append(err)
-                
+                print_logs(g)
             self.sims += 1
             
     def process(self):
@@ -139,5 +136,14 @@ def test_run(card):
     finally:
         c.quit()
         return text
-    
+        
+def print_logs(g):
+    for p in g.players:
+        print(f'{p.pid}: ' + '{')
+        for log in p.master_log:
+            print('\t{')
+            for k, v in log.items():
+                print(f'\t\t{k}: {v}')
+            print('\t}')
+        print('}\n')
     

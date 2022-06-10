@@ -1,21 +1,15 @@
-from tkinter import Tk
+import shutil
 from tkinter import filedialog
 
 import pygame as pg
 
-import video_capture
-import audio_capture
+from video_capture import Video_Capture
+from audio_capture import Audio_Capture
 from custom_card_base import Card
 
 import ui
-import save
-from constants import *
 
 import node_editor
-
-def init():
-    globals()['SAVE'] = save.get_save()
-    node_editor.init()
     
 #visual stuff----------------------------------------------------------------------
 
@@ -34,11 +28,14 @@ class Type_Selector(ui.Dropdown_Select):
         self.card = card
 
     def set_value(self, type):
-        super().set_value(type)
-        self.card.set_type(type)
+        m = ui.Menu.yes_no('Changing the card type could result in some nodes being deleted.\nAre you sure you want to change the card type?')
+        if m.run():
+            super().set_value(type)
+            self.card.set_type(type)
         
 class Tag_Selector(ui.Dropdown_Multi_Select):
     def __init__(self, card):
+        from save import SAVE
         all_tags = SAVE.get_sheet_info('tags')
         tags = all_tags['biomes'] + all_tags['descriptors']
         super().__init__(tags, 3)
@@ -57,10 +54,11 @@ class Tag_Selector(ui.Dropdown_Multi_Select):
         self.card.remove_tag(tag)
 
 class Audio_Manager(ui.Compound_Object):
-    def __init__(self, mic):
+    def __init__(self, card, mic):
         super().__init__()
         self.rect = pg.Rect(0, 0, 1, 1)
         
+        self.card = card
         self.mic = mic
         self.sound = None
         self.sound_length = 0
@@ -99,7 +97,7 @@ class Audio_Manager(ui.Compound_Object):
         b.turn_off()
         self.clear_button = b
         
-        s = ui.Slider((200, 5), range(500), hcolor=(255, 0, 0))
+        s = ui.Slider((200, 5), range(200), hcolor=(255, 0, 0))
         s.rect.topleft = self.record_button.rect.bottomleft
         s.rect.y += 15
         self.add_child(s, current_offset=True)
@@ -111,8 +109,14 @@ class Audio_Manager(ui.Compound_Object):
         b.rect.y -= 15
         self.add_child(b, current_offset=True)
         self.import_button = b
+        
+        if card.sound:
+            self.load_sound(path=card.sound_path)
 
     def start_record(self):
+        if self.playing_sound:
+            self.stop_sound()
+            
         self.mic.start()
         
         b = self.record_button
@@ -134,13 +138,14 @@ class Audio_Manager(ui.Compound_Object):
     def import_file(self):
         file = filedialog.askopenfilename(initialdir='/', title='select a sound', filetypes=(('sound files', '*.wav'), ('sound files', '*.ogg')))
         if file:
-            self.load_sound(file)
+            self.load_sound(path=file)
             
     def load_sound(self, path=None):
-        if path is None:
-            path = self.mic.get_path()
-            
-        self.sound = pg.mixer.Sound(path)
+        temp_path = self.mic.get_path()
+        if path is not None:
+            shutil.copyfile(self.card.sound_path, temp_path)
+  
+        self.sound = pg.mixer.Sound(temp_path)
         self.sound_length = self.sound.get_length()
         
         self.play_button.turn_on()
@@ -151,16 +156,25 @@ class Audio_Manager(ui.Compound_Object):
         self.start_time = pg.time.get_ticks()
         self.sound.play()
         
+        b = self.play_button
+        b.object.set_image(self.stop_image)
+        b.set_func(self.stop_sound)
+        
     def stop_sound(self):
         self.sound.stop()
         self.playing_sound = False
         
         self.bar.set_state(0)
         
+        b = self.play_button
+        b.object.set_image(self.play_image)
+        b.set_func(self.play_sound)
+        
     def clear_sound(self):
         if self.sound:
             self.stop_sound()
             self.sound = None
+        self.mic.clear_path()
             
         self.play_button.turn_off()
         self.clear_button.turn_off()
@@ -179,6 +193,11 @@ class Audio_Manager(ui.Compound_Object):
             self.bar.set_state_as_ratio(s)
             if s >= 1:
                 self.stop_sound()
+                
+    def draw(self, surf):
+        super().draw(surf)
+        r = pg.Rect(self.bar.rect.x, self.bar.rect.y, self.bar.handel.rect.centerx - self.bar.rect.x, self.bar.rect.height)
+        pg.draw.rect(surf, (255, 0, 0), r)
 
 #Button funcs----------------------------------------------------------------------
 
@@ -195,8 +214,8 @@ def add_custom_tag(i, ts):
         
 class Builder(ui.Menu):
     def __init__(self, card_info):
-        self.cam = video_capture.Video_Capture()
-        self.mic = audio_capture.Audio_Capture(5)
+        self.cam = Video_Capture()
+        self.mic = Audio_Capture(5)
 
         self.card = Card(**card_info)
         self.node_editor = node_editor.Node_Editor(self.card)
@@ -304,7 +323,7 @@ class Builder(ui.Menu):
         objects.append(t)
         self.objects_dict['published'] = t
         
-        am = Audio_Manager(self.mic)
+        am = Audio_Manager(self.card, self.mic)
         am.rect.topleft = self.objects_dict['published'].rect.bottomleft
         am.rect.y += 20
         objects.append(am)
