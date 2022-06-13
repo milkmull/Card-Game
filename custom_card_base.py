@@ -5,10 +5,13 @@ import ast
 import pygame as pg
 
 import node_data
-import node_parser
+from node_parser import Node_Parser
 import tester
 
-import ui
+from ui.image import get_surface
+from ui.element.base import Compound_Object
+from ui.element.standard import Image, Textbox, Input
+from ui.menu import Menu
 
 card_width = 375
 card_height = 525
@@ -22,7 +25,7 @@ def is_valid_code(code):
         return False
     return True
 
-class Card(ui.Compound_Object):
+class Card(Compound_Object):
     IMAGE_SIZE = (card_width - 75, 210)
     
     @classmethod
@@ -40,7 +43,7 @@ class Card(ui.Compound_Object):
         return pic
         
     def __init__(
-        self, name='Title', type='play', description='description', tags=None, color=[161, 195, 161], id=None, 
+        self, name='name', type='play', description='description', tags=None, color=[161, 195, 161], id=None, 
         image='', sound=None, node_data={}, weight=1, code='', lines=(0, 0), published=False, **kwargs
     ):
         super().__init__()
@@ -65,61 +68,61 @@ class Card(ui.Compound_Object):
 
         self.objects_dict = {}
 
-        bg = ui.Image(pg.Surface(r.size).convert())
+        bg = Image(pg.Surface(r.size).convert())
         bg.image.fill(color)
         bg.rect.center = self.rect.center
         self.add_child(bg, current_offset=True)
         self.objects_dict['bg'] = bg
 
-        name_box = ui.Image_Manager.get_surface((255, 45), color=(255, 255, 255), olcolor=(0, 0, 0))
-        name = ui.Input.from_image(name_box, message=name, fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=30)
+        name_box = get_surface((255, 45), color=(255, 255, 255), olcolor=(0, 0, 0))
+        name = Input.from_image(name_box, message=name, default='name', fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=30)
         name.rect.centerx = bg.rect.centerx
         name.rect.y = 30
         self.add_child(name, current_offset=True)
         self.objects_dict['name'] = name
         
         pw, ph = Card.IMAGE_SIZE
-        pic_outline = ui.Image.from_style((pw + 4, ph + 4), color=(0, 0, 0))
+        pic_outline = Image.from_style((pw + 4, ph + 4), color=(0, 0, 0))
         pic_outline.rect.centerx = bg.rect.centerx
         pic_outline.rect.y = name.rect.bottom + 6
         self.objects_dict['pic_outline'] = pic_outline
         self.add_child(pic_outline, current_offset=True)
 
-        pic = ui.Image(Card.load_pic(image))
+        pic = Image(Card.load_pic(image))
         pic.rect.center = pic_outline.rect.center
         self.objects_dict['pic'] = pic
         self.add_child(pic, current_offset=True)
 
-        desc_box = ui.Image_Manager.get_surface((225, 170), color=(255, 255, 255), olcolor=(0, 0, 0))
-        desc = ui.Input.from_image(desc_box, message=description, fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=35, length=300)
+        desc_box = get_surface((225, 170), color=(255, 255, 255), olcolor=(0, 0, 0))
+        desc = Input.from_image(desc_box, message=description, default='description', fitted=True, color=(0, 0, 0, 0), fgcolor=(0, 0, 0), tsize=35, length=300)
         desc.rect.centerx = bg.rect.centerx
         desc.rect.y += 300
         self.add_child(desc, current_offset=True)
         self.objects_dict['desc'] = desc
         
-        type_box_image = ui.Image_Manager.get_surface(((pic.rect.width // 3) - 4, 20), color=(255, 255, 255), olcolor=(0, 0, 0))
-        type_box = ui.Image(type_box_image)
+        type_box_image = get_surface(((pic.rect.width // 3) - 4, 20), color=(255, 255, 255), olcolor=(0, 0, 0))
+        type_box = Image(type_box_image)
         type_box.rect.x = pic.rect.x
         type_box.rect.y += 475
         self.add_child(type_box, current_offset=True)
         self.objects_dict['type_box'] = type_box
         type_rect = type_box_image.get_rect()
         
-        type = ui.Textbox(type, tsize=45, fgcolor=(0, 0, 0))
+        type = Textbox(type, tsize=45, fgcolor=(0, 0, 0))
         type.fit_text(type_rect)
         type.rect.center = type_box.rect.center
         self.add_child(type, current_offset=True)
         self.objects_dict['type'] = type
         
-        tags_box_image = ui.Image_Manager.get_surface((pic.rect.width - type.rect.width - 4, 20), color=(255, 255, 255), olcolor=(0, 0, 0))
-        tags_box = ui.Image(tags_box_image)
+        tags_box_image = get_surface((pic.rect.width - type.rect.width - 4, 20), color=(255, 255, 255), olcolor=(0, 0, 0))
+        tags_box = Image(tags_box_image)
         tags_box.rect.right = pic.rect.right
         tags_box.rect.y += 475
         self.add_child(tags_box, current_offset=True)
         self.objects_dict['tags_box'] = tags_box
         tags_rect = tags_box_image.get_rect()
 
-        tags = ui.Textbox(str(tags).replace("'", ''), tsize=45, fgcolor=(0, 0, 0))
+        tags = Textbox(str(tags).replace("'", ''), tsize=45, fgcolor=(0, 0, 0))
         tags.fit_text(tags_rect)
         tags.rect.center = tags_box.rect.center
         self.add_child(tags, current_offset=True)
@@ -223,7 +226,6 @@ class Card(ui.Compound_Object):
         
     def add_tag(self, tag):
         tags = self.tags
-        print(tags)
         if tag not in tags:
             tags.append(tag)
             tb = self.objects_dict['tags']
@@ -244,6 +246,9 @@ class Card(ui.Compound_Object):
             tb.rect.center = self.objects_dict['tags_box'].rect.center
             tb.set_current_offset()
             
+    def set_weight(self, weight):
+        self.weight = weight
+            
     def set_sound(self):
         path = 'snd/temp/custom.wav'
         if os.path.exists(path):
@@ -259,12 +264,14 @@ class Card(ui.Compound_Object):
         self.node_data = data
         
         prev_code = self.code
-        np = node_parser.Node_Parser(self, nodes)
-        code = np.get_text()
+        parser = Node_Parser(self, nodes)
+        code = parser.get_text()
         self.set_code(code)
         
         if prev_code != code:
             self.published = False
+            
+        return parser
    
     def set_code(self, code):
         self.code = code
@@ -274,21 +281,30 @@ class Card(ui.Compound_Object):
         
     def publish(self, nodes=None):
         if nodes is not None:
-            self.set_node_data(nodes)
+            parser = self.set_node_data(nodes)
+            missing = parser.missing
+            if missing:
+                if len(missing) == 1:
+                    text = f'Missing {missing[0]} node.\n'
+                else:
+                    text = f"Missing {', '.join(missing)} nodes.\n"
+                m = Menu.notice(text, tsize=20, size=(400, 200))
+                m.run()
+                return
             
         if not self.code:
-            m = ui.Menu.notice('No writable nodes found.')
+            m = Menu.notice('No writable nodes found.')
             m.run()
             return
             
         saved = self.save(suppress=True)
         if not saved:
-            m = ui.Menu.notice('An error occurred while saving.')
+            m = Menu.notice('An error occurred while saving.')
             m.run()
             return
         
         if not is_valid_code(self.code):
-            m = ui.Menu.notice('Error: invalid code.')
+            m = Menu.notice('Error: invalid code.')
             m.run()
             return
   
@@ -296,15 +312,14 @@ class Card(ui.Compound_Object):
         if not passed:
             return
 
-        import save
-        s = save.get_save()
-        s, e = s.publish_card(self)
+        from save import SAVE
+        s, e = SAVE.publish_card(self)
         self.set_lines(s, e)
         
         self.published = True
         self.save(suppress=True)
         
-        m = ui.Menu.notice('Card has been published successfully!')
+        m = Menu.notice('Card has been published successfully!')
         m.run()
         
     def draw(self, surf):
@@ -317,15 +332,15 @@ class Card(ui.Compound_Object):
         if nodes is not None:
             self.set_node_data(nodes)
             
-        import customsheet
-        saved = customsheet.CUSTOMSHEET.save_card(self)
+        from customsheet import CUSTOMSHEET
+        saved = CUSTOMSHEET.save_card(self)
         if not suppress:
             if not saved:
-                menu = ui.Menu.notice('A card with that name already exists.', overlay=True)
+                menu = Menu.notice('A card with that name already exists.', overlay=True)
                 menu.run()
                 return
             else:
-                menu = ui.Menu.timed_message('Card saved successfully!', 50, overlay=True)
+                menu = Menu.timed_message('Card saved successfully!', 50, overlay=True)
                 menu.run()
         return saved
         

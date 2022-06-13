@@ -2,29 +2,15 @@ import json
 
 import pygame as pg
 
-from save import CONSTANTS
+from save import SAVE, CONSTANTS
 
-import ui
+from ui.geometry import position
+from ui.element.standard import Image, Textbox, Button, Input, Text_Flipper
+from ui.element.background import Draw_Lines
+from ui.menu import Menu
 
 WIDTH, HEIGHT = CONSTANTS['screen_size']
 CENTER = CONSTANTS['center']
-
-class Draw_Lines(ui.Base_Object):
-    def __init__(self, points, color=(0, 0, 0), width=3):
-        super().__init__()
-        
-        self.points = points
-        self.color = color
-        self.width = width
-        
-    def set_color(self, color):
-        self.color = color
-        
-    def set_points(self, points):
-        self.points = points
-    
-    def draw(self, surf):
-        pg.draw.lines(surf, self.color, False, self.points, width=self.width)
 
 def error_screen(errors):
     objects = []
@@ -40,7 +26,7 @@ def error_screen(errors):
     pg.draw.rect(s, (100, 100, 100), body, border_radius=10)
     lower.bottomleft = body.bottomleft
     pg.draw.rect(s, (50, 50, 50), lower, border_bottom_right_radius=10, border_bottom_left_radius=10)
-    i = ui.Image(s)
+    i = Image(s)
     i.rect.center = CENTER
     objects.append(i)
     
@@ -58,7 +44,7 @@ def error_screen(errors):
         else:
             message = '5+ errors found:'
         
-        t = ui.Textbox(message, olcolor=(0, 0, 0))
+        t = Textbox(message, olcolor=(0, 0, 0))
         t.fit_text(text_rect, tsize=25, allignment='l')
         t.rect.topleft = upper.topleft
         t.rect.x += 10
@@ -70,7 +56,7 @@ def error_screen(errors):
         text_rect = pg.Rect(0, 0, body.width, 30)
         
         for err in errors[:5]:
-            t = ui.Textbox(err, olcolor=(0, 0, 0))
+            t = Textbox(err, olcolor=(0, 0, 0))
             t.fit_text(text_rect, tsize=25, allignment='l')
             t.rect.topleft = (x, y)
             objects.append(t)
@@ -84,12 +70,12 @@ def error_screen(errors):
         text_rect = pg.Rect(0, 0, upper.width - 15, upper.height - 15)
         text_rect.center = upper.center
         message = 'all tests passed, no errors found!'
-        t = ui.Textbox(message, olcolor=(0, 0, 0))
+        t = Textbox(message, olcolor=(0, 0, 0))
         t.fit_text(text_rect, tsize=25)
         t.rect.center = text_rect.center
         objects.append(t)
     
-    b = ui.Button.text_button('ok', color2=(0, 200, 0), tag='break')
+    b = Button.text_button('ok', color2=(0, 200, 0), tag='break')
     b.rect.center = lower.center
     objects.append(b)
 
@@ -104,7 +90,7 @@ def info_menu(n):
         data = json.load(f)    
     data = data.get(n.name, {})
 
-    title = ui.Textbox(n.get_name(), tsize=35)
+    title = Textbox(n.get_name(), tsize=35)
     title.rect.topleft = (30, 20)
     objects.append(title)
     
@@ -112,27 +98,27 @@ def info_menu(n):
     info_surf = pg.Surface(info_rect.size).convert()
     pg.draw.rect(info_surf, (255, 255, 255), info_rect, width=3, border_radius=10)
     info_rect.topleft = (30, 150)
-    i = ui.Image(info_surf)
+    i = Image(info_surf)
     i.rect = info_rect.copy()
     objects.append(i)
     
-    label = ui.Textbox('info:', tsize=20)
+    label = Textbox('info:', tsize=20)
     label.rect.bottomleft = info_rect.topleft
     label.rect.x += 10
     label.rect.y -= 5
     objects.append(label)
     
-    node_info = ui.Textbox(data.get('info', ''))
+    node_info = Textbox(data.get('info', ''))
     node_info.fit_text(info_rect.inflate(-10, -10), tsize=20, allignment='l')
     node_info.rect.center = info_rect.center
     
     if data.get('tips'):
     
-        node_tips = ui.Textbox(data['tips'])
+        node_tips = Textbox(data['tips'])
         node_tips.fit_text(info_rect.inflate(-10, -10), tsize=20, allignment='l')
         node_tips.rect.center = info_rect.center
         
-        node_text = ui.Image(node_info.image)
+        node_text = Image(node_info.image)
         node_text.rect.center = info_rect.center
         objects.append(node_text)
         
@@ -144,7 +130,7 @@ def info_menu(n):
                 label.set_message('info:')
                 node_text.image = node_info.image
                 
-        b = ui.Button.text_button('>', padding=(15, 15), func=update_info, border_radius=20)
+        b = Button.text_button('>', padding=(15, 15), func=update_info, border_radius=20)
         b.rect.midleft = info_rect.midright
         objects.append(b)
     
@@ -158,7 +144,7 @@ def info_menu(n):
     port_info_rect = pg.Rect(5, 20, w - 10, h - 25)
     pg.draw.rect(port_surf, (0, 0, 0), port_info_rect)
     port_surf.set_colorkey((1, 1, 1))
-    port_box = ui.Image(port_surf, bgcolor=(100, 100, 100))
+    port_box = Image(port_surf, bgcolor=(100, 100, 100))
     port_box.rect = port_rect.copy()
     port_box.rect.topleft = (650, 100)
     objects.append(port_box)
@@ -175,10 +161,10 @@ def info_menu(n):
         if info_text is None:
             continue
         d = {'port': p, 'color': p.get_color(p.types)}
-        p_label = ui.Textbox(f'Port {p.port}', fgcolor=(0, 0, 0))
+        p_label = Textbox(f'Port {p.port}', fgcolor=(0, 0, 0))
         p_label.fit_text(port_label_rect, tsize=20, allignment='l')
         d['label'] = p_label.image
-        p_info = ui.Textbox(info_text)
+        p_info = Textbox(info_text)
         p_info.fit_text(port_info_rect, tsize=15, allignment='l')
         d['info'] = p_info.image
         port_data.append(d)
@@ -190,11 +176,11 @@ def info_menu(n):
         
     if port_data:
         
-        port_label = ui.Image(port_data[0]['label'])
+        port_label = Image(port_data[0]['label'])
         port_label.rect.center = port_label_rect.center
         port_label.rect.x += 5
         objects.append(port_label)
-        port_info = ui.Image(port_data[0]['info'])
+        port_info = Image(port_data[0]['info'])
         port_info.rect.center = port_info_rect.center
         objects.append(port_info)
         port_box.set_background(port_data[0]['color'])
@@ -229,23 +215,23 @@ def info_menu(n):
                 o.set_color(d['color'])
                 o.set_points(update_points(d['port']))
                 
-            b = ui.Button.text_button('>', padding=(15, 15), func=update_port_info, args=[port_index], kwargs={'dir': 1}, border_radius=20)
+            b = Button.text_button('>', padding=(15, 15), func=update_port_info, args=[port_index], kwargs={'dir': 1}, border_radius=20)
             b.rect.midleft = port_box.rect.midright
             objects.append(b)
-            b = ui.Button.text_button('<', padding=(15, 15), func=update_port_info, args=[port_index], kwargs={'dir': -1}, border_radius=20)
+            b = Button.text_button('<', padding=(15, 15), func=update_port_info, args=[port_index], kwargs={'dir': -1}, border_radius=20)
             b.rect.midright = port_box.rect.midleft
             objects.append(b)
             
             for i, pd in enumerate(port_data):
                 r = pd['port'].rect
-                b = ui.Button(r.size, func=update_port_info, args=[port_index], kwargs={'i': i})
+                b = Button(r.size, func=update_port_info, args=[port_index], kwargs={'i': i})
                 b.rect.center = r.center
                 objects.insert(0, b)
                 
     else:
         objects.pop(-2)
 
-    b = ui.Button.text_button('back', color2=(0, 200, 0), tag='break')
+    b = Button.text_button('back', color2=(0, 200, 0), tag='break')
     b.rect.centerx = WIDTH // 2
     b.rect.bottom = HEIGHT - 10
     objects.append(b)
@@ -255,7 +241,7 @@ def info_menu(n):
 def log_menu(name, data):
     objects = []
     
-    title = ui.Textbox.static_textbox(name, tsize=35)
+    title = Textbox.static_textbox(name, tsize=35)
     title.rect.topleft = (30, 20)
     objects.append(title)
     
@@ -263,26 +249,26 @@ def log_menu(name, data):
     info_surf = pg.Surface(info_rect.size).convert()
     pg.draw.rect(info_surf, (255, 255, 255), info_rect, width=3, border_radius=10)
     info_rect.topleft = (30, 150)
-    i = ui.Image(info_surf)
+    i = Image(info_surf)
     i.rect = info_rect.copy()
     objects.append(i)
     
-    label = ui.Textbox.static_textbox('info:', tsize=20)
+    label = Textbox.static_textbox('info:', tsize=20)
     label.rect.bottomleft = info_rect.topleft
     label.rect.x += 10
     label.rect.y -= 5
     objects.append(label)
     
-    node_info = ui.Textbox(data['info'])
+    node_info = Textbox(data['info'])
     node_info.fit_text(info_rect.inflate(-10, -10), tsize=20, allignment='l')
     node_info.rect.center = info_rect.center
     objects.append(node_info)
     
-    key_tb = ui.Textbox.static_textbox('key')
+    key_tb = Textbox.static_textbox('key')
     key_tb.rect.topleft = (WIDTH // 2, 40)
     objects.append(key_tb)
     
-    value_tb = ui.Textbox.static_textbox('return value')
+    value_tb = Textbox.static_textbox('return value')
     value_tb.rect.x = key_tb.rect.right + 30
     value_tb.rect.y = key_tb.rect.y
     objects.append(value_tb)
@@ -292,12 +278,12 @@ def log_menu(name, data):
     y = value_tb.rect.bottom + 20
     
     for key, value in data['data'].items():
-        k = ui.Textbox.static_textbox(key)
+        k = Textbox.static_textbox(key)
         k.rect.right = key_tb.rect.right
         k.rect.y = y
         objects.append(k)
         
-        v = ui.Textbox(value)
+        v = Textbox(value)
         v.fit_text(value_rect, allignment='l')
         v.crop_fitted()
         v.rect.left = value_tb.rect.left
@@ -306,7 +292,7 @@ def log_menu(name, data):
         
         y = v.rect.bottom + 5
         
-    b = ui.Button.text_button('back', color2=(0, 200, 0), tag='break')
+    b = Button.text_button('back', color2=(0, 200, 0), tag='break')
     b.rect.centerx = WIDTH // 2
     b.rect.bottom = HEIGHT - 10
     objects.append(b)
@@ -316,24 +302,24 @@ def log_menu(name, data):
 def game_options_menu(client):
     objects = []
 
-    b = ui.Button.text_button('disconnect', tag='break', func=client.disconnect)
+    b = Button.text_button('disconnect', tag='break', func=client.disconnect)
     b.rect.midtop = CENTER
     objects.append(b)
     
-    b = ui.Button.text_button('game settings', func=ui.Menu.build_and_run, args=[game_settings_menu, client])
+    b = Button.text_button('game settings', func=Menu.build_and_run, args=[game_settings_menu, client])
     b.rect.midtop = objects[-1].rect.midbottom
     objects.append(b)
     
     if client.is_host():
-        b = ui.Button.text_button('new game', tag='break', func=client.send, args=['reset'])
+        b = Button.text_button('new game', tag='break', func=client.send, args=['reset'])
         b.rect.midtop = objects[-1].rect.midbottom
         objects.append(b)
         
-    b = ui.Button.text_button('back', tag='break')
+    b = Button.text_button('back', tag='break')
     b.rect.midtop = objects[-1].rect.midbottom
     objects.append(b)
     
-    ui.Position.center_objects_y(objects)
+    position.center_objects_y(objects)
 
     return objects
 
@@ -346,88 +332,93 @@ def game_settings_menu(client):
     x0 = (WIDTH // 2) - space
     x1 = x0 + (2 * space)
     
-    t = ui.Textbox.static_textbox('rounds: ')
+    t = Textbox.static_textbox('rounds: ')
     t.rect.centerx = x0
     objects.append(t)
     
-    t = ui.Textbox.static_textbox('starting score: ')
+    t = Textbox.static_textbox('starting score: ')
     t.rect.centerx = x0
     objects.append(t)
     
-    t = ui.Textbox.static_textbox('starting cards: ')
+    t = Textbox.static_textbox('starting cards: ')
     t.rect.centerx = x0
     objects.append(t)
     
-    t = ui.Textbox.static_textbox('starting items: ')
+    t = Textbox.static_textbox('starting items: ')
     t.rect.centerx = x0
     objects.append(t)
     
-    t = ui.Textbox.static_textbox('starting spells: ')
+    t = Textbox.static_textbox('starting spells: ')
     t.rect.centerx = x0
     objects.append(t)
     
-    t = ui.Textbox.static_textbox('number of cpus: ')
+    t = Textbox.static_textbox('number of cpus: ')
     t.rect.centerx = x0
     objects.append(t)
     
-    t = ui.Textbox.static_textbox('cpu difficulty: ')
+    t = Textbox.static_textbox('cpu difficulty: ')
     t.rect.centerx = x0
     objects.append(t)
     
-    ui.Position.center_objects_y(objects)
+    position.center_objects_y(objects)
     row_sep = len(objects)
     
-    c = ui.Flipper.counter(range(1, 6), index=settings['rounds'] - 1, size=(50, 25))
+    c = Text_Flipper.counter(range(1, 6), index=settings['rounds'] - 1, size=(50, 25))
     c.set_tag('rounds')
     c.rect.centerx = x1
     objects.append(c)
 
-    c = ui.Flipper.counter(range(5, 51), index=settings['ss'] - 5, size=(50, 25))
+    c = Text_Flipper.counter(range(5, 51), index=settings['ss'] - 5, size=(50, 25))
     c.set_tag('ss')
     c.rect.centerx = x1
     objects.append(c)
 
-    c = ui.Flipper.counter(range(1, 11), index=settings['cards'] - 1, size=(50, 25))
+    c = Text_Flipper.counter(range(1, 11), index=settings['cards'] - 1, size=(50, 25))
     c.set_tag('cards')
     c.rect.centerx = x1
     objects.append(c)
 
-    c = ui.Flipper.counter(range(0, 6), index=settings['items'], size=(50, 25))
+    c = Text_Flipper.counter(range(0, 6), index=settings['items'], size=(50, 25))
     c.set_tag('items')
     c.rect.centerx = x1
     objects.append(c)
 
-    c = ui.Flipper.counter(range(0, 4), index=settings['spells'], size=(50, 25))
+    c = Text_Flipper.counter(range(0, 4), index=settings['spells'], size=(50, 25))
     c.set_tag('spells')
     c.rect.centerx = x1
     objects.append(c)
 
-    c = ui.Flipper.counter(range(1, 15), index=settings['cpus'] - 1, size=(50, 25))
+    c = Text_Flipper.counter(range(1, 15), index=settings['cpus'] - 1, size=(50, 25))
     c.set_tag('cpus')
     c.rect.centerx = x1
     objects.append(c)
 
-    c = ui.Flipper.counter(range(0, 5), index=settings['diff'], size=(50, 25))
+    c = Text_Flipper.counter(range(0, 5), index=settings['diff'], size=(50, 25))
     c.set_tag('diff')
     c.rect.centerx = x1
     objects.append(c)
     
-    ui.Position.center_objects_y(objects[row_sep:])
+    position.center_objects_y(objects[row_sep:])
 
-    counters = [c for c in objects if isinstance(c, ui.Flipper)]
-    
+    counters = [c for c in objects if isinstance(c, Text_Flipper)]
     if not client.is_host():
         for c in counters:
             c.set_enabled(False)
     else:
-        b = ui.Button.text_button('save', size=(100, 25), func=save_game_settings, args=[client, counters])
+    
+        def save_game_settings(client, counters):
+            settings = {c.tag: int(c.current_value) for c in counters}  
+            SAVE.set_data('settings', settings)
+            client.update_settings(settings)
+            
+        b = Button.text_button('save', size=(100, 25), func=save_game_settings, args=[client, counters])
         b.set_tag('break')
         b.rect.midtop = objects[-1].rect.midbottom
         b.rect.y += b.rect.height
         b.rect.centerx = WIDTH // 2
         objects.append(b)
         
-    b = ui.Button.text_button('back', size=(100, 25))
+    b = Button.text_button('back', size=(100, 25))
     b.set_tag('break')
     b.rect.midtop = objects[-1].rect.midbottom
     b.rect.centerx = WIDTH // 2

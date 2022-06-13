@@ -199,11 +199,11 @@ class Player(player_base.Player_Base):
 
 #turn stuff-----------------------------------------------------------------------------------------
 
-    def end_round(self, use_treasure):
+    def end_round(self, end_all):
         if hasattr(self.game.event, 'end'):
             self.game.event.end(self)
-        if use_treasure:
-            for c in self.treasure:
+        if end_all:
+            for c in self.played + self.active_spells + self.treasure:
                 if hasattr(c, 'end'):
                     c.end(self)
         self.game_over = True

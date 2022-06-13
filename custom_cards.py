@@ -2,10 +2,14 @@ import card_base
 
 class Hello(card_base.Card):
     name = 'hello'
-    type = 'play'
-    weight = 1
+    type = 'landscape'
+    weight = 2
     tags = ['player']
     
     def start(self, player):
         self.reset()
-        player.steal(self, 3, self.get_opponents(player)[-1])
+        for p in self.get_opponents(player):
+            if p.score < 20:
+                p.gain(5)
+            else:
+                p.lose(5)

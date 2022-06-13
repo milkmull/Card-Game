@@ -4,52 +4,57 @@ import colorsys
 import pygame as pg
 
 from save import SAVE, CONSTANTS
-
 from screens import game_options_menu
-
-import ui
-import ui_extended as uie
 from spritesheet import SPRITESHEET
-
 from particles import *
+
+from ui.color import gen_colors
+from ui.image import rect_outline
+from ui.element.base import Mover, Position, Compound_Object
+from ui.element.standard import Image, Textbox, Button
+from ui.element.window import Label, Static_Window, Live_Window, Static_Popup
+from ui.element.extended import Alt_Static_Window
+from ui.menu import Menu
 
 WIDTH, HEIGHT = CONSTANTS['screen_size']
 CENTER = CONSTANTS['center']
 CARD_WIDTH, CARD_HEIGHT = CONSTANTS['card_size']
 CW, CH = CONSTANTS['mini_card_size']
 
-Moving_Textbox = ui.Textbox.get_moving()
-
-def gen_colors(num):
-    golden = (1 + 5 ** 0.5) / 2
-    colors = []
-    for i in range(num):
-        h = (i * (golden - 1)) % 1
-        r, g, b = colorsys.hsv_to_rgb(h, 0.8, 1)
-        rgb = (r * 255, g * 255, b * 255)
-        colors.append(rgb)
-    return colors
+Moving_Textbox = Textbox.get_moving()
 
 #menus-----------------------------------------------------------------
 
-class Player_Spot(ui.Live_Window.get_moving()):
+class Player_Spot(Compound_Object.get_moving()):
     SIZE = ((CW * 3) + 18, CH * 6)
     def __init__(self):
+        w, h = Player_Spot.SIZE
+        self.rect = pg.Rect(0, 0, w, h)
+        super().__init__()
+
         self.player = None
-
-        super().__init__(Player_Spot.SIZE, label='', text_kwargs={'olcolor': (0, 0, 0), 'width': 1})
-
-        self.target = ui.Position(rect=pg.Rect(0, 0, 20, 20), parent_rect=self.label_rect.rect, anchor_point='topright', offset=[5, 5])
-        self.view_card_rect = ui.Position(rect=pg.Rect(0, 0, CARD_WIDTH // 5, CARD_HEIGHT // 5), parent_rect=self.rect, anchor_point='midtop')
-        self.card_rect = ui.Position(rect=pg.Rect(0, 0, CW, CH), parent_rect=self.rect, anchor_point='midtop')
+        
+        self.label = Label(self, '', olcolor=(0, 0, 0), width=1)
+        self.target = Position.rect(pg.Rect(0, 0, 20, 20), parent_rect=self.label.rect, anchor_point='topright', offset=[5, 5])
+        self.view_card_rect = Position.rect(pg.Rect(0, 0, CARD_WIDTH // 5, CARD_HEIGHT // 5), parent_rect=self.rect, anchor_point='midtop')
+        self.card_rect = Position.rect(pg.Rect(0, 0, CW, CH), parent_rect=self.rect, anchor_point='midtop')
         self.original_rect = self.rect.copy()
-        self.set_children([self.target, self.view_card_rect, self.card_rect])
+        self.set_children([self.label, self.target, self.view_card_rect, self.card_rect])
+        
+        self.ongoing = Alt_Static_Window((CW + 6, Player_Spot.SIZE[1]), color=(0, 0, 0, 0))
+        self.ongoing.rect.topleft = self.rect.topleft
+        self.add_child(self.ongoing, current_offset=True)
+        
+        self.played = Alt_Static_Window((CW + 6, Player_Spot.SIZE[1]), color=(0, 0, 0, 0))
+        self.played.rect.topleft = self.ongoing.rect.topright
+        self.add_child(self.played, current_offset=True)
+        
+        self.active_card = Alt_Static_Window((CW + 6, CH + 10), color=(0, 0, 0, 0))
+        self.active_card.rect.topleft = self.played.rect.topright
+        self.add_child(self.active_card, current_offset=True)
 
-        ongoing = uie.Alt_Static_Window((CW + 6, Player_Spot.SIZE[1]), color=(0, 0, 0, 0), hide_label=True)
-        played = uie.Alt_Static_Window((CW + 6, Player_Spot.SIZE[1]), color=(0, 0, 0, 0), hide_label=True)
-        active_card = uie.Alt_Static_Window((CW + 6, CH + 10), color=(0, 0, 0, 0), hide_label=True)
-        self.sub_windows = {'ongoing': ongoing, 'played': played, 'active_card': active_card}
-        self.join_objects([ongoing, played, active_card], xpad=0, ypad=0, dir='x', pack=True)
+        self.sub_windows = {'ongoing': self.ongoing, 'played': self.played, 'active_card': self.active_card}
+        self.objects = [self.ongoing, self.played, self.active_card]
         
     def __str__(self):
         return f'{self.player.name} spot'
@@ -60,10 +65,10 @@ class Player_Spot(ui.Live_Window.get_moving()):
     def set_player(self, player):
         self.player = player
         self.label.set_message(player.name)
-        self.label_color = player.color
+        self.label.color = player.color
         for _, win in self.sub_windows.items():
             win.image.fill((0, 0, 0))
-            win.image = ui.Image_Manager.rect_outline(win.image, player.color, width=3)
+            win.image = rect_outline(win.image, player.color, width=3)
         
     def set_original_rect(self):
         if self.target_rect:
@@ -80,9 +85,8 @@ class Player_Spot(ui.Live_Window.get_moving()):
             w.clear()
             
     def resize(self, h):
-        for w in self.objects[:2]:
-            w.resize(h=h)
-        super().resize(h=h)
+        self.played.resize(h=h)
+        self.ongoing.resize(h=h)
         
     def get_target(self):
         return self.target
@@ -97,10 +101,6 @@ class Player_Spot(ui.Live_Window.get_moving()):
         win = self.sub_windows[win]
         win.join_objects(cards)
         return win.get_visible()
-        
-    def update(self):
-        super().update()
-        self.update_children()
 
     def draw(self, surf):
         super().draw(surf)
@@ -133,18 +133,18 @@ class Player_Spot(ui.Live_Window.get_moving()):
 
 class Visuals:
     COIN = [
-        ui.Textbox('tails', fgcolor=(255, 0, 0), olcolor=(0, 0, 0)), 
-        ui.Textbox('heads', 20, fgcolor=(0, 255, 0), olcolor=(0, 0, 0)), 
-        ui.Textbox('flip', fgcolor=(255, 255, 0), olcolor=(0, 0, 0))
+        Textbox('tails', fgcolor=(255, 0, 0), olcolor=(0, 0, 0)), 
+        Textbox('heads', 20, fgcolor=(0, 255, 0), olcolor=(0, 0, 0)), 
+        Textbox('flip', fgcolor=(255, 255, 0), olcolor=(0, 0, 0))
     ]
     DICE = (
-        [ui.Textbox(str(i + 1), fgcolor=fgcolor, olcolor=(0, 0, 0)) for i, fgcolor in enumerate(gen_colors(6))] + 
-        [ui.Textbox('roll', fgcolor=(255, 255, 0), olcolor=(0, 0, 0))]
+        [Textbox(str(i + 1), fgcolor=fgcolor, olcolor=(0, 0, 0)) for i, fgcolor in enumerate(gen_colors(6))] + 
+        [Textbox('roll', fgcolor=(255, 255, 0), olcolor=(0, 0, 0))]
     )
-    SELECT = ui.Textbox('selecting', tsize=15, fgcolor=(255, 255, 0), olcolor=(0, 0, 0))
+    SELECT = Textbox('selecting', tsize=15, fgcolor=(255, 255, 0), olcolor=(0, 0, 0))
     VOTE = {
-        'rotate':  ui.Textbox('rotate', tsize=15, fgcolor=(255, 255, 0), olcolor=(0, 0, 0)), 
-        'keep':  ui.Textbox('keep', tsize=15, fgcolor=(255, 255, 0), olcolor=(0, 0, 0))
+        'rotate':  Textbox('rotate', tsize=15, fgcolor=(255, 255, 0), olcolor=(0, 0, 0)), 
+        'keep':  Textbox('keep', tsize=15, fgcolor=(255, 255, 0), olcolor=(0, 0, 0))
     }
     PLAYER_SPOTS = [Player_Spot() for _ in range(16)]
     GAME_START = {
@@ -160,13 +160,6 @@ class Visuals:
     def reset_spots(cls):
         for w in cls.PLAYER_SPOTS:
             w.reset()
-
-#button functions------------------------------------------------------------------
-
-def save_game_settings(client, counters):
-    settings = {c.tag: c.get_current_tag() for c in counters}  
-    SAVE.set_data('settings', settings)
-    client.update_settings(settings)
     
 #-----------------------------------------------------------------------------------
 
@@ -186,7 +179,7 @@ class Player:
         self.target = pg.Rect(0, 0, 20, 20)
 
         self.score = -1
-        self.score_card = ui.Textbox('', fgcolor=self.color)
+        self.score_card = Textbox('', fgcolor=self.color)
         self.update_score(0)
         
         self.coin = None
@@ -396,15 +389,15 @@ class Player:
         self.gone = False
         self.vote = None
 
-class Card(ui.Position, ui.Mover):
+class Card(Position, Mover):
     def __init__(self, name, uid, color=None, olcolor=None):
         self.name = name
         self.uid = uid
         self.color = color
         self.olcolor = olcolor
 
-        ui.Position.__init__(self, rect=pg.Rect(0, 0, CW, CH))
-        ui.Mover.__init__(self)
+        Position.__init__(self, rect=pg.Rect(0, 0, CW, CH))
+        Mover.__init__(self)
  
     def __eq__(self, other):
         return self.uid == other.uid and self.name == other.name
@@ -434,7 +427,7 @@ class Card(ui.Position, ui.Mover):
         
     def get_med_image(self):
         img = self.get_image(scale=(CW * 1.4, CH * 1.4))
-        i = ui.Image(img)
+        i = Image(img)
         i.rect.center = self.rect.center
         return i
         
@@ -448,7 +441,7 @@ class Card(ui.Position, ui.Mover):
     def draw(self, surf): 
         surf.blit(self.get_image(), self.rect)
     
-class Client(ui.Menu):        
+class Client(Menu):        
     def __init__(self, connection, mode):
         self.screen = pg.display.get_surface()
         self.mode = mode
@@ -507,82 +500,90 @@ class Client(ui.Menu):
         objects = []
         ph = CH * 6
 
-        sequence_window = ui.Static_Window((CW * 1.5, ph), label='your sequence', color=(255, 0, 0))
+        sequence_window = Static_Window((CW * 1.5, ph), color=(255, 0, 0))
         sequence_window.rect.bottomleft = (20, HEIGHT - 20)
         objects.append(sequence_window)
         self.objects_dict['sequence_window'] = sequence_window
+        sequence_window.add_label('your sequence')
 
-        selection_window = ui.Static_Window((CW * 1.5, (CH * 5) + 30), label='selection', color=(0, 0, 255))
+        selection_window = Static_Window((CW * 1.5, (CH * 5) + 30), color=(0, 0, 255))
         selection_window.rect.bottomright = (WIDTH - 20, HEIGHT - 20)
         objects.append(selection_window)
         self.objects_dict['selection_window'] = selection_window
+        selection_window.add_label('selection')
         
-        cancel_button = ui.Button.text_button('x', fgcolor=(255, 0, 0), func=self.send, args=['cancel'], color2=(0, 0, 0))
+        cancel_button = Button.text_button('x', fgcolor=(255, 0, 0), func=self.send, args=['cancel'], color2=(0, 0, 0))
         cancel_button.rect.center = (-50, -50)
         objects.append(cancel_button)
         self.objects_dict['cancel_button'] = cancel_button
         
-        active_card_window = ui.Static_Window((CW * 1.5, CH * 1.5), label='active card', color=(255, 255, 255))
+        active_card_window = Static_Window((CW * 1.5, CH * 1.5), color=(255, 255, 255))
         active_card_window.rect.bottomright = selection_window.rect.bottomleft
         active_card_window.rect.x -= 10
         objects.append(active_card_window)
         self.objects_dict['active_card_window'] = active_card_window
+        active_card_window.add_label('active card')
         
-        extra_cards_window = ui.Popup_Base((CW * 10, CH * 4), label='extra cards', color=(0, 0, 0))
+        extra_cards_window = Static_Popup((CW * 10, CH * 4))
         extra_cards_window.rect.x = sequence_window.rect.right + 10
         extra_cards_window.rect.y = HEIGHT
         objects.append(extra_cards_window)
         self.objects_dict['extra_cards_window'] = extra_cards_window
+        extra_cards_window.add_label('extra cards', color=(0, 0, 0))
         
-        main_button = ui.Button.text_button('', size=(100, 35), tsize=30, fgcolor=(0, 255, 0), func=self.main_button)
+        main_button = Button.text_button('', size=(100, 35), tsize=30, fgcolor=(0, 255, 0), func=self.main_button)
         main_button.set_enabled(False)
         main_button.rect.midbottom = (WIDTH // 2, HEIGHT)
         main_button.rect.y -= 10
         objects.append(main_button)
         self.objects_dict['main_button'] = main_button
         
-        shop_window = ui.Static_Window(((CW * 3) + 20, CH + 10), label='shop', color=(255, 255, 0))
+        shop_window = Static_Window(((CW * 3) + 20, CH + 10), color=(255, 255, 0))
         shop_window.rect.bottomright = active_card_window.rect.bottomleft
         shop_window.rect.x -= 10
         objects.append(shop_window)
         self.objects_dict['shop_window'] = shop_window
+        shop_window.add_label('shop')
 
-        options_button = ui.Button.text_button('options', func=ui.Menu.build_and_run, args=[game_options_menu, self])
+        options_button = Button.text_button('options', func=Menu.build_and_run, args=[game_options_menu, self])
         options_button.rect.topright = (WIDTH, 0)
         options_button.rect.y += 30
         options_button.rect.x -= 30
         objects.append(options_button)
         self.objects_dict['options_button'] = options_button
         
-        round_text = ui.Textbox('', fgcolor=(255, 255, 0))
+        round_text = Textbox('', fgcolor=(255, 255, 0))
         round_text.rect.midtop = options_button.rect.midbottom
         round_text.rect.y += 10
         objects.append(round_text)
         self.objects_dict['round_text'] = round_text
         
-        winner_text = ui.Textbox('', tsize=100, olcolor=(0, 0, 0), width=4)
+        winner_text = Textbox('', tsize=100, olcolor=(0, 0, 0), width=4)
         winner_text.rect.center = CENTER
         objects.append(winner_text)
         self.objects_dict['winner_text'] = winner_text
 
-        discard_window = ui.Static_Window((CW, CH * 1.5), label='item discard')
+        discard_window = Static_Window((CW, CH * 1.5))
         discard_window.rect.midbottom = selection_window.rect.midtop
         discard_window.rect.y -= 30
         objects.append(discard_window)
         self.objects_dict['discard_window'] = discard_window
+        discard_window.add_label('item discard')
         
-        event_window = ui.Static_Window((CW, CH * 1.5), label='event')
+        event_window = Static_Window((CW, CH * 1.5))
         event_window.rect.centerx = active_card_window.rect.centerx
         event_window.rect.y = discard_window.rect.y
         objects.append(event_window)
         self.objects_dict['event_window'] = event_window
+        event_window.add_label('event')
         
-        scores_window = uie.Alt_Static_Window((CW * 2, CH * 3), label='scores')
+        scores_window = Alt_Static_Window((CW * 2, CH * 3))
         scores_window.rect.topleft = (20, 40)
         objects.append(scores_window)
         self.objects_dict['scores_window'] = scores_window
+        scores_window.add_label('scores')
 
-        message_box = ui.Textbox('', tsize=40, fgcolor=(255, 255, 0))
+        message_box = Textbox('', tsize=40, fgcolor=(255, 255, 0))
         message_box.rect.center = CENTER
         objects.append(message_box)
         self.objects_dict['message_box'] = message_box
@@ -671,7 +672,7 @@ class Client(ui.Menu):
                 for s in row:
                     s.rect.x += dx
 
-                y += ps.rect.height + ps.label_rect.rect.height + 20
+                y += ps.rect.height + ps.label.rect.height + 20
                 x = r.left + 50
                 
                 ps.rect.topleft = (x, y)
@@ -724,15 +725,15 @@ class Client(ui.Menu):
             
             if pid == 0: 
                 self.exit()
-                menu = ui.Menu.notice('The host has closed the game.', overlay=True)   
+                menu = Menu.notice('The host has closed the game.', overlay=True)   
                 menu.run()
             elif self.mode != 'single':
-                menu = ui.Menu.timed_message(f'{p.name} has left the game', 60, overlay=True)   
+                menu = Menu.timed_message(f'{p.name} has left the game', 60, overlay=True)   
                 menu.run()
 
     def reset(self):
         for o in self.objects:
-            if isinstance(o, ui.Static_Window):
+            if isinstance(o, Static_Window):
                 o.clear()
             
         for ps in self.player_spots:
@@ -970,16 +971,16 @@ class Client(ui.Menu):
     def update_settings(self, settings):
         if self.get_status() in ('waiting', 'start', 'new game'):
             self.send('us')
-            menu = ui.Menu.timed_message('Settings saved!', 30, overlay=True)
+            menu = Menu.timed_message('Settings saved!', 30, overlay=True)
         else:
-            menu = ui.Menu.notice('Cannot change settings during a game.', overlay=True)
+            menu = Menu.notice('Cannot change settings during a game.', overlay=True)
         menu.run()
             
     def new_settings(self, settings):
         self.settings = settings
         
     def disconnect(self):
-        menu = ui.Menu.timed_message('disconnecting...', 20)
+        menu = Menu.timed_message('disconnecting...', 20)
         menu.run()
         self.exit()
         

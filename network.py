@@ -2,19 +2,10 @@ import socket
 import subprocess
 import re
 import threading
-import base64
 
 from save import SAVE, CONFIRMATION_CODE
 from net_base import Network_Base
-
 import exceptions
-
-def get_exception(e):
-    if e is OSError:
-        errno = e.args[0]
-        if errno == 98:
-            return exceptions.PortInUse
-    return e
 
 def find_connections():
     out = subprocess.check_output(['arp', '-a']).decode()
@@ -24,6 +15,7 @@ def find_connections():
 class Network(Network_Base):
     def __init__(self, server, port):
         super().__init__(server, port)
+        self.sock.settimeout(5)
         self.send_player_info()
         self.connected = True
         
@@ -40,7 +32,7 @@ class Network(Network_Base):
                 t = threading.Thread(target=self.verify_connection, args=(server, connections))
                 t.start()
                 threads.append(t)
-            while any(t.is_alive() for t in threads):
+            while any({t.is_alive() for t in threads}):
                 continue
        
         for server, (s, res) in connections.items():

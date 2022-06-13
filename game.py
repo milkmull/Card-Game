@@ -111,7 +111,7 @@ class Game(game_base.Game_Base):
     def get_pid(self):
         return 0
          
-    def send(self, data):
+    def send_and_recv(self, data):
         if not data:        
             return
             

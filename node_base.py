@@ -1,36 +1,15 @@
 import pygame as pg
 
 import mapping
-import ui
+
+from ui.image import rect_outline
+from ui.geometry import line
+from ui.element.base import Compound_Object
+from ui.element.standard import Textbox, Image
+from ui.element.extended import Logged_Input as Input
+from ui.drag import Dragger
 
 class Wire:
-    @staticmethod
-    def get_dashed_line(points, step=3):
-        dashed_points = []
-        for i in range(len(points) - 1):
-            p0 = points[i]
-            p1 = points[i + 1]
-            x0, y0 = p0
-            x1, y1 = p1
-            
-            if y0 == y1:
-                y = y0
-                if x0 > x1:
-                    s = -step
-                else:
-                    s = step
-                for x in range(x0, x1, s):
-                    dashed_points.append((x, y))
-            elif x0 == x1:
-                x = x0
-                if y0 > y1:
-                    s = -step
-                else:
-                    s = step
-                for y in range(y0, y1, s):
-                    dashed_points.append((x, y))
-        return dashed_points
-
     def __init__(self, p0, p1):
         if p0.port < 0:
             self.op = p0
@@ -44,7 +23,7 @@ class Wire:
         self.points = self.find_points()
 
         self.bad = False
-        self.dashed_points = Wire.get_dashed_line(self.points)
+        self.dashed_points = line.segment(self.points)
         
         self.last_pos_out = self.op.rect.center
         self.last_pos_in = self.ip.rect.center
@@ -58,7 +37,7 @@ class Wire:
             c = self.points[i]
             d = self.points[i + 1]
             
-            if ui.Line.intersect(a, b, c, d):
+            if line.intersect(a, b, c, d):
                 return True
                     
     def check_break(self, a, b):
@@ -146,7 +125,7 @@ class Wire:
         current_pos_in = self.ip.rect.center
         if update_points or (self.last_pos_out != current_pos_out or self.last_pos_in != current_pos_in):
             self.points = self.find_points()
-            self.dashed_points = Wire.get_dashed_line(self.points)
+            self.dashed_points = line.segment(self.points)
         self.last_pos_out = current_pos_out
         self.last_pos_in = current_pos_in
 
@@ -173,7 +152,7 @@ class Port:
     @classmethod
     def get_desc(cls, desc):
         if desc not in cls.desc_cache:
-            cls.desc_cache[desc] = ui.Textbox(desc, tsize=15, bgcolor=(0, 0, 0))
+            cls.desc_cache[desc] = Textbox(desc, tsize=15, bgcolor=(0, 0, 0))
         return cls.desc_cache[desc]
         
     @staticmethod
@@ -387,6 +366,11 @@ class Port:
     def set_types(self, types):
         self.types = types
         
+    def update_types(self, types):
+        if not self.check_connection(types):
+            self.clear()
+        self.set_types(types)
+        
     def add_type(self, type):
         self.types.append(type)
         
@@ -463,8 +447,13 @@ class Port:
                 self.desc.rect.centerx = self.rect.centerx
                 self.desc.rect.y = r.bottom + 5
                 self.desc.draw(surf)
+                
+    def check_connection(self, new_types):
+        if not self.connection:
+            return True
+        return any({t in new_types for t in self.connection_port.types})
 
-class Node(ui.Dragger, ui.Base_Object, ui.Position):
+class Node(Dragger, Compound_Object):
     cat = 'base'
     subcat = 'base'
     
@@ -520,7 +509,7 @@ class Node(ui.Dragger, ui.Base_Object, ui.Position):
             else:
                 tcolor = (255, 255, 255)
 
-            label = ui.Textbox(node.get_name(), tsize=20, fgcolor=tcolor)
+            label = Textbox(node.get_name(), tsize=20, fgcolor=tcolor)
             w, h = node.image.get_size()
             r = pg.Rect(0, 0, w - 5, h - 5)
             r.center = node.image.get_rect().center
@@ -529,12 +518,11 @@ class Node(ui.Dragger, ui.Base_Object, ui.Position):
             label = label.get_image()
             cls.LABEL_CACHE[node.name] = label
             
-        label = ui.Image(label)  
+        label = Image(label)  
         return label
 
     def __init__(self, manager, id, ports, pos=(0, 0), val=None, type=None, color=(100, 100, 100)):
-        ui.Base_Object.__init__(self)
-        ui.Position.__init__(self)
+        Compound_Object.__init__(self)
         
         self.manager = manager
         self.id = id
@@ -559,7 +547,7 @@ class Node(ui.Dragger, ui.Base_Object, ui.Position):
         self.objects_dict = {}
         self.objects = self.get_objects()
 
-        ui.Dragger.__init__(self)
+        Dragger.__init__(self)
         self.set_port_pos()
  
     def __str__(self):
@@ -653,6 +641,9 @@ class Node(ui.Dragger, ui.Base_Object, ui.Position):
             ep.set_offset()
 
         self.big_rect.center = self.rect.center
+        
+    def get_required(self):
+        return []
 
 #writing stuff----------------------------------------------------------------------
 
@@ -687,9 +678,6 @@ class Node(ui.Dragger, ui.Base_Object, ui.Position):
                 input.append(self.get_default(ip.port))
                 
         return input
-
-    def check_errors(self):
-        return ''
         
     def get_input_from(self, p):
         ip = self.get_port(p)
@@ -905,7 +893,7 @@ class Node(ui.Dragger, ui.Base_Object, ui.Position):
                 p.update_position()
             
             self.big_rect.center = self.rect.center
-           
+            
             for o in self.objects:
                 o.update()
 
@@ -927,7 +915,7 @@ class Node(ui.Dragger, ui.Base_Object, ui.Position):
         
     def draw(self, surf):
         if self._selected or self._hover:
-            surf.blit(ui.Image_Manager.rect_outline(self.image, color=(255, 0, 0)), self.rect)
+            surf.blit(rect_outline(self.image, color=(255, 0, 0)), self.rect)
         else:
             surf.blit(self.image, self.rect)
 
@@ -969,7 +957,7 @@ class GroupNode(Node):
         
     def get_objects(self):
         size = (self.rect.width - 25, self.rect.height - 50)
-        i = ui.Input(size, message=self.val, fgcolor=(0, 0, 0), color=(255, 100, 100), length=25, fitted=True, double_click=True)
+        i = Input(size, message=self.val, fgcolor=(0, 0, 0), color=(255, 100, 100), length=25, fitted=True, double_click=True)
         i.rect.center = self.rect.center
         offset = (i.rect.x - self.rect.x, i.rect.y - self.rect.y)
         self.add_child(i, set_parent=True, offset=offset)

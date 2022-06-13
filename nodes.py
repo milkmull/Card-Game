@@ -1,4 +1,7 @@
-import ui
+import pygame as pg
+
+from ui.element.standard import Textbox
+from ui.element.extended import Logged_Input as Input
 
 from node_base import Node, Port, mapping
 
@@ -12,6 +15,14 @@ class Start(Node):
         
     def get_text(self):
         return '\n\tdef start(self, player):\n'
+        
+class End(Node):
+    cat = 'func'
+    def __init__(self, manager, id):
+        super().__init__(manager, id, [Port(-1, ['flow'], desc='flow')], type='func')
+        
+    def get_text(self):
+        return '\n\tdef end(self, player):\n'
    
 class If(Node):
     cat = 'flow'
@@ -65,45 +76,29 @@ class If_Else(Node):
     cat = 'flow'
     subcat = 'conditional'
     def __init__(self, manager, id):
-        super().__init__(manager, id, [Port(1, ['num'], desc='if true'), Port(2, ['num'], desc='if false'), Port(3, Port.get_comparison_types()), Port(-1, [])])
+        super().__init__(manager, id, [Port(1, ['num'], desc='if true'), Port(2, ['num'], desc='if false'), Port(3, Port.get_comparison_types()), Port(-1, ['num'])])
         
     def tf(self):
         ip1 = self.get_port(1)
         ip2 = self.get_port(2)
+        op = self.get_port(-1)
         
         if 'num' in ip1.types:
             ip1.set_types(['string'])
             ip2.set_types(['string'])
+            op.set_types(['string'])
         elif 'string' in ip1.types:
             ip1.set_types(['player'])
             ip2.set_types(['player'])
+            op.set_types(['player'])
         elif 'player' in ip1.types:
             ip1.set_types(['card'])
             ip2.set_types(['card'])
+            op.set_types(['card'])
         elif 'card' in ip1.types:
             ip1.set_types(['num'])
             ip2.set_types(['num'])
-            
-    def update(self):
-        super().update()
-        
-        ip1 = self.get_port(1)
-        ip2 = self.get_port(2)
-        op = self.get_port(-1)
-        
-        t = None
-
-        if ip1.connection:
-            t = ip1.types[0]
-        elif ip2.connection:
-            t = ip2.types[0]
-        if t:
-            if not op.types:
-                op.add_type(t)
-        elif op.types:
-            if op.connection:
-                op.clear()
-            op.set_types([])
+            op.set_types(['num'])
         
     def get_default(self, p):
         if p == 1 or p == 2:
@@ -124,7 +119,7 @@ class Bool(Node):
     def get_objects(self):
         size = (self.rect.width - 25, self.rect.height - 25)
         full_check = lambda t: t.lower() in ('', 't', 'f')
-        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=1, fitted=True, double_click=True)
+        i = Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=1, fitted=True, double_click=True)
         i.rect.center = self.rect.center
         offset = (i.rect.x - self.rect.x, i.rect.y - self.rect.y)
         self.add_child(i, set_parent=True, offset=offset)
@@ -150,7 +145,7 @@ class Num(Node):
     def get_objects(self):
         full_check = lambda t: (t + '0').strip('-').isnumeric()
         size = (self.rect.width - 25, self.rect.height - 25)
-        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=3, fitted=True, double_click=True)
+        i = Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=3, fitted=True, double_click=True)
         i.rect.center = self.rect.center
         offset = (i.rect.x - self.rect.x, i.rect.y - self.rect.y)
         self.add_child(i, set_parent=True, offset=offset)
@@ -175,7 +170,7 @@ class String(Node):
     def get_objects(self):
         full_check = lambda t: t.count("'") < 3
         size = (self.rect.width - 25, self.rect.height - 25)
-        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=50, fitted=True, double_click=True)
+        i = Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=50, fitted=True, double_click=True)
         i.rect.center = self.rect.center
         offset = (i.rect.x - self.rect.x, i.rect.y - self.rect.y)
         self.add_child(i, set_parent=True, offset=offset)
@@ -196,7 +191,7 @@ class Line(Node):
     def get_objects(self):
         full_check = lambda t: t.count("'") < 3
         size = (self.rect.width - 25, self.rect.height - 25)
-        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=300, fitted=True, allignment='l', lines=1, scroll=False, double_click=True)
+        i = Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=300, fitted=True, allignment='l', lines=1, scroll=False, double_click=True)
         i.rect.center = self.rect.center
         offset = (i.rect.x - self.rect.x, i.rect.y - self.rect.y)
         self.add_child(i, set_parent=True, offset=offset)
@@ -219,7 +214,7 @@ class Block(Node):
     def get_objects(self):
         full_check = lambda t: t.count("'") < 3
         size = (self.rect.width - 25, self.rect.height - 25)
-        i = ui.Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=300, fitted=True, allignment='l', lines=20, scroll=False, double_click=True)
+        i = Input(size, message=self.val, color=(0, 0, 0), full_check=full_check, length=300, fitted=True, allignment='l', lines=20, scroll=False, double_click=True)
         i.rect.center = self.rect.center
         offset = (i.rect.x - self.rect.x, i.rect.y - self.rect.y)
         self.add_child(i, set_parent=True, offset=offset)
@@ -231,7 +226,39 @@ class Block(Node):
         if 'import' in val:
             val = 'raise ValueError'
         return f"{val}\n"
+      
+class Scope(Node):
+    size = (300, 50)
+    cat = 'flow'
+    subcat = 'other'
+    def __init__(self, manager, id):
+        super().__init__(manager, id, [Port(1, ['flow'] + Port.get_comparison_types())])
         
+    def get_objects(self):
+        tb = Textbox('-', bgcolor=(0, 0, 0), fitted=True)
+        tb.fit_text(self.rect.inflate(-15, -15))
+        tb.rect.center = self.rect.center
+        offset = (tb.rect.x - self.rect.x, tb.rect.y - self.rect.y)
+        self.add_child(tb, set_parent=True, offset=offset)
+        self.objects_dict['textbox'] = tb
+        return [tb]
+        
+    def update(self):
+        super().update()
+        
+        ip = self.get_port(1)
+        
+        if ip.connection:
+            if 'flow' in ip.connection_port.types:
+                text = ip.connection.get_text().strip('\n\t ')
+            else:
+                text = ip.connection.get_output(ip.connection_port.port)
+            if self.objects_dict['textbox'].get_message() != text:
+                self.objects_dict['textbox'].set_message(text)
+        else:
+            if self.objects_dict['textbox'].get_message() != '-':
+                self.objects_dict['textbox'].set_message('-')
+
 class And(Node):
     cat = 'boolean'
     subcat = 'operators'
@@ -447,33 +474,25 @@ class For(Node):
         op = self.get_port(-1)
 
         if ip.connection:
-            if not op.types:
-                op.set_types([ip.connection_port.get_contains()])
-        elif op.types:
-            if op.connection:
-                op.clear()
-            op.set_types(['num'])
+            t = ip.connection_port.get_contains()
+            if t not in op.types:
+                op.update_types([t])
+        elif 'num' not in op.types:
+            op.update_types(['num'])
 
     def get_loop_var(self):
-        loop_var = f'x{self.id}'
-        
-        ip = self.get_port(1)
-        
-        if not ip.is_open():
-            
-            contains = ip.connection_port.get_contains()
-
-            if contains == 'player':
-                loop_var = f'p{self.id}'  
-            elif contains == 'num':  
-                loop_var = f'i{self.id}'
-            elif contains == 'card':
-                loop_var = f'c{self.id}'
-            elif contains == 'string':
-                loop_var = f's{self.id}'
-            elif contains == 'bool':
-                loop_var = f'b{self.id}'
-                
+        op = self.get_port(-1)
+        contains = op.types[0]
+        if contains == 'player':
+            loop_var = f'p{self.id}'  
+        elif contains == 'num':  
+            loop_var = f'i{self.id}'
+        elif contains == 'card':
+            loop_var = f'c{self.id}'
+        elif contains == 'string':
+            loop_var = f's{self.id}'
+        elif contains == 'bool':
+            loop_var = f'b{self.id}'
         return loop_var
         
     def get_default(self, p):
@@ -482,14 +501,11 @@ class For(Node):
         
     def get_text(self):
         input = [self.get_loop_var()] + self.get_input()
-        text = 'for {} in {}:\n'.format(*input)   
+        text = 'for {0} in {1}:\n'.format(*input)   
         return text
         
     def get_output(self, p):
-        text = ''
-        if p not in (-2, -3):
-            text = self.get_loop_var()
-        return text
+        return self.get_loop_var()
         
 class Zipped_For(Node):
     cat = 'flow'
@@ -506,44 +522,37 @@ class Zipped_For(Node):
             op = self.get_port(-p)
             
             if ip.connection:
-                if not op.types:
-                    op.set_types([ip.connection_port.get_contains()])
-            elif op.types:
-                if op.connection:
-                    op.clear()
-                op.set_types(['num'])
+                t = ip.connection_port.get_contains()
+                if t not in op.types:
+                    op.update_types([t])
+            elif 'num' not in op.types:
+                op.update_types(['num'])
 
     def get_loop_var(self, p):   
-        ip = self.get_port(p)
-        loop_var = f'x{self.id}'
-        
-        if not ip.is_open():
-            contains = ip.connection_port.get_contains()
-            if contains == 'player':
-                return f'p{self.id}'  
-            elif contains == 'num':  
-                return f'i{self.id}'
-            elif contains == 'card':
-                return f'c{self.id}'
-            elif contains == 'string':
-                return f's{self.id}'
-            elif contains == 'bool':
-                return f'b{self.id}'
+        op = self.get_port(p)
+        contains = op.types[0]
+        if contains == 'player':
+            return f'p{self.id}{abs(p)}'  
+        elif contains == 'num':  
+            return f'i{self.id}{abs(p)}'
+        elif contains == 'card':
+            return f'c{self.id}{abs(p)}'
+        elif contains == 'string':
+            return f's{self.id}{abs(p)}'
+        elif contains == 'bool':
+            return f'b{self.id}{abs(p)}'
         
     def get_default(self, p):
         return 'range(1)'
         
     def get_text(self):
-        vars = [self.get_loop_var(1), self.get_loop_var(2)]
+        vars = [self.get_loop_var(-1), self.get_loop_var(-2)]
         input = vars + self.get_input()
         text = 'for {0}, {1} in zip({2}.copy(), {3}.copy()):\n'.format(*input)   
         return text
         
     def get_output(self, p):
-        if p == -1:
-            return self.get_loop_var(1)
-        elif p == -2:
-            return self.get_loop_var(2)
+        return self.get_loop_var(p)
         
 class Break(Node):
     cat = 'flow'
@@ -1007,11 +1016,8 @@ class Start_Flip(Node):
         if p.port == 1 and not self.manager.exists('flip'):
             self.manager.get_node('Flip')
             
-    def check_errors(self):
-        text = ''
-        if not self.manager.exists('flip'):
-            text = 'a flip node must be added to process flip results'
-        return text
+    def get_required(self):
+        return ['Flip']
 
 class Flip(Node):
     cat = 'func'
@@ -1028,6 +1034,9 @@ class Flip(Node):
     def get_output(self, p):
         if p == -1:
             return 'coin'
+            
+    def get_required(self):
+        return ['Start_Flip']
 
 class Start_Roll(Node):
     cat = 'func'
@@ -1046,12 +1055,9 @@ class Start_Roll(Node):
         if p.port == 1 and not self.manager.exists('roll'):
             self.manager.get_node('Roll')
             
-    def check_errors(self):
-        text = ''
-        if not self.manager.exists('roll'):
-            text = 'a roll node must be added to process roll results'
-        return text
-        
+    def get_required(self):
+        return ['Roll']
+
 class Roll(Node):
     cat = 'func'
     subcat = 'roll'
@@ -1067,6 +1073,9 @@ class Roll(Node):
     def get_output(self, p):
         if p == -1:
             return 'dice'
+            
+    def get_required(self):
+        return ['Start_Roll']
             
 class Start_Select(Node):
     cat = 'func'
@@ -1088,13 +1097,8 @@ class Start_Select(Node):
                 return "self.wait = 'select'\n"
         return "player.add_request(self, 'select')\n"
         
-    def check_errors(self):
-        text = ''
-        if not self.manager.exists('Get_Selection'):
-            text = 'a get selection node must be added to initiate selection process'
-        elif not self.manager.exists('Select'):
-            text = 'a select node must be added to process player selection'
-        return text
+    def get_required(self):
+        return ['Get_Selection', 'Select']
             
 class Get_Selection(Node):
     cat = 'func'
@@ -1125,12 +1129,9 @@ class Get_Selection(Node):
         
     def get_output(self, p):
         return 'selection'
-            
-    def check_errors(self):
-        text = ''
-        if self.manager.exists('start selection') and not self.manager.exists('select'):
-            text = 'a select node must be added to process player selection'
-        return text
+        
+    def get_required(self):
+        return ['Start_Select', 'Select']
         
 class Return_List(Node):
     cat = 'func'
@@ -1176,11 +1177,8 @@ class Select(Node):
         elif p == -3:
             return 'sel_c'
             
-    def check_errors(self):
-        text = ''
-        if self.manager.exists('start selection') and not self.manager.exists('get select'):
-            text = 'a get selection node must be added to initiate selection process'
-        return text
+    def get_required(self):
+        return ['Start_Select', 'Get_Selection']
   
 class Return_Bool(Node):
     cat = 'func'
@@ -1274,6 +1272,9 @@ class Start_Ongoing(Node):
     def get_text(self):
         return "self.start_ongoing(player)\n"
         
+    def get_required(self):
+        return ['Init_Ongoing', 'Add_To_Ongoing', 'Ongoing']
+        
 class Init_Ongoing(Node):
     cat = 'func'
     subcat = 'ongoing'
@@ -1282,6 +1283,9 @@ class Init_Ongoing(Node):
             
     def get_text(self):
         return '\n\tdef start_ongoing(self, player):\n'
+        
+    def get_required(self):
+        return ['Start_Ongoing', 'Add_To_Ongoing', 'Ongoing']
         
 class Add_To_Ongoing(Node):
     cat = 'func'
@@ -1307,6 +1311,9 @@ class Add_To_Ongoing(Node):
     def get_text(self):
         return 'player.add_og(self, {0})\n'.format(*self.get_input())
         
+    def get_required(self):
+        return ['Start_Ongoing', 'Init_Ongoing', 'Ongoing']
+        
 class Ongoing(Node):
     cat = 'func'
     subcat = 'ongoing'
@@ -1319,12 +1326,15 @@ class Ongoing(Node):
     def get_output(self, p):
         if p == -1:
             return 'log'
+            
+    def get_required(self):
+        return ['Start_Ongoing', 'Init_Ongoing', 'Add_To_Ongoing']
 
 class Extract_Value(Node):
     cat = 'func'
     subcat = 'ongoing'
     def __init__(self, manager, id):
-        super().__init__(manager, id, [Port(1, ['string'], desc='key'), Port(2, ['log'], desc='log'), Port(-1, [], desc='value')]) 
+        super().__init__(manager, id, [Port(1, ['string'], desc='key'), Port(2, ['log'], desc='log'), Port(-1, ['num'], desc='value')]) 
         
     def get_output(self, p):
         text = "{1}.get({0})".format(*self.get_input())
@@ -1337,7 +1347,7 @@ class Extract_Value(Node):
             return 'dict()'
         
     def eval_text(self, text):
-        if text == 'c':
+        if text == 'c': #not true for draw
             return 'card'
         elif text in ('gp', 'lp', 'sp', 'give', 'dice'):
             return 'num'
@@ -1356,14 +1366,11 @@ class Extract_Value(Node):
         
         if ip.connection:
             text = ip.connection.get_string_val()
-            type = self.eval_text(text)
-            if type:
-                if type not in op.types:
-                    op.add_type(type)
-            else:
-                op.clear_types()
-        elif op.types:
-            op.clear_types()
+            t = self.eval_text(text)
+            if t not in op.types:
+                op.update_types([t])
+        elif 'num' not in op.types:
+            op.update_types(['num'])
 
 class Deploy(Node):
     cat = 'func'
@@ -1877,6 +1884,8 @@ class Add_Card(Node):
     def get_default(self, p):
         if p == 1:
             return 'player'
+        elif p == 4:
+            return '-1'
         else:
             return 'None'
 
@@ -1886,7 +1895,6 @@ class Add_Card(Node):
 class Get_Deck(Node):
     cat = 'player'
     subcat = 'card operator'
-    accepted_strings = ('played', 'unplayed', 'items', 'spells', 'active_spells', 'equipment', 'treasure', 'landscapes')
     def __init__(self, manager, id):
         super().__init__(manager, id, [Port(1, ['string'], desc='deck name'), Port(2, ['player']), Port(-1, ['cs'], desc='deck')])   
         

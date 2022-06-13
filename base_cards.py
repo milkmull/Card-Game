@@ -1618,7 +1618,7 @@ class TreasureCurse(card_base.Card):
         
     def ongoing(self, player, log):
         if log['deck'] == 'treasure':
-            t = log['c']
+            t = log['c'][0]
             self.extra_card = t
             player.add_request(self, 'flip')
             

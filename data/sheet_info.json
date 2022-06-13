@@ -1,13 +1,13 @@
 {
+	"types": [
+		"play",
+		"item",
+		"spell",
+		"treasure",
+		"landscape",
+		"event"
+	],
     "tags": {
-        "types": [
-            "item",
-            "equipment",
-            "treasure",
-            "spell",
-            "event",
-            "landscape"
-        ],
         "biomes": [
             "city",
             "forest",
@@ -27,17 +27,16 @@
 			"bug"
         ]
     },
-    "player decks": [
+    "decks": [
         "played",
         "unplayed",
         "items",
         "spells",
         "active_spells",
-        "equipment",
         "treasure",
         "landscapes"
     ],
-	"request strings": [
+	"requests": [
 		"flip",
 		"roll",
 		"select",

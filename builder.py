@@ -6,19 +6,21 @@ import pygame as pg
 from video_capture import Video_Capture
 from audio_capture import Audio_Capture
 from custom_card_base import Card
+from node_editor import Node_Editor
 
-import ui
-
-import node_editor
+from ui.image import get_surface
+from ui.element.base import Compound_Object
+from ui.element.standard import Image, Textbox, Button, Input, Text_Flipper, Slider, Dropdown
+from ui.element.extended import Dropdown_Multi_Select, RGBSlider
+from ui.menu import Menu
     
 #visual stuff----------------------------------------------------------------------
 
-class Type_Selector(ui.Dropdown_Select):
-    def __init__(self, card):
+class Type_Selector(Dropdown):
+    def __init__(self, card, ne):
         types = (
             'play',
             'item',
-            'equipment',
             'spell',
             'treasure',
             'landscape',
@@ -26,14 +28,16 @@ class Type_Selector(ui.Dropdown_Select):
         )
         super().__init__(types, selected=card.type)
         self.card = card
+        self.ne = ne
 
     def set_value(self, type):
-        m = ui.Menu.yes_no('Changing the card type could result in some nodes being deleted.\nAre you sure you want to change the card type?')
+        m = Menu.yes_no('Changing the card type could result in some nodes being deleted.\nAre you sure you want to change the card type?')
         if m.run():
             super().set_value(type)
             self.card.set_type(type)
+            self.ne.load_required_nodes()
         
-class Tag_Selector(ui.Dropdown_Multi_Select):
+class Tag_Selector(Dropdown_Multi_Select):
     def __init__(self, card):
         from save import SAVE
         all_tags = SAVE.get_sheet_info('tags')
@@ -53,7 +57,7 @@ class Tag_Selector(ui.Dropdown_Multi_Select):
         super().remove_value(tb, b)
         self.card.remove_tag(tag)
 
-class Audio_Manager(ui.Compound_Object):
+class Audio_Manager(Compound_Object):
     def __init__(self, card, mic):
         super().__init__()
         self.rect = pg.Rect(0, 0, 1, 1)
@@ -65,7 +69,7 @@ class Audio_Manager(ui.Compound_Object):
         self.playing_sound = False
         self.start_time = 0
         
-        self.record_image = ui.Image_Manager.get_surface((14, 14), key=(0, 0, 0))
+        self.record_image = get_surface((14, 14), key=(0, 0, 0))
         self.stop_image = self.record_image.copy()
         self.play_image = self.record_image.copy()
         self.clear_image = self.record_image.copy()
@@ -78,33 +82,33 @@ class Audio_Manager(ui.Compound_Object):
         pg.draw.line(self.clear_image, (255, 0, 0), (-2, 16), (16, -2), width=3)
         pg.draw.polygon(self.import_image, (255, 255, 0), ((0, 0), (6, 0), (6, 2), (14, 2), (14, 14), (0, 14)))
 
-        b = ui.Button.image_button(self.record_image, func=self.start_record, padding=(2, 2))
+        b = Button.image_button(self.record_image, func=self.start_record, padding=(2, 2))
         b.rect.topleft = self.rect.topleft
         self.add_child(b, current_offset=True)
         self.record_button = b
         
-        b = ui.Button.image_button(self.play_image, func=self.play_sound, padding=(2, 2))
+        b = Button.image_button(self.play_image, func=self.play_sound, padding=(2, 2))
         b.rect.midleft = self.record_button.rect.midright
         b.rect.x += 10
         self.add_child(b, current_offset=True)
         b.turn_off()
         self.play_button = b
         
-        b = ui.Button.image_button(self.clear_image, func=self.clear_sound, padding=(2, 2))
+        b = Button.image_button(self.clear_image, func=self.clear_sound, padding=(2, 2))
         b.rect.midleft = self.play_button.rect.midright
         b.rect.x += 10
         self.add_child(b, current_offset=True)
         b.turn_off()
         self.clear_button = b
         
-        s = ui.Slider((200, 5), range(200), hcolor=(255, 0, 0))
+        s = Slider((200, 5), range(200), hcolor=(255, 0, 0))
         s.rect.topleft = self.record_button.rect.bottomleft
         s.rect.y += 15
         self.add_child(s, current_offset=True)
         self.bar = s
         s.set_enabled(False)
         
-        b = ui.Button.image_button(self.import_image, func=self.import_file, padding=(2, 2))
+        b = Button.image_button(self.import_image, func=self.import_file, padding=(2, 2))
         b.rect.bottomright = self.bar.rect.topright
         b.rect.y -= 15
         self.add_child(b, current_offset=True)
@@ -198,27 +202,14 @@ class Audio_Manager(ui.Compound_Object):
         super().draw(surf)
         r = pg.Rect(self.bar.rect.x, self.bar.rect.y, self.bar.handel.rect.centerx - self.bar.rect.x, self.bar.rect.height)
         pg.draw.rect(surf, (255, 0, 0), r)
-
-#Button funcs----------------------------------------------------------------------
-
-def save_card(card, ne):
-    card.save(nodes=ne.nodes)
-    
-def publish_card(card, ne):
-    card.publish(nodes=ne.nodes)
-    
-def add_custom_tag(i, ts):
-    tag = i.get_message()
-    ts.add_value(tag)
-    i.clear()
-        
-class Builder(ui.Menu):
+   
+class Builder(Menu):
     def __init__(self, card_info):
         self.cam = Video_Capture()
         self.mic = Audio_Capture(5)
 
         self.card = Card(**card_info)
-        self.node_editor = node_editor.Node_Editor(self.card)
+        self.node_editor = Node_Editor(self.card)
         
         self.objects_dict = {'card': self.card}
         super().__init__(get_objects=self.builder_objects)
@@ -238,7 +229,7 @@ class Builder(ui.Menu):
         
         for i, rgb in enumerate(('r', 'g', 'b')):
             
-            s = ui.RGBSlider((20, 200), 'y', rgb, hcolor=(255, 255, 255), func=self.update_color)
+            s = RGBSlider((20, 200), 'y', rgb, hcolor=(255, 255, 255), func=self.update_color)
             s.rect.topleft = (x, 10)
             s.set_state(self.objects_dict['card'].color[i])
             objects.append(s)
@@ -246,18 +237,30 @@ class Builder(ui.Menu):
             
             x += s.rect.width + 40
             
-        type_text = ui.Textbox.static_textbox('card type:', fgcolor=(255, 255, 255))
+        type_text = Textbox.static_textbox('card type:', fgcolor=(255, 255, 255))
         type_text.rect.topleft = s.rect.topleft
         type_text.rect.x += 50
         objects.append(type_text)
-            
-        ts = Type_Selector(self.card)
+
+        ts = Type_Selector(self.card, self.node_editor)
         ts.rect.midtop = type_text.rect.midbottom
         ts.rect.y += 5
         objects.append(ts)
         self.objects_dict['type_select'] = ts
+
+        f = Text_Flipper.counter(range(1, 5), size=(50, 20), index=self.card.weight - 1)
+        f.rect.topleft = s.rect.bottomright
+        f.rect.x += 100
+        objects.append(f)
+        self.objects_dict['weight'] = f
         
-        tag_text = ui.Textbox.static_textbox('card tags:', fgcolor=(255, 255, 255))
+        def set_weight():
+            w = int(f.current_value)
+            self.card.set_weight(w)
+            
+        f.set_func(set_weight)
+            
+        tag_text = Textbox.static_textbox('card tags:', fgcolor=(255, 255, 255))
         tag_text.rect.topleft = type_text.rect.topright
         tag_text.rect.x += 50
         objects.append(tag_text)
@@ -268,55 +271,66 @@ class Builder(ui.Menu):
         objects.append(tag_select)
         self.objects_dict['tag_select'] = tag_select
         
-        custom_text = ui.Textbox.static_textbox('custom tag:', fgcolor=(255, 255, 255))
+        custom_text = Textbox.static_textbox('custom tag:', fgcolor=(255, 255, 255))
         custom_text.rect.topleft = tag_text.rect.topright
         custom_text.rect.x += 30
         objects.append(custom_text)
         
-        custom = ui.Input((100, 30), 'tag', color=(255, 255, 255), fgcolor=(0, 0, 0), check=ui.Input.alnum_check)
+        def add_custom_tag(i, ts):
+            tag = i.get_message()
+            ts.add_value(tag)
+            i.clear()
+        
+        custom = Input((100, 30), 'tag', color=(255, 255, 255), fgcolor=(0, 0, 0), check=Input.alnum_check)
         custom.set_func(add_custom_tag, args=[custom, tag_select])
         custom.rect.topleft = custom_text.rect.bottomleft
         custom.rect.y += 5
         objects.append(custom)
         self.objects_dict['custom_tag'] = custom
             
-        b = ui.Button.text_button('import image', func=self.open_image)
+        b = Button.text_button('import image', func=self.open_image)
         b.rect.topleft = self.objects_dict['r'].rect.bottomleft
         b.rect.y += 20
         objects.append(b)
         self.objects_dict['image'] = b
         
-        b = ui.Button.text_button('use webcam', func=self.record_video)
+        b = Button.text_button('use webcam', func=self.record_video)
         b.rect.topleft = self.objects_dict['image'].rect.bottomleft
         b.rect.y += 20
         objects.append(b)
         self.objects_dict['cam'] = b
         
-        b = ui.Button.text_button('node editor', func=self.node_editor.run)
+        b = Button.text_button('node editor', func=self.node_editor.run)
         b.rect.topleft = self.objects_dict['cam'].rect.bottomleft
         b.rect.y += 20
         objects.append(b)
         self.objects_dict['node_editor'] = b
-    
-        b = ui.Button.text_button('save card', func=save_card, args=[self.card, self.node_editor])
+        
+        def save_card(card, ne):
+            card.save(nodes=ne.nodes)
+
+        b = Button.text_button('save card', func=save_card, args=[self.card, self.node_editor])
         b.rect.topleft = self.objects_dict['node_editor'].rect.bottomleft
         b.rect.y += 20
         objects.append(b)
         self.objects_dict['save'] = b
+        
+        def publish_card(card, ne):
+            card.publish(nodes=ne.nodes)
 
-        b = ui.Button.text_button('publish card', func=publish_card, args=[self.card, self.node_editor])
+        b = Button.text_button('publish card', func=publish_card, args=[self.card, self.node_editor])
         b.rect.topleft = self.objects_dict['save'].rect.bottomleft
         b.rect.y += 20
         objects.append(b)
         self.objects_dict['publish'] = b
        
-        b = ui.Button.text_button('return to menu', tag='break')
+        b = Button.text_button('return to menu', tag='break')
         b.rect.topleft = self.objects_dict['publish'].rect.bottomleft
         b.rect.y += 20
         objects.append(b)
         self.objects_dict['quit'] = b
 
-        t = ui.Textbox('published: False', tsize=20)
+        t = Textbox('published: False', tsize=20)
         t.set_func(self.update_published)
         t.rect.topleft = self.objects_dict['quit'].rect.topright
         t.rect.x += 20
@@ -365,10 +379,7 @@ class Builder(ui.Menu):
 
     def open_image(self):
         self.cam.close()
-
-        Tk().withdraw()
         file = filedialog.askopenfilename(initialdir='/', title='select an image', filetypes=(('image files', '*.jpg'), ('image files', '*.png')))
-        
         if file:
             image = pg.image.load(file).convert()
             self.objects_dict['card'].update_image(image)

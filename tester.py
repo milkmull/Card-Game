@@ -4,11 +4,10 @@ import json
 import inspect
 
 import game_base
-
 import spritesheet
-
-import ui
 import screens
+
+from ui.menu import Menu
   
 def step_test(t):
     t.step_sim()
@@ -17,12 +16,12 @@ def step_test(t):
         
 def run_tester(card):
     t = Tester(card)
-    m = ui.Menu.loading_screen(step_test, fargs=[t], message='testing card...')
+    m = Menu.loading_screen(step_test, fargs=[t], message='testing card...')
     m.run()
     t.process()
     messages = t.get_error_messages()
     if messages:
-        m = ui.Menu(get_objects=screens.error_screen, args=[messages])
+        m = Menu(get_objects=screens.error_screen, args=[messages])
         m.run()
         return
     return True

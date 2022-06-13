@@ -1,7 +1,6 @@
 import os
 import socket
 import threading
-from _thread import start_new_thread
 import traceback
 
 from save import SAVE, CONFIRMATION_CODE

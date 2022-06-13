@@ -6,6 +6,13 @@
             "-1": null
         }
     },
+    "End": {
+        "info": "This node is a function that will run at the end of a game.",
+        "tips": "It's common for event cards and treasure cards to use this function. Usually the player will be asked to satisfy some condition by the end of the game and if they do they will gain points.",
+        "ports": {
+            "-1": null
+        }
+    },
     "If": {
         "info": "If the boolean input is True, the split path is run before continuing the main path. If it is False, the split path is skipped.",
         "tips": "If nodes can evaluate all kinds of data, not just boolean values.\n\nIf you plug in a number, if the number is not 0 it will evaluate to True, otherwise False.\n\nIf you plug in a list, if the list is not empty it will evaluate to True, otherwise False.\n\n",
@@ -80,6 +87,13 @@
         "ports": {
             "1": null,
             "-1": "block of code"
+        }
+    },
+    "Scope": {
+        "info": "This node lets you see the code output from ports. It can be connected to any output port.",
+        "tips": "Certain ports will return a variable. You can use this node to get the name of that returned variable. You can then reference that variable in a 'Line' or 'Block' node.",
+        "ports": {
+            "1": null
         }
     },
     "And": {
@@ -386,6 +400,15 @@
             "1": "Tag to check for.",
             "2": "Card to evaluate. This will default to this card.",
             "-1": "Returns True if the card has the tag, and False if not."
+        }
+    },
+    "Is_Type": {
+        "info": "This node can be used to check if a card is a specific type of card. It will return True if the card has the type, and False if not.",
+        "tips": null,
+        "ports": {
+            "1": "Type to check for.",
+            "2": "Card to evaluate. This will default to this card.",
+            "-1": "Returns True if the card has the type, and False if not."
         }
     },
     "Get_Name": {
@@ -915,7 +938,7 @@
     },
     "Get_Deck": {
         "info": "This node is used to retrieve the deck of a specified player based on the deck's name.",
-        "tips": null,
+        "tips": "If an inaccurate deck string is supplied, a 'KeyError' will be raised. Use the 'decks' tab on the sheet menu to get strings with all deck names.",
         "ports": {
             "1": "String representing the name of the deck to be retrieved. This wil default to 'played'.",
             "2": "The player to retrieve the deck from. This will default to the user.",

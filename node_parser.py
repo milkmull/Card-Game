@@ -4,20 +4,24 @@ class Node_Parser:
     def __init__(self, card, nodes):
         self.card = card
         self.nodes = nodes
-        self.start_node = next(iter(n for n in self.nodes if n.name == 'Start'), None)
-        self.errors = self.check_errors()
+        self.start_node = self.find_start()
+        self.missing = self.check_missing_nodes()
 
         self.header = (
             f"\nclass {self.card.classname}(card_base.Card):\n"
-            f"\tname = '{self.card.name}'\n"
-            f"\ttype = '{'play'}'\n\tweight = {1}\n"
-            f"\ttags = {self.card.tags}\n"
+                f"\tname = '{self.card.name}'\n"
+                f"\ttype = '{self.card.type}'\n"
+                f"\tweight = {self.card.weight}\n"
+                f"\ttags = {self.card.tags}\n"
         )
         self.dec_line = ''
-
         self.funcs = {}
-        
         self.text = self.run()
+        
+    def find_start(self):
+        for n in self.nodes:
+            if n.name == 'Start':
+                return n
         
     def get_text(self):
         return self.text
@@ -30,18 +34,17 @@ class Node_Parser:
         
     def find_funcs(self):
         return [n for n in self.nodes if n.type == 'func']
-        
-    def check_errors(self):
-        errors = []
+
+    def check_missing_nodes(self):
+        missing = set()
         for n in self.nodes:
-            e = n.check_errors()
-            if e:
-                errors.append(e)
-        print(errors)
-        return errors
+            for name in n.get_required():
+                if not any({o.name == name for o in self.nodes}):
+                    missing.add(name)
+        return list(missing)
         
     def run(self):
-        if not self.start_node or self.errors:
+        if not self.start_node or self.missing:
             return ''
                 
         for n in self.find_funcs():

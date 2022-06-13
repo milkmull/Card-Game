@@ -3,11 +3,10 @@ import os
 import pygame as pg
 
 import save
-
 import spritesheet_base
-
-from ui import Image_Manager
 from custom_card_base import Card
+
+from ui.image import rect_outline
 
 def load_sounds():
     sounds = {}
@@ -64,7 +63,7 @@ class Spritesheet:
         if any(scale):
             img = pg.transform.smoothscale(img, scale)
         elif olcolor is not None:
-            img = Image_Manager.rect_outline(img, color=olcolor)
+            img = rect_outline(img, color=olcolor)
 
         return img
         
