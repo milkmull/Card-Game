@@ -3,9 +3,9 @@ import socket
 import threading
 import traceback
 
-from save import SAVE, CONFIRMATION_CODE
-from net_base import Network_Base, get_local_ip
-from game import Game
+from data.save import SAVE, CONFIRMATION_CODE, TEMP_IMG_PATH
+from network.net_base import Network_Base, get_local_ip
+from game.game import Game
 import exceptions
 
 def get_port():
@@ -34,8 +34,8 @@ class Server(Network_Base):
         super().close()
         for t in self.threads:
             t.join()
-        for f in os.listdir('img/temp'):
-            os.remove(f'img/temp/{f}')
+        for f in os.listdir(TEMP_IMG_PATH):
+            os.remove(f'{TEMP_IMG_PATH}{f}')
         
         info = self.pop_exception()
         if info:
@@ -62,7 +62,7 @@ class Server(Network_Base):
         info = self.load_json(info)
         image = self.b64decode(info['raw_image'])
 
-        filename = f'img/temp/{id}.png'
+        filename = f'{TEMP_IMG_PATH}{id}.png'
         with open(filename, 'wb') as f:
             f.write(image)
             

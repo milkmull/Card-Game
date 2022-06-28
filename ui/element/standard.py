@@ -1,21 +1,22 @@
-import sys
+import os
 from tkinter import Tk
 
 import pygame as pg
 from pygame.math import Vector2 as vec
 import pygame.freetype
 
-from ui.color import tint, shade
-from ui.image import get_surface, get_arrow, crop
-from ui.element.base import Position, Compound_Object
+from ..color import tint, shade
+from ..image import get_surface, get_arrow, crop
+from ..icons.icons import icons
+from .base import Position, Compound_Object
 
 class Image(Compound_Object): 
     @classmethod
     def from_style(cls, *args, **kwargs):
         return cls(get_surface(*args, **kwargs))
         
-    def __init__(self, image, bgcolor=None):
-        super().__init__()
+    def __init__(self, image, bgcolor=None, **kwargs):
+        super().__init__(**kwargs)
         self.image = image
         self.rect = self.image.get_rect()
         self.bgcolor = bgcolor
@@ -56,31 +57,46 @@ class Image(Compound_Object):
 
 class Textbox(Compound_Object):
     pg.freetype.init()
-    _FONT = 'fonts/arial.ttf'
-    try:
-        FONT = pg.freetype.Font(_FONT)
-    except OSError:
-        FONT = pg.freetype.Font(None)
-        _FONT = FONT.path
-    FONT.pad = True
+    FONTS = {
+        'pygame': pg.freetype.Font(None),
+        'icons': pg.freetype.Font('ui/icons/icons.ttf')
+    }
+    FONT_PATHS = ['ui/icons']
+
     OLCACHE = {}
     
     @classmethod
-    def set_font(cls, font):
-        cls_FONT = font
-        cls.FONT = pg.freetype.Font(font)
-        cls.FONT.pad = True
+    def add_font_path(cls, path):
+        cls.FONT_PATHS.append(path)
+
+    @classmethod
+    def get_font(cls, name='pygame'):
+        file = f'{name}.ttf'
+        if name not in cls.FONTS:
+            for path in cls.FONT_PATHS:
+                if file in os.listdir(path):
+                    font = pg.freetype.Font(f'{path}/{name}.ttf')
+                    cls.FONTS[name] = font
+                    break
+            else:
+                name = 'pygame'
+        return cls.FONTS[name]
         
     @classmethod
-    def get_font(cls):
-        return cls._FONT
+    def find_font_path(cls, name):
+        file = f'{name}.ttf'
+        for path in cls.FONT_PATHS:
+            if file in os.listdir(path):
+                return f'{path}/{file}'
         
     @classmethod
-    def render_text(cls, message, tsize=20, fgcolor=(255, 255, 255), bgcolor=None, olcolor=None, width=2):
-        image, _ = cls.FONT.render(message, fgcolor=fgcolor, size=tsize)
+    def render_text(cls, message, font='pygame', tsize=20, fgcolor=(255, 255, 255), bgcolor=None, olcolor=None, width=2):
+        if isinstance(font, str):
+            font = cls.get_font(font)
+        image, _ = font.render(message, fgcolor=fgcolor, size=tsize)
         
         if olcolor is not None:
-            image = cls.add_outline(message, image, tsize, olcolor, width=width)
+            image = cls.add_outline(message, image, font, tsize, olcolor, width=width)
             
         if bgcolor is not None:
             bg = pg.Surface(image.get_size()).convert()
@@ -122,7 +138,7 @@ class Textbox(Compound_Object):
         return points
        
     @classmethod
-    def add_outline(cls, message, image, tsize, olcolor, width=2):
+    def add_outline(cls, message, image, font, tsize, olcolor, width=2):
         points = cls.get_outline_points(width)
     
         w, h = image.get_size()
@@ -131,7 +147,7 @@ class Textbox(Compound_Object):
         osurf = pg.Surface((w, h + 2 * width)).convert_alpha()
         osurf.fill((0, 0, 0, 0))
         surf = osurf.copy()
-        outline = cls.render_text(message, tsize=tsize, fgcolor=olcolor)
+        outline = cls.render_text(message, font=font, tsize=tsize, fgcolor=olcolor)
         osurf.blit(outline, (0, 0))
         
         for dx, dy in points:
@@ -148,22 +164,30 @@ class Textbox(Compound_Object):
         i = Image(image)
         return i
     
-    def __init__(self, message, tsize=20, fgcolor=(255, 255, 255), bgcolor=None, olcolor=None, width=2, anchor='center', fitted=False, font=None, **kwargs):
+    def __init__(
+        self,
+        message,
+        font=None,
+        tsize=20,
+        fgcolor=(255, 255, 255),
+        bgcolor=None,
+        olcolor=None,
+        width=2,
+        anchor='center',
+        fitted=False,
+        allignment='c',
+        **kwargs
+    ):
         super().__init__()
         
         self.message = message
         self.original_message = message
-        
+
+        self.font = pg.freetype.Font(Textbox.find_font_path(font))
+        self.font.pad = True
         self.tsize = tsize
         self.original_tsize = tsize
-        self._font = font
-        if font is None:
-            self._font = Textbox.get_font()
-        else:
-            self._font = font
-        self.font = pg.freetype.Font(self._font)
-        self.font.pad = True
-        
+
         self.fgcolor = fgcolor
         self.bgcolor = bgcolor
         self.olcolor = olcolor
@@ -173,8 +197,8 @@ class Textbox(Compound_Object):
         self.anchor = anchor
         self.fitted = fitted
         self.fitted_rect = None
-        self.allignment_cache = 'c'
-        
+        self.allignment = allignment
+
         self.characters = []
             
         if kwargs:
@@ -190,6 +214,9 @@ class Textbox(Compound_Object):
                 self.set_oblique(True)
             if kwargs.get('wide', False):
                 self.set_wide(True)
+                
+        if message == 'test':
+            print(self.__dict__)
 
     def __str__(self):
         return self.message
@@ -202,6 +229,13 @@ class Textbox(Compound_Object):
         
     def __bool__(self):
         return bool(self.message)
+        
+    @property
+    def default_color(self):
+        if sum(self.fgcolor) < 382:
+            return tint(self.fgcolor, factor=1.5)
+        else:
+            return shade(self.fgcolor, factor=2)
    
     def set_antialiased(self, antialiased):
         self.font.antialiased = antialiased
@@ -236,13 +270,6 @@ class Textbox(Compound_Object):
         self.font.size = tsize
         self.tsize = tsize
         
-    def set_font(self, font):
-        font_dict = self.font.__dict__.copy()
-        self._font = font
-        self.font = pg.freetype.Font(font, size=self.tsize)
-        self.font
-        self.font.pad = True
-        
     def set_anchor(self, anchor):
         self.anchor = anchor
         
@@ -266,13 +293,7 @@ class Textbox(Compound_Object):
         
     def get_characters(self):
         return self.characters
-        
-    def get_default_color(self):
-        if sum(self.fgcolor) < 382:
-            return tint(self.fgcolor, factor=1.5)
-        else:
-            return shade(self.fgcolor, factor=2)
-        
+
     def reset(self):
         self.set_message(self.original_message)
         
@@ -292,11 +313,14 @@ class Textbox(Compound_Object):
         else:
             return image
         
-    def render(self, message, get_rect=False, track_chars=False):
+    def render(self, message, get_rect=False, track_chars=False, fgcolor=None):
+        if fgcolor is None:
+            fgcolor = self.fgcolor
+            
         image, rect = self.font.render(message, fgcolor=self.fgcolor, size=self.tsize)
         
         if self.olcolor is not None:
-            image = Textbox.add_outline(message, image, self.tsize, self.olcolor, width=self.width)
+            image = Textbox.add_outline(message, image, self.font, self.tsize, self.olcolor, width=self.width)
             rect = image.get_rect()
             
         if self.bgcolor is not None:
@@ -346,7 +370,7 @@ class Textbox(Compound_Object):
             
         self.new_image(image)
         
-    def fit_text(self, bounding_rect, tsize=None, allignment='c', new_message=None):
+    def fit_text(self, bounding_rect, tsize=None, allignment=None, new_message=None, width_only=False):
         if new_message is not None:
             self.message = new_message
         message = self.message
@@ -356,19 +380,15 @@ class Textbox(Compound_Object):
         if tsize > bounding_rect.height:
             tsize = bounding_rect.height
         self.set_font_size(tsize)
+        
+        if allignment is None:
+            allignment = self.allignment
 
         lines = [line.split(' ') for line in message.splitlines()]
         if not message or message.endswith('\n'):
             lines.append([''])
         characters = []
 
-        if self.bgcolor is None:
-            image = pg.Surface(bounding_rect.size).convert_alpha()
-            image.fill((0, 0, 0, 0))
-        else:
-            image = pg.Surface(bounding_rect.size).convert()
-            image.fill(self.bgcolor)
-        
         max_width, max_height = bounding_rect.size
         while self.tsize > 1:
 
@@ -426,6 +446,18 @@ class Textbox(Compound_Object):
                 if current_line:
                     rendered_lines.append(current_line)
                 break
+                
+        if width_only:
+            max_y = rendered_lines[-1][0][2].bottom
+            min_y = rendered_lines[0][0][2].top
+            bounding_rect.height = max_y - min_y
+                
+        if self.bgcolor is None:
+            image = pg.Surface(bounding_rect.size).convert_alpha()
+            image.fill((0, 0, 0, 0))
+        else:
+            image = pg.Surface(bounding_rect.size).convert()
+            image.fill(self.bgcolor)
 
         if rendered_lines:
         
@@ -475,7 +507,7 @@ class Textbox(Compound_Object):
                 characters.append(('', r, (r.x, r.y)))
 
         self.characters = characters
-        self.allignment_cache = allignment
+        self.allignment = allignment
         self.new_image(image, rect=bounding_rect.copy(), set_pos=False)
         
     def crop_fitted(self):
@@ -500,7 +532,7 @@ class Textbox(Compound_Object):
             setattr(self.rect, self.anchor, a)
         self.move_characters()
         
-    def update_style(self, message=None, tsize=None, fgcolor=None, bgcolor=None, olcolor=None, width=None, font=None, **kwargs): 
+    def update_style(self, message=None, tsize=None, fgcolor=None, bgcolor=None, olcolor=None, width=None, **kwargs): 
         if tsize is not None:
             self.tsize = tsize
         if fgcolor is not None:
@@ -511,8 +543,6 @@ class Textbox(Compound_Object):
             self.olcolor = olcolor
         if width is not None:
             self.width = width
-        if font is not None:
-            self.set_font(font)
         
         if kwargs:
             if kwargs.get('antialiased'):
@@ -534,7 +564,7 @@ class Textbox(Compound_Object):
     def set_message(self, message):
         self.message = message
         if self.fitted:
-            self.fit_text(self.rect, allignment=self.allignment_cache)
+            self.fit_text(self.rect)
         else:
             image, rect = self.render(self.message, get_rect=True, track_chars=True)
             self.new_image(image, rect=rect)
@@ -560,51 +590,57 @@ class Textbox(Compound_Object):
         
     def to_static(self):
         return Image(self.image)
-
+        
 class Button(Compound_Object):
     @classmethod
-    def text_button(cls, message, size=None, padding=(0, 0), center_offset=(0, 0), tsize=20, fgcolor=(255, 255, 255), text_kwargs={}, **kwargs):
-        t = Textbox(message, tsize=tsize, fgcolor=fgcolor, **text_kwargs)
-        b = cls((0, 0), **kwargs)
-        b.join_object(t, size=size, padding=padding, center_offset=center_offset)
-        return b
+    def text_button(cls, *args, abs_fit=False, anchor_point='center', **kwargs):
+        self = cls(**kwargs)
+        tb = Textbox(*args, **self.get_leftover())
+        if tb.fitted:
+            tb.fit_text(self.padded_rect)
+        self.join_object(tb, abs_fit=abs_fit, anchor_point=anchor_point)
+        return self
         
     @classmethod
-    def image_button(cls, image, size=None, color1=(0, 0, 0, 0), border_radius=0, padding=(0, 0), center_offset=(0, 0), **kwargs):
-        i = Image(image)
-        b = cls((0, 0), color1=color1, border_radius=border_radius, **kwargs)
-        b.join_object(i, size=size, padding=padding, center_offset=center_offset)
-        return b
+    def image_button(cls, *args, abs_fit=False, anchor_point='center', **kwargs):
+        self = cls(**kwargs)
+        i = Image(*args, **self.get_leftover())
+        self.join_object(i, abs_fit=abs_fit, anchor_point=anchor_point)
+        return self
 
-    def __init__(self, size, color1=(0, 0, 0), color2=(100, 100, 100), border_radius=5, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, color=(0, 0, 0), color2=(100, 100, 100), **kwargs):
+        super().__init__(draw_rect=True, color=color, **kwargs)
 
-        self.size = size
-        self.padding = (0, 0)
-        self.rect = pg.Rect(0, 0, size[0], size[1])
-        
-        self.color1 = color1
-        self.color2 = color2
-        self.border_radius = border_radius
+        self.colors = {
+            False: color,
+            True: color2
+        }
 
-        self.active = False
         self.pressed = False
         
     @property
-    def current_color(self):
-        if self.active:
-            return self.color2
-        return self.color1
+    def active(self):
+        return self.rect.collidepoint(pg.mouse.get_pos())
+
+    @property
+    def color(self):
+        return self.colors[self.active]
         
     @property
-    def object(self):
-        if self.children:
-            return self.children[0]
+    def color1(self):
+        return self.colors[False]
         
-    def set_enabled(self, enabled):
-        self.enabled = enabled
-        if not enabled:
-            self.active = False
+    @property
+    def color2(self):
+        return self.colors[True]
+        
+    @color1.setter
+    def color1(self, color):
+        self.colors[False] = color
+        
+    @color2.setter
+    def color2(self, color):
+        self.colors[True] = color
             
     def get_state(self):
         return self.pressed
@@ -612,50 +648,22 @@ class Button(Compound_Object):
     def reset(self):
         self.pressed = False
         
+    def invert(self):
+        self.colors = {not k: v for k, v in self.colors.items()}
+
     def set_cursor(self):
         if self.rect.collidepoint(pg.mouse.get_pos()):
             pg.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
             return True
-            
-    def click_down(self):
-        self.pressed = True
-        self.run_func()
-        
-    def join_object(self, object, size=None, padding=(0, 0), center_offset=(0, 0)):
-        if self.object is not None:
-            self.remove_child(self.object)
-        
-        if size is None:
-            size = object.rect.size
-        w, h = size
-        if any(padding):
-            w += (2 * padding[0])
-            h += (2 * padding[1])
-        if any(center_offset):
-            w += (2 * abs(center_offset[0]))
-            h += (2 * abs(center_offset[1]))
-        self.size = (w, h)
-        self.padding = padding
-        
-        c = self.rect.center
-        self.rect.size = self.size
-        self.rect.center = c
-
-        self.add_child(object, anchor_point='center', offset=center_offset)
-        
-    def get_object(self):
-        return self.children[0]
 
     def events(self, events):
-        p = events['p']
-        self.active = self.rect.collidepoint(p)
-
         mbd = events.get('mbd')
         mbu = events.get('mbu')
         if mbd:
             if mbd.button == 1:
                 if self.active:
-                    self.click_down()  
+                    self.pressed = True
+                    self.run_func()
                     events.pop('mbd')
                 
         elif mbu:
@@ -664,15 +672,6 @@ class Button(Compound_Object):
                 
         super().events(events)
         
-    def update(self):
-        self.enable_func = False
-        super().update()
-  
-    def draw(self, surf):
-        if self.current_color != (0, 0, 0, 0):
-            pg.draw.rect(surf, self.current_color, self.rect, border_radius=self.border_radius)
-        super().draw(surf)
-
 class Input(Compound_Object):
     VALID_CHARS = set(range(32, 127))
     VALID_CHARS.add(9)
@@ -705,47 +704,33 @@ class Input(Compound_Object):
     @staticmethod
     def alnum_check(char):
         return char.isalnum() or char.isspace()
-        
-    @classmethod
-    def from_image(cls, image, **kwargs):
-        size = image.get_size()
-        input = cls(size, size_lock=True, **kwargs)
-        input.rect.size = size
-        input.base_image = image.copy()
-        input.image = image
-        return input
 
     def __init__(
-        self, size, message='', default='type here', tsize=20, padding=(5, 5), color=(0, 0, 0, 0), length=99, check=lambda char: True,
-        full_check=lambda text: True, fitted=False, scroll=False, allignment='c', size_lock=False, highlight=False, lines=0,
-        double_click=False, **kwargs
+        self,
+        message='',
+        default='type here',
+        length=99,
+        check=lambda char: True,
+        full_check=lambda text: True,
+        scroll=False,
+        size_lock=False,
+        highlight=False,
+        lines=0,
+        double_click=False,
+        **kwargs
     ):      
-        super().__init__()
+
+        super().__init__(**kwargs)
         if not message:
             message = default
-        self.textbox = Textbox(message, tsize=tsize, fitted=fitted, **kwargs)
+        self.textbox = Textbox(message, **self.get_leftover())
+        self.textbox.fit_text(self.padded_rect)
         self.default = default
-
-        w, h = size
-        w = size[0] + (2 * padding[0])
-        if not fitted and not size_lock: 
-            h = self.textbox.rect.height + (2 * padding[1])
-        else:
-            h = size[1] + (2 * padding[1])
-        self.base_image = pg.Surface((w, h)).convert_alpha()
-        self.image = None
-        self.padding = padding
- 
-        self.color = color
-        self.base_image.fill(color)
-        self.rect = self.base_image.get_rect()
-
-        self.fitted = fitted
-        self.allignment = allignment
-        self.scroll = scroll
-        self.tsize = tsize
+        
         self.fgcolor = self.textbox.fgcolor
-        self.default_color = self.textbox.get_default_color()
+        self.default_color = self.textbox.default_color
+
+        self.scroll = scroll
 
         self.length = length
         self.max_lines = lines
@@ -773,45 +758,54 @@ class Input(Compound_Object):
         self.cut = False
         self.all = False
 
-        self.text_rect = self.rect.inflate(-padding[0], -padding[1])
-        self.update_message(self.textbox.get_message())
+        self.update_message(self.message)
 
-        if not self.fitted:
+        if not self.textbox.fitted:
             anchor = 'topleft'
-            offset = list(padding)
+            offset = [self.left_pad, self.top_pad + self.special_pad]
         else:
             anchor = 'center'
-            offset = [0, 0]
+            offset = [0, self.special_pad]
         self.add_child(self.textbox, anchor_point=anchor, offset=offset)
         
     @property
     def lines(self):
-        return len(f'{self.get_message()} '.splitlines())
-     
-    def get_chars(self):
-        return self.textbox.characters
+        return len(f'{self.message} '.splitlines())
 
-    def get_message(self):
+    @property
+    def message(self):
         return self.textbox.get_message()
+        
+    @property
+    def characters(self):
+        return self.textbox.characters
+        
+    @property
+    def text_color(self):
+        if self.message == self.default:
+            return self.default_color
+        else:
+            return self.fgcolor
+        
+    def is_filled(self):
+        return self.message != self.default
 
-    def update_message(self, message):
-        if self.check_message(message) and len(message) <= self.length:
-            self.textbox.set_fgcolor(self.default_color if message == self.default else self.fgcolor)
+    def update_message(self, message, force=False):
+        if (self.check_message(message) and len(message) <= self.length) or force:
+            self.textbox.set_fgcolor(self.text_color)
             self.textbox.set_message(message)
-            if self.fitted:
-                self.textbox.fit_text(self.text_rect, tsize=self.tsize, allignment=self.allignment)
 
     def check_message(self, text):
         return all({ord(char) in Input.VALID_CHARS and self.check(char) for char in text}) and self.full_check(text)
 
     def set_index(self, index):
         index = max({index, 0})
-        index = min({index, len(self.get_message())})
+        index = min({index, len(self.message)})
         self.index = index
               
     def highlight_word(self):
         i = j = self.index
-        m = self.get_message()
+        m = self.message
         
         if m and i not in range(len(m)):
             i -= 1
@@ -840,18 +834,18 @@ class Input(Compound_Object):
         self.set_index(j)
         
     def highlight_full(self):
-        m = self.get_message()
+        m = self.message
         self.selection = [0, len(m)]
         self.set_index(len(m))
    
     def get_selection(self):
         if self.selection:
             i, j = self.selection
-            return self.get_message()[min(i, j):max(i, j)]
+            return self.message[min(i, j):max(i, j)]
         return ''
 
     def replace_selection(self, text):
-        m = self.get_message()
+        m = self.message
         i, j = self.selection
         message = m[:min(i, j)] + text + m[max(i, j):] 
         self.update_message(message)
@@ -864,7 +858,7 @@ class Input(Compound_Object):
             if self.selection:
                 self.replace_selection('')
             else:
-                m = self.get_message()
+                m = self.message
                 message = m[:max(self.index - 1, 0)] + m[self.index:]
                 self.update_message(message)
                 self.set_index(self.index - 1)
@@ -879,7 +873,7 @@ class Input(Compound_Object):
         if self.selection:
             self.replace_selection('')
         else:
-            m = self.get_message()
+            m = self.message
             message = m[:self.index] + m[min(self.index + 1, len(m)):]
             self.update_message(message)
             self.set_index(self.index - 1)
@@ -902,7 +896,7 @@ class Input(Compound_Object):
     def get_closest_index(self, p=None):
         if p is None:
             p = pg.mouse.get_pos()
-        chars = self.get_chars()
+        chars = self.characters
         i = min(range(len(chars)), key=lambda i: vec(chars[i][1].center).distance_to(p), default=0)
         r = chars[i][1]
         if p[0] - r.centerx >= 0:
@@ -910,24 +904,24 @@ class Input(Compound_Object):
         return i
         
     def open(self):
-        m = self.get_message()
+        m = self.message
         if m == self.default:
             self.clear()
         self.active = True
-        self.set_index(len(self.get_message()))
+        self.set_index(len(self.message))
         if self.hl:
             self.highlight_full()
 
     def close(self):
         if self.active:
             self.active = False
-            m = self.get_message()
+            m = self.message
             if not m.strip():
                 self.update_message(self.default)
             self.selection.clear()
             if self.scroll:
                 self.textbox.rect.midleft = self.rect.midleft
-                self.textbox.rect.x += self.padding[0]
+                self.textbox.rect.x += self.left_pad
                 self.textbox.set_current_offset()
                 
     def clear(self):
@@ -936,28 +930,27 @@ class Input(Compound_Object):
     def send_keys(self, text):
         if self.selection:
             self.replace_selection('')
-        m = self.get_message()
+        m = self.message
         message = m[:self.index] + text + m[self.index:]
         self.update_message(message)
         self.set_index(self.index + len(text))
 
     def shift_textbox(self):
-        if self.textbox.rect.width + self.padding[0] < self.rect.width:
-            self.textbox.rect.midleft = self.rect.midleft
-            self.textbox.rect.x += self.padding[0]
+        if self.textbox.rect.width + self.x_pad < self.rect.width:
+            self.textbox.rect.topleft = (self.rect.x + self.left_pad, self.rect.y + self.top_pad + self.special_pad)  
         else:
-            self.textbox.rect.centery = self.rect.centery
-            chars = self.get_chars()
+            self.textbox.rect.y = self.rect.y + self.top_pad + self.special_pad
+            chars = self.characters
             if self.index in range(len(chars)):
                 r = chars[self.index][1]
-                if not self.rect.contains(r):
-                    if r.left < self.rect.left:
+                if not self.rect.collidepoint(r.center):
+                    if r.centerx < self.rect.left:
                         dx = self.rect.left - r.left
                     else:
                         dx = self.rect.right - r.right
                     self.textbox.rect.x += dx
                 if self.textbox.rect.right < self.rect.right and self.textbox.rect.left < self.rect.left:
-                    self.textbox.rect.right = self.rect.right - self.padding[0]
+                    self.textbox.rect.right = self.rect.right - self.right_pad
         self.textbox.set_current_offset()
         
     def set_cursor(self):
@@ -1148,41 +1141,31 @@ class Input(Compound_Object):
         super().update()
         
     def draw(self, surf):
-        x0, y0 = self.rect.topleft
-        dx = -x0
-        dy = -y0
+        self.draw_rect(surf)
 
-        if not self.image:
-            self.base_image.fill(self.color)
-        else:
-            self.base_image.blit(self.image, (0, 0))
-
+        surf.set_clip(self.rect)
         if self.selection:
-            chars = self.get_chars()[:-1]
+            chars = self.characters[:-1]
             i, j = self.selection
             for _, r, _ in chars[min(i, j):max(i, j)]:
-                pg.draw.rect(self.base_image, (0, 102, 255), r.move(dx, dy))
+                pg.draw.rect(surf, (0, 102, 255), r.move(0, -self.special_pad))
+        self.textbox.draw(surf)
+        surf.set_clip(None)
 
-        self.base_image.blit(self.textbox.image, self.textbox.rect.move(dx, dy))
-        
         if self.active and self.timer > 0:
-            chars = self.get_chars()
+            chars = self.characters
             if chars:
                 if self.index in range(len(chars)):
-                    r = chars[self.index][1].move(dx, dy)
-                    pg.draw.line(self.base_image, self.textbox.fgcolor, r.topleft, r.bottomleft, width=2)
+                    r = chars[self.index][1].move(0, -self.special_pad)
+                    pg.draw.line(surf, self.textbox.fgcolor, r.topleft, r.bottomleft, width=2)
             else:
-                r = self.textbox.get_text_rect(' ', tsize=self.tsize)
-                if self.fitted:
-                    r.center = self.rect.center
-                    r.move_ip(dx, dy)
-                    pg.draw.line(self.base_image, self.textbox.fgcolor, r.midtop, r.midbottom, width=2)
+                r = self.textbox.get_text_rect(' ')
+                if self.textbox.fitted:
+                    r.center = (self.rect.centerx, self.rect.centery - self.special_pad)
+                    pg.draw.line(surf, self.textbox.fgcolor, r.midtop, r.midbottom, width=2)
                 else:
-                    r.midleft = self.rect.midleft
-                    r.move_ip(dx, dy)
-                    pg.draw.line(self.base_image, self.textbox.fgcolor, r.topleft, r.bottomleft, width=2)
-                    
-        surf.blit(self.base_image, self.rect)
+                    r.midleft = (self.rect.x, self.rect.centery - self.special_pad)
+                    pg.draw.line(surf, self.textbox.fgcolor, r.topleft, r.bottomleft, width=2)
   
 class Text_Flipper(Compound_Object):
     @classmethod
@@ -1385,72 +1368,45 @@ class Slider(Compound_Object):
         pg.draw.rect(surf, self.handel_color, self.handel.rect)
         super().draw(surf)
 
-class Dropdown(Compound_Object):
-    def __init__(self, selection, selected=None):
-        super().__init__()
-        self.rect = pg.Rect(0, 0, 100, 20)
-            
-        self.selection = selection
-        if selected is None:
-            selected = selection[0]
-        self.current = Textbox(selected)
-        self.current.rect.topleft = self.rect.topleft
-        self.add_child(self.current, current_offset=True)
+class Check_Box(Compound_Object):
+    def __init__(self, size=15, state=True, **kwargs):
+        super().__init__(**kwargs)
+        self.rect = pg.Rect(0, 0, size, size)
+        self.state = state
+        self.icon = Textbox.static_textbox(icons['check'], font='icons', tsize=size - 2, fgcolor=(0, 0, 0))
+        self.add_child(self.icon, anchor_point='center')
         
-        down_arrow = get_arrow('d', (16, 16))
-        self.drop_down = Button.image_button(down_arrow, func=self.open)
-        self.drop_down.rect.midleft = self.rect.midright
-        self.add_child(self.drop_down, current_offset=True)
+    def set_cursor(self):
+        if self.rect.collidepoint(pg.mouse.get_pos()):
+            pg.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
+            return True
         
-        self.buttons = {v: Button.text_button(v, func=self.set_value, args=[v], border_radius=0) for v in self.selection}
-        for b in self.buttons.values():
-            self.add_child(b, current_offset=True)
-            b.turn_off()
+    def set_state(self, state):
+        self.state = state
+        self.icon.set_visible(state)
         
-    @property
-    def current_value(self):
-        return self.current.get_message()
+    def get_state(self):
+        return self.state
         
-    @property
-    def is_open(self):
-        return self.drop_down._func is self.close
-        
-    def set_value(self, val):
-        self.current.set_message(val)
-        self.close()
-        self.run_func()
-        
-    def flip_arrow(self):
-        img = self.drop_down.object
-        img.set_image(pg.transform.flip(img.image, False, True))
-            
-    def open(self):
-        self.flip_arrow()
-        y = self.current.rect.bottom + 5
-        for v, b in self.buttons.items():
-            if v != self.current_value:
-                b.turn_on()
-                b.rect.topleft = (self.rect.x, y)
-                b.set_current_offset()
-                y += b.rect.height
-        self.drop_down.set_func(self.close)
-                
-    def close(self):
-        self.flip_arrow()
-        for b in self.buttons.values():
-            b.turn_off()
-        self.drop_down.set_func(self.open)
+    def flip_state(self):
+        self.set_state(not self.state)
         
     def events(self, events):
+        p = events['p']
         mbd = events.get('mbd')
         
         if mbd:
-            if mbd.button == 1 or mbd.button == 3:
-                if self.is_open:
-                    self.close()
+            if self.rect.collidepoint(p):
+                self.flip_state()
+                self.run_func()
+                
         super().events(events)
- 
         
+    def draw(self, surf):
+        pg.draw.rect(surf, (0, 0, 0), self.rect.inflate(2, 2))
+        pg.draw.rect(surf, (255, 255, 255), self.rect)
+            
+        super().draw(surf)
         
         
         

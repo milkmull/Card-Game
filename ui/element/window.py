@@ -1,8 +1,8 @@
 import pygame as pg
 
-from ui.image import get_surface, get_arrow
-from ui.element.base import Mover, Position, Compound_Object
-from ui.element.standard import Textbox, Button, Slider
+from ..image import get_surface, get_arrow
+from .base import Mover, Position, Compound_Object
+from .standard import Textbox, Button, Slider
 
 class Scroll_Bar(Compound_Object):
     def __init__(self, height, width=16, extended_rect=None, **kwargs):
@@ -154,7 +154,6 @@ class Label(Compound_Object):
         self.add_child(self.textbox, anchor_point='center')
         
         parent.add_child(self, anchor_point='topleft', offset=[0, -height])
-        self.parent = parent
         
     def set_message(self, *args, **kwargs):
         self.textbox.set_message(*args, **kwargs)
@@ -175,22 +174,13 @@ class Label(Compound_Object):
         super().draw(surf)
 
 class Static_Window(Compound_Object, Scroll_Controller):
-    @classmethod
-    def from_image(cls, image, **kwargs):
-        size = image.get_size()
-        win = cls(size, color=(0, 0, 0), **kwargs)
-        win.image = image
-        return win
-        
-    def __init__(self, size, **kwargs):
-        Compound_Object.__init__(self)
-        self.rect = pg.Rect(0, 0, size[0], size[1])
+    def __init__(self, image=None, **kwargs):
+        kwargs.pop('from_surface', None)
+        kwargs.pop('outline_dir', None)
+        Compound_Object.__init__(self, from_surface=True, outline_dir=True, **kwargs)
         Scroll_Controller.__init__(self)
         
-        self.size = size
-        self.image = get_surface(size, **kwargs)
         self.current_image = self.image.copy()
-        self.color = self.image.get_at((5, 5))
 
         self.objects = []
         self.orientation_cache = {'xpad': 5, 'ypad': 5, 'dir': 'y', 'pack': False}
@@ -290,10 +280,10 @@ class Static_Window(Compound_Object, Scroll_Controller):
                             x += wmax + xpad
                             wmax = 0
                         offset = [x + xpad, y + ypad]
-                        o.set_parent(self.bounding_box.rect, offset=offset)   
+                        o.set_parent(self.bounding_box, offset=offset)   
                     else:
                         offset = [0, y + ypad]  
-                        o.set_parent(self.bounding_box.rect, anchor_point='midtop', offset=offset)
+                        o.set_parent(self.bounding_box, anchor_point='midtop', offset=offset)
                     y += o.rect.height + ypad
                     if o.rect.width > wmax:
                         wmax = o.rect.width
@@ -306,10 +296,10 @@ class Static_Window(Compound_Object, Scroll_Controller):
                             y += hmax + ypad 
                             hmax = 0
                         offset = [x + xpad, y + ypad]
-                        o.set_parent(self.bounding_box.rect, offset=offset)    
+                        o.set_parent(self.bounding_box, offset=offset)    
                     else:
                         offset = [x + xpad, 0]  
-                        o.set_parent(self.bounding_box.rect, anchor_point='midleft', offset=offset)  
+                        o.set_parent(self.bounding_box, anchor_point='midleft', offset=offset)  
                     x += o.rect.width + xpad
                     if o.rect.height > hmax:
                         hmax = o.rect.height
@@ -332,7 +322,7 @@ class Static_Window(Compound_Object, Scroll_Controller):
  
             for (x, y), o in zip(offsets, objects):
                 offset = [x, y] 
-                o.set_parent(self.bounding_box.rect, anchor_point='topleft', offset=offset)
+                o.set_parent(self.bounding_box, anchor_point='topleft', offset=offset)
 
             self.objects = objects.copy()
             self.set_total_height()
@@ -409,10 +399,12 @@ class Live_Window(Static_Window):
 
     def draw(self, surf):
         self.current_image.blit(self.image, (0, 0))
+        super().draw(surf)
+        surf.set_clip(self.rect)
         for o in self.objects:
             if o.visible:
-                o.draw_on(self.current_image, self.rect)
-        super().draw(surf)
+                o.draw(surf)
+        surf.set_clip(None)
         
 class Popup_Base(Mover):
     def __init__(self, dir='y', vel=15):

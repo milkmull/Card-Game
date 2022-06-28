@@ -1,6 +1,6 @@
 import pygame as pg
 
-from ui.element.base import Compound_Object
+from .base import Compound_Object
 
 class Loading_Icon(Compound_Object):
     DA = 4.71239

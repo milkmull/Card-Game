@@ -1,10 +1,11 @@
 import pygame as pg
 
-from ui.logging import Logging
-from ui.image import get_arrow
-from ui.element.base import Compound_Object
-from ui.element.standard import Image, Textbox, Button, Input, Slider
-from ui.element.window import Static_Window, Live_Window
+from ..logging import Logging
+from ..image import get_arrow
+from .base import Compound_Object
+from .standard import Image, Textbox, Button, Input, Slider, Input, Check_Box
+from .window import Static_Window, Live_Window
+from .complex import Dropdown
 
 class Alt_Static_Window(Static_Window):
     def __init__(self, *args, **kwargs):
@@ -13,11 +14,11 @@ class Alt_Static_Window(Static_Window):
         up_arrow = get_arrow('u', (self.rect.width, 15), padding=(self.rect.width + 10, 10), color=(255, 255, 255), bgcolor=(50, 50, 50, 100))
         down_arrow = pg.transform.rotate(up_arrow, 180)
 
-        self.scroll_bar.up_button.join_object(Image(up_arrow), size=up_arrow.get_size())
+        self.scroll_bar.up_button.join_object(Image(up_arrow))
         self.scroll_bar.up_button.border_radius = 0
         self.add_child(self.scroll_bar.up_button, anchor_point='midtop')
         
-        self.scroll_bar.down_button.join_object(Image(down_arrow), size=down_arrow.get_size())
+        self.scroll_bar.down_button.join_object(Image(down_arrow))
         self.scroll_bar.down_button.border_radius = 0
         self.add_child(self.scroll_bar.down_button, anchor_point='midbottom')
         
@@ -36,33 +37,57 @@ class Logged_Input(Input, Logging):
         Input.__init__(self, *args, **kwargs)
         Logging.__init__(self)
         
-        self.last_message = self.get_message()
+        self.last_message = self.message
         
     def open(self):
-        m = self.get_message()
+        m = self.message
         self.last_message = m
         if m == self.default:
             self.clear()
         self.active = True
-        self.set_index(len(self.get_message()))
+        self.set_index(len(self.message))
         if self.hl:
             self.highlight_full()
 
     def close(self):
         if self.active:
             self.active = False
-            m = self.get_message()
+            m = self.message
             if not m.strip():
                 self.textbox.reset()
-                m = self.get_message()
+                m = self.message
             if self.last_message != m:
-                self.add_log({'t': 'val', 'i': self, 'm': (self.last_message, m)})
+                self.add_log({'t': 'val', 'o': self, 'v': (self.last_message, m)})
             self.selection.clear()
             if self.scroll:
                 self.textbox.rect.midleft = self.rect.midleft
-                self.textbox.rect.x += self.padding[0]
+                self.textbox.rect.x += self.left_pad
                 self.textbox.set_current_offset()
-                
+  
+class Logged_Check_Box(Check_Box, Logging):
+    def __init__(self, *args, **kwargs):
+        Check_Box.__init__(self, *args, **kwargs)
+        Logging.__init__(self)
+        
+    def set_state(self, state, d=False):
+        state0 = self.state
+        super().set_state(state)
+        state1 = self.state
+        if not d and state1 != state0:
+            self.add_log({'t': 'val', 'o': self, 'v': (state0, state1)})
+            
+class Logged_Dropdown(Dropdown, Logging):
+    def __init__(self, *args, **kwargs):
+        Dropdown.__init__(self, *args, **kwargs)
+        Logging.__init__(self)
+        
+    def set_value(self, val, d=False):
+        value0 = self.current_value
+        super().set_value(val)
+        value1 = self.current_value
+        if not d and value1 != value0:
+            self.add_log({'t': 'val', 'o': self, 'v': (value0, value1)})
+  
 class RGBSlider(Slider):
     RGB = ('r', 'g', 'b')
     def __init__(self, size, dir, rgb, handel_size=None, hcolor=None, flipped=False, func=lambda *args, **kwargs: None, args=[], kwargs={}):

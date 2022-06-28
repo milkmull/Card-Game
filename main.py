@@ -1,18 +1,17 @@
 import pygame as pg
 
-import save
+from data.save import SAVE, CONSTANTS
 
 pg.init()
-pg.display.set_mode(save.CONSTANTS['screen_size'], flags=pg.SCALED | pg.RESIZABLE)
+pg.display.set_mode(CONSTANTS['screen_size'], flags=pg.SCALED | pg.RESIZABLE)
 pg.display.set_caption('card game')
 
-import spritesheet
-import customsheet
-import client
-import game
-import network
-import builder
-import main_menu
+if SAVE.failed_to_load:
+    SAVE.reset_save()
+
+from spritesheet import spritesheet, customsheet
+from client import client
+from menu import main_menu
 
 from ui.menu import Menu
 

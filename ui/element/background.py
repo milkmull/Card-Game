@@ -1,6 +1,6 @@
 import pygame as pg
 
-from ui.element.base import Base_Object
+from .base import Base_Object
 
 class Timer(Base_Object):
     def __init__(self, start_time, *base_args, reset_timer=False, **base_kwargs):

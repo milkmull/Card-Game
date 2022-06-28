@@ -2,10 +2,10 @@ import sys
 
 import pygame as pg
 
-from ui.element.base import Base_Object
-from ui.element.standard import Image, Textbox, Button
-from ui.element.background import Timer, On_Click
-from ui.element.icon import Loading_Icon
+from .element.base import Base_Object
+from .element.standard import Image, Textbox, Button
+from .element.background import Timer, On_Click
+from .element.icon import Loading_Icon
 
 def get_window_size():
     return pg.display.get_window_size()
@@ -14,14 +14,42 @@ def get_window_center():
     w, h = pg.display.get_window_size()
     return (w // 2, h // 2)
     
-class Base_Loop:
-    LAST_EVENT_BATCH = []
+class Base_Loop:  
+    LAST_BATCH = None
+    DOUBLE_CLICK_MAX = 10
+    HOVER_MAX = 15
     
-    @classmethod
-    def get_events(cls):
-        event_batch = pg.event.get()
-        cls.LAST_EVENT_BATCH = event_batch
+    def __init__(self, objects, fps=30):
+        self.running = False
+        self.window = pg.display.get_surface()
+        self.clock = pg.time.Clock()
+        self.fps = fps
+        self.objects = objects
         
+        self.click_timer = 0
+        self.hover_timer = 0
+        self.hover_object = None
+        
+    @property
+    def time_step(self):
+        return 30 / self.fps
+        
+    @property
+    def last_batch(self):
+        return Base_Loop.LAST_BATCH.copy()
+
+    def add_object(self, object):
+        self.objects.append(object)
+
+    def remove_object(self, object):
+        if object in self.objects:
+            self.objects.remove(object)
+            
+    def get_events(self):
+        event_batch = pg.event.get()
+        
+        self.click_timer += self.time_step
+
         events = {}
         events['all'] = event_batch
         events['p'] = pg.mouse.get_pos()
@@ -30,6 +58,10 @@ class Base_Loop:
                 events['q'] = e
             elif e.type == pg.MOUSEBUTTONDOWN:
                 events['mbd'] = e
+                if e.button == 1:
+                    if self.click_timer < Base_Loop.DOUBLE_CLICK_MAX:
+                        events['dub'] = True
+                    self.click_timer = 0
             elif e.type == pg.MOUSEBUTTONUP:
                 events['mbu'] = e
             elif e.type == pg.KEYDOWN:
@@ -37,25 +69,26 @@ class Base_Loop:
             elif e.type == pg.KEYUP:
                 events['ku'] = e
                 
+        if self.hover_timer > Base_Loop.HOVER_MAX:
+            events['hover'] = o
+            
+        Base_Loop.LAST_BATCH = events.copy()
+                
         return events
-        
-    def __init__(self, objects, fps=30):
-        self.running = False
-        self.window = pg.display.get_surface()
-        self.clock = pg.time.Clock()
-        self.fps = fps
-        self.objects = objects
-
-    def add_object(self, object):
-        self.objects.append(object)
-
-    def remove_object(self, object):
-        if object in self.objects:
-            self.objects.remove(object)
 
     def get_event_objects(self):
         return self.objects
-            
+        
+    def update_hover(self, hit, o):
+        if hit:
+            if o is self.hover_object:
+                self.hover_timer += self.time_step
+            else:
+                self.hover_object = o
+                self.hover_timer = 0
+        else:
+            self.hover_timer = 0
+
     def sub_events(self, events):
         hit = False
         
@@ -64,6 +97,7 @@ class Base_Loop:
                 o.events(events)
                 if not hit:
                     hit = o.set_cursor()
+                    self.update_hover(hit, o)
         if not hit:
             pg.mouse.set_cursor(pg.SYSTEM_CURSOR_ARROW)
             
@@ -83,9 +117,10 @@ class Base_Loop:
                 o.events(events)
                 if not hit:
                     hit = o.set_cursor()
+                    self.update_hover(hit, o)
         if not hit:
             pg.mouse.set_cursor(pg.SYSTEM_CURSOR_ARROW)
-                            
+               
     def update(self):
         for o in self.objects:
             o.update()
@@ -99,6 +134,10 @@ class Base_Loop:
         
     def exit(self):
         self.running = False
+        
+    def quit(self):
+        pg.quit()
+        sys.exit()
                 
     def run(self):
         self.running = True
@@ -142,7 +181,7 @@ class Menu(Base_Loop):
             t = Textbox(message, olcolor=(0, 0, 0), **kwargs)
             t.fit_text(text_rect, tsize=tsize)
             t.rect.center = text_rect.center
-            t.set_parent(i.rect, anchor_point='center', current_offset=True)
+            t.set_parent(i, anchor_point='center', current_offset=True)
             objects.append(t)
             
         return (objects, (upper, lower))
@@ -154,7 +193,7 @@ class Menu(Base_Loop):
         b = Button.text_button('ok', size=(150, 25), tsize=25, color2=bcolor)
         b.set_tag('break')
         b.rect.center = lower.center
-        b.set_parent(objects[0].rect, anchor_point='center', current_offset=True)
+        b.set_parent(objects[0], anchor_point='center', current_offset=True)
         objects.append(b)
         
         return cls(objects=objects, overlay=overlay)
@@ -167,14 +206,14 @@ class Menu(Base_Loop):
         b.set_tag('return')
         b.rect.midleft = lower.midleft
         b.rect.x += 20
-        b.set_parent(objects[0].rect, anchor_point='center', current_offset=True)
+        b.set_parent(objects[0], anchor_point='center', current_offset=True)
         objects.append(b)
         
         b = Button.text_button('no', size=(100, 30), tsize=25, color2=no_btn_color, func=lambda: False)
         b.set_tag('return')
         b.rect.midright = lower.midright
         b.rect.x -= 20
-        b.set_parent(objects[0].rect, anchor_point='center', current_offset=True)
+        b.set_parent(objects[0], anchor_point='center', current_offset=True)
         objects.append(b)
 
         return cls(objects=objects, overlay=overlay)
@@ -187,7 +226,7 @@ class Menu(Base_Loop):
         li.rect.topright = objects[0].rect.topright
         li.rect.top += 10
         li.rect.right -= 10
-        li.set_parent(objects[0].rect, anchor_point='center', current_offset=True)
+        li.set_parent(objects[0], anchor_point='center', current_offset=True)
         objects.append(li)
         
         o = Base_Object(func=func, args=fargs, kwargs=fkwargs, enable_func=True)
@@ -204,7 +243,7 @@ class Menu(Base_Loop):
         li.rect.topright = objects[0].rect.topright
         li.rect.top += 10
         li.rect.right -= 10
-        li.set_parent(objects[0].rect, anchor_point='center', current_offset=True)
+        li.set_parent(objects[0], anchor_point='center', current_offset=True)
         objects.append(li)
         
         o = Base_Object(func=func, args=fargs, kwargs=fkwargs, enable_func=True)
@@ -260,7 +299,7 @@ class Menu(Base_Loop):
         self.set_funcs()
 
         self._quit = quit
-        
+
     def add_object(self, object):
         self.objects.append(object)
         
@@ -270,6 +309,8 @@ class Menu(Base_Loop):
         
     def set_funcs(self):
         for o in self.objects.copy():
+            o._menu = self
+            
             if o.tag == 'break':
                 if o._func:
                     exit_func = self.wrap_exit_function(o)
@@ -319,28 +360,28 @@ class Menu(Base_Loop):
         self.return_val = None
         return r
         
-    def quit(self):
+    def quit_or_exit(self):
         if self._quit:
-            pg.quit()
-            sys.exit()
-        else:
-            self.running = False
+            self.quit()
+        self.exit()
         
     def events(self):
         hit = False
         events = self.get_events()
         if events.get('q'):
-            self.quit()
+            self.quit_or_exit()
         e = events.get('kd')
         if e:
             if e.key == pg.K_ESCAPE:
-                self.quit()
+                self.quit_or_exit()
                     
         for o in self.objects:
             if o.enabled:
                 o.events(events)
                 if not hit:
                     hit = o.set_cursor()
+                    self.update_hover(hit, o)
+                        
         if not hit:
             pg.mouse.set_cursor(pg.SYSTEM_CURSOR_ARROW)
             

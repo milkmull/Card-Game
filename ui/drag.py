@@ -1,6 +1,6 @@
 import pygame as pg
 
-from ui.logging import Logging
+from .logging import Logging
 
 class Dragger:
     def __init__(self):
@@ -23,16 +23,16 @@ class Dragger:
             self._held = True
             self._selected = True
             self.set_rel_pos()
-            self._pickup = self.rect.center
+            self._pickup = self.rect.topleft
                 
     def drop(self):
         self._held = False
         self._htime = 0
-        self._pickup = self.rect.center
+        self._pickup = self.rect.topleft
         
     def get_carry_dist(self):
         x0, y0 = self._pickup
-        x1, y1 = self.rect.center
+        x1, y1 = self.rect.topleft
         dx = x1 - x0
         dy = y1 - y0
         if dx or dy:
@@ -59,7 +59,7 @@ class Dragger:
             self._htime += 1
         return self._htime == 4
 
-    def update(self):        
+    def update_drag(self):        
         dx = 0
         dy = 0
 

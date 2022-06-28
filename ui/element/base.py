@@ -1,6 +1,8 @@
 import pygame as pg
 from pygame.math import Vector2 as vec
 
+from ..image import get_surface
+
 class Mover:
     def __init__(self):
         self.target_rect = None
@@ -267,6 +269,8 @@ class Base_Object:
         self.window_draw = False
         self.hit = False
         self.flag = False
+        
+        self._menu = None
 
         self.enable_func = enable_func
         self._func = func
@@ -274,11 +278,23 @@ class Base_Object:
         self._kwargs = kwargs
         self._return_val = None
 
-        for name, value in okwargs.items():
-            setattr(self, name, value)
+        self.leftover = okwargs
             
     def __hash__(self):
         return id(self)
+        
+    @property
+    def menu(self):
+        return self._menu
+        
+    def get_leftover(self):
+        lo = self.leftover.copy()
+        self.leftover.clear()
+        return lo
+        
+    def set_leftover(self):
+        for name, value in self.get_leftover().items():
+            setattr(self, name, value)
         
     def set_tag(self, tag):
         self.tag = tag
@@ -370,11 +386,23 @@ class Position(Base_Object):
     def rect(cls, r, **kwargs):
         return cls(rect=r, **kwargs)
         
-    def __init__(self, rect=None, parent_rect=None, offset=None, anchor_point='topleft', children=None, contain=False, bind_width=False, bind_height=False, **kwargs):
+    def __init__(
+        self,
+        rect=None,
+        parent=None,
+        offset=None,
+        anchor_point='topleft',
+        children=None,
+        contain=False,
+        bind_width=False,
+        bind_height=False, 
+        **kwargs
+    ):
+    
         super().__init__(**kwargs)
         if rect is not None:
             self.rect = rect
-        self.parent_rect = parent_rect
+        self.parent = parent
         if offset is None:
             offset = [0, 0]
         self.offset = offset
@@ -390,11 +418,27 @@ class Position(Base_Object):
         
     @property
     def total_rect(self):
+        self.update_position(all=True)
         x = min({c.rect.x for c in self.children})
         y = min({c.rect.y for c in self.children})
         w = max({c.rect.right for c in self.children}) - x
         h = max({c.rect.bottom for c in self.children}) - y
         return pg.Rect(x, y, w, h)
+        
+    @property
+    def first_born(self):
+        if self.children:
+            return self.children[0]
+            
+    @property
+    def last_born(self):
+        if self.children:
+            return self.children[-1]
+            
+    @property
+    def menu(self):
+        if self._menu is None and self.parent:
+            return self.parent.menu
 
     def set_children(self, children):
         self.children = children
@@ -403,9 +447,10 @@ class Position(Base_Object):
         self.children += children
         
     def add_child(self, child, set_parent=False, **kwargs):
-        self.children.append(child)
+        if child not in self.children:
+            self.children.append(child)
         if set_parent or kwargs:
-            child.set_parent(self.rect, **kwargs)
+            child.set_parent(self, **kwargs)
         
     def remove_child(self, child):
         i = 0
@@ -429,8 +474,8 @@ class Position(Base_Object):
             c.get_sub_children(children=children)
         return children
 
-    def set_parent(self, parent_rect, offset=None, anchor_point='topleft', contain=False, bind_width=False, bind_height=False, current_offset=False):
-        self.parent_rect = parent_rect
+    def set_parent(self, parent, offset=None, anchor_point='topleft', contain=False, bind_width=False, bind_height=False, current_offset=False):
+        self.parent = parent
         self.anchor_point = anchor_point
         if offset is None:
             if current_offset:
@@ -445,7 +490,7 @@ class Position(Base_Object):
         
     def position_copy_from(self, o):
         self.rect = o.rect.copy()
-        self.set_parent(o.parent_rect, offset=o.offset.copy(), anchor_point=o.anchor_point, contain=o.contain, bind_width=o.bind_width, bind_height=o.bind_height)
+        self.set_parent(o.parent, offset=o.offset.copy(), anchor_point=o.anchor_point, contain=o.contain, bind_width=o.bind_width, bind_height=o.bind_height)
 
     def set_anchor(self, anchor_point, offset=None):
         self.anchor_point = anchor_point
@@ -455,7 +500,7 @@ class Position(Base_Object):
 
     def get_relative_position(self):
         self.update_position()
-        return [self.rect.x - self.parent_rect.x, self.rect.y - self.parent_rect.y]
+        return [self.rect.x - self.parent.rect.x, self.rect.y - self.parent.rect.y]
         
     def set_to_relative(self):
         self.rect.topleft = self.get_relative_position()
@@ -475,7 +520,7 @@ class Position(Base_Object):
             
     def set_current_offset(self):
         sx, sy = getattr(self.rect, self.anchor_point)
-        px, py = getattr(self.parent_rect, self.anchor_point)
+        px, py = getattr(self.parent.rect, self.anchor_point)
         self.offset[0] = sx - px
         self.offset[1] = sy - py
         if self.contain:
@@ -483,14 +528,22 @@ class Position(Base_Object):
             
     def get_current_offset(self):
         sx, sy = getattr(self.rect, self.anchor_point)
-        px, py = getattr(self.parent_rect, self.anchor_point)
+        px, py = getattr(self.parent.rect, self.anchor_point)
         return [sx - px, sy - py]
+        
+    def get_offset_from(self, r, anchor_point='topleft'):
+        sx, sy = getattr(self.rect, anchor_point)
+        rx, ry = getattr(r, anchor_point)
+        return [sx - rx, sy - ry]
+        
+    def match_anchor(self, r, anchor_point):
+        setattr(self.rect, anchor_point, getattr(r, anchor_point))
 
     def set_offset(self, dx, dy):
         self.offset = [dx, dy]
         
     def set_contain(self):
-        setattr(self.rect, self.anchor_point, getattr(self.parent_rect, self.anchor_point))
+        setattr(self.rect, self.anchor_point, getattr(self.parent.rect, self.anchor_point))
         self.rect.x += self.offset[0]
         self.rect.y += self.offset[1]
         ax, ay = self.adjust_limits()
@@ -499,23 +552,23 @@ class Position(Base_Object):
 
     def adjust_limits(self):
         x0, y0 = self.rect.topleft
-        if self.rect.top < self.parent_rect.top:
-            self.rect.top = self.parent_rect.top
-        elif self.rect.bottom > self.parent_rect.bottom:
-            self.rect.bottom = self.parent_rect.bottom
-        if self.rect.left < self.parent_rect.left:
-            self.rect.left = self.parent_rect.left
-        elif self.rect.right > self.parent_rect.right:
-            self.rect.right = self.parent_rect.right
+        if self.rect.top < self.parent.rect.top:
+            self.rect.top = self.parent.rect.top
+        elif self.rect.bottom > self.parent.rect.bottom:
+            self.rect.bottom = self.parent.rect.bottom
+        if self.rect.left < self.parent.rect.left:
+            self.rect.left = self.parent.rect.left
+        elif self.rect.right > self.parent.rect.right:
+            self.rect.right = self.parent.rect.right
         return (self.rect.x - x0, self.rect.y - y0)
 
     def update_position(self, all=False):
-        if self.parent_rect:
+        if self.parent is not None:
             if self.bind_width:
-                self.rect.width = self.parent_rect.width
+                self.rect.width = self.parent.rect.width
             if self.bind_height:
-                self.rect.height = self.parent_rect.height
-            setattr(self.rect, self.anchor_point, getattr(self.parent_rect, self.anchor_point))
+                self.rect.height = self.parent.rect.height
+            setattr(self.rect, self.anchor_point, getattr(self.parent.rect, self.anchor_point))
             self.rect.x += self.offset[0]
             self.rect.y += self.offset[1]
             if self.contain:
@@ -540,7 +593,173 @@ class Position(Base_Object):
         self.update_position()
         super().update()
 
-class Compound_Object(Position):
+class Style(Position):
+    def __init__(self,
+        size=(0, 0),
+        padding=[0, 0, 0, 0],
+        special_pad=0,
+        color=(0, 0, 0), 
+        outline_width=0,
+        outline_color=None,
+        outline_dir=False,
+        color_key=None,
+        border_radius=5,
+        border_top_left_radius=-1,
+        border_top_right_radius=-1,
+        border_bottom_left_radius=-1,
+        border_bottom_right_radius=-1,
+        draw_rect=False,
+        draw_image=True,
+        image=None,
+        from_surface=False,
+        **kwargs
+    ):
+        
+        super().__init__(**kwargs)
+
+        if len(padding) == 2:
+            padding = [padding[0], padding[0], padding[1], padding[1]]
+        self.padding = padding
+        self.special_pad = special_pad
+        self.rect = pg.Rect(0, 0, size[0], size[1])
+        self._osize = size
+        
+        try:
+            self.color = color
+        except AttributeError:
+            pass
+        self.outline_width = outline_width
+        self.outline_color = outline_color
+        self.outline_dir = outline_dir
+        self.border_kwargs = {
+            'border_radius': border_radius,
+            'border_top_left_radius': border_top_left_radius,
+            'border_top_right_radius': border_top_right_radius,
+            'border_bottom_left_radius': border_bottom_left_radius,
+            'border_bottom_right_radius': border_bottom_right_radius
+        }
+        self._draw_rect = draw_rect
+        self._draw_image = draw_image
+        
+        self.image = image
+        if image and not any(size):
+            self.size = image.get_size()
+        elif from_surface:
+            self.image = get_surface(
+                self.size,
+                color=self.color,
+                width=self.outline_width,
+                olcolor=self.outline_color,
+                key=color_key,
+                **self.border_kwargs
+            )
+        
+    @property
+    def left_pad(self):
+        return self.padding[0]
+    @property
+    def right_pad(self):
+        return self.padding[1]
+    @property
+    def top_pad(self):
+        return self.padding[2]
+    @property
+    def bottom_pad(self):
+        return self.padding[3]
+    @property
+    def x_pad(self):
+        return self.left_pad + self.right_pad
+    @property
+    def y_pad(self):
+        return self.top_pad + self.bottom_pad
+
+    @property
+    def size(self):
+        return self.rect.size
+        
+    @size.setter
+    def size(self, size):
+        self.rect.size = size
+        
+    @property
+    def alpha(self):
+        if len(self.color) == 4:
+            return self.color[3]
+        return 0
+
+    @property
+    def padded_rect(self):
+        r = self.rect.inflate(-self.x_pad, -self.y_pad)
+        r.x = self.rect.x + self.left_pad
+        r.y = self.rect.y + self.top_pad
+        return r
+        
+    @property
+    def reverse_padded_rect(self):
+        r = self.rect.inflate(self.x_pad, self.y_pad)
+        r.x = self.rect.x - self.left_pad
+        r.y = self.rect.y - self.top_pad
+        return r
+        
+    @property
+    def border_radius(self):
+        return self.border_kwargs['border_radius']
+        
+    @border_radius.setter
+    def border_radius(self, br):
+        self.border_kwargs['border_radius'] = br
+        
+    def reset_size(self):
+        self.size = (self._ozise[0], self._osize[1])
+        
+    def set_image(self, image):
+        self.image = image
+        self.size = image.get_size()
+
+    def fit_to_object(self, o, padding=None, abs_fit=False):
+        if padding is not None:
+            self.padding = padding
+            
+        w = o.rect.width + self.x_pad
+        h = o.rect.height + self.y_pad
+        if abs_fit:
+            self.size = (w, h)
+        else:
+            self.size = (
+                max({self.rect.width, w}),
+                max({self.rect.height, h})
+            )
+        
+        return (self.rect.x + self.left_pad, self.rect.y + self.top_pad)
+        
+    def join_object(self, o, *args, anchor_point='center', clear=True, **kwargs):
+        self.fit_to_object(o, *args, **kwargs)
+        if clear:
+            self.clear_children()
+        o.match_anchor(self.rect, anchor_point)
+        offset = o.get_offset_from(self.reverse_padded_rect, anchor_point=anchor_point)
+        self.add_child(o, offset=offset, anchor_point=anchor_point)
+
+    def get_rect(self):
+        w, h = self.size
+        return pg.Rect(0, 0, w, h)
+        
+    def draw_rect(self, surf):
+        pg.draw.rect(surf, self.color, self.rect, **self.border_kwargs)
+        if self.outline_width and self.outline_color:
+            if self.outline_dir:
+                r = self.rect.inflate(self.outline_width * 2, self.outline_width * 2)
+            else:
+                r = self.rect
+            pg.draw.rect(surf, self.outline_color, r, width=self.outline_width, **self.border_kwargs)
+
+    def draw(self, surf):
+        if self._draw_rect and self.color:
+            self.draw_rect(surf)
+        if self._draw_image and self.image:
+            surf.blit(self.image, self.rect)
+
+class Compound_Object(Style):
     def collide(self, p):
         return any({o.rect.collidepoint(p) for o in self.get_sub_children()})
         
@@ -556,14 +775,18 @@ class Compound_Object(Position):
                 o.events(events)
             
     def update(self):
-        self.update_position()
         super().update()
         for o in self.children:
             if o.visible:
                 o.update()
             
-    def draw(self, surf):
-        for o in self.children:
+    def draw(self, surf, reverse=False):
+        if self.visible:
+            super().draw(surf)
+        children = self.children
+        if reverse:
+            children = children[::-1]
+        for o in children:
             if o.visible:
                 o.draw(surf)
 
